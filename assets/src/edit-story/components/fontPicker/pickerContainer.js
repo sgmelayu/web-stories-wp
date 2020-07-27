@@ -154,7 +154,7 @@ const NoResult = styled.span`
 
 function FontPickerContainer({ value, onSelect, onClose, isOpen }) {
   const {
-    state: { fonts, recentFonts },
+    state: { fonts, recentFonts, curatedFonts },
     actions: { ensureMenuFontsLoaded },
   } = useFont();
 
