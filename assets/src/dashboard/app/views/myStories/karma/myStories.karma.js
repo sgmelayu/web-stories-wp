@@ -18,15 +18,12 @@
  * External dependencies
  */
 import { within } from '@testing-library/react';
+import { useContext } from 'react';
 
 /**
  * Internal dependencies
  */
-import { useContext } from 'react';
 import Fixture from '../../../../karma/fixture';
-import { fillerDateSettingsObject } from '../../../../dataUtils/dateSettings';
-import formattedStoriesArray from '../../../../dataUtils/formattedStoriesArray';
-import formattedUsersObject from '../../../../dataUtils/formattedUsersObject';
 import { getRelativeDisplayDate } from '../../../../utils';
 import {
   TEMPLATES_GALLERY_VIEWING_LABELS,
@@ -40,6 +37,7 @@ import {
   VIEW_STYLE,
 } from '../../../../constants';
 import { ApiContext } from '../../../api/apiProvider';
+import { fillerDateSettingsObject } from '../../../../dataUtils/dateSettings';
 
 describe('CUJ: Creator can view their stories in grid view', () => {
   let fixture;
@@ -733,14 +731,14 @@ describe('CUJ: Creator can view their stories in list view', () => {
 
       expect(rows.length).toEqual(storiesOrderById.length);
 
-      const storieDateCreatedSortedByDateCreated = storiesOrderById.map((id) =>
-        getTimeSensitiveDisplayDate(stories[id].created)
+      const storiesDateCreatedSortedByDateCreated = storiesOrderById.map((id) =>
+        getRelativeDisplayDate(stories[id].created, fillerDateSettingsObject)
       );
 
       let rowDateCreatedValues = rows.map((row) => row.children[3].innerText);
 
       expect(rowDateCreatedValues).toEqual(
-        storieDateCreatedSortedByDateCreated
+        storiesDateCreatedSortedByDateCreated
       );
 
       // sort by ascending
@@ -754,7 +752,7 @@ describe('CUJ: Creator can view their stories in list view', () => {
       rowDateCreatedValues = rows.map((row) => row.children[3].innerText);
 
       expect(rowDateCreatedValues).toEqual(
-        storieDateCreatedSortedByDateCreated.reverse()
+        storiesDateCreatedSortedByDateCreated.reverse()
       );
     });
 
@@ -774,7 +772,7 @@ describe('CUJ: Creator can view their stories in list view', () => {
       expect(rows.length).toEqual(storiesOrderById.length);
 
       const storieModifiedSortedByModified = storiesOrderById.map((id) =>
-        getTimeSensitiveDisplayDate(stories[id].modified)
+        getRelativeDisplayDate(stories[id].modified, fillerDateSettingsObject)
       );
 
       // Last Modified is the fifth column
