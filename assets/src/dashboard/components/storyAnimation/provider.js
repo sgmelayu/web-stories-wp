@@ -121,7 +121,7 @@ function Provider({ animations, children, onWAAPIFinish }) {
         // trigger the animation. A workaround to avoid
         // this is to first `cancel` the animation
         // before playing.
-        // animation?.cancel();
+        animation?.cancel();
 
         animation?.play();
       });
