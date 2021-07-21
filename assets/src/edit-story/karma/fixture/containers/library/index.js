@@ -19,7 +19,7 @@
  */
 import { Container } from '../container';
 import Text from './text';
-import PageLayouts from './pageLayouts';
+import PageTemplates from './pageTemplates';
 
 /**
  * The library wrapper - containing tabs and panes for media, text and shapes.
@@ -43,6 +43,14 @@ export class Library extends Container {
 
   get media3pTab() {
     return this.getByRole('tab', { name: /Explore Media/ });
+  }
+
+  get media3p() {
+    return this._get(
+      this.getByRole('tabpanel', { name: /Explore Media/ }),
+      'media3p',
+      Media3P
+    );
   }
 
   get textTab() {
@@ -73,15 +81,15 @@ export class Library extends Container {
     );
   }
 
-  get pageLayoutsTab() {
-    return this.getByRole('tab', { name: /Page layouts library/ });
+  get pageTemplatesTab() {
+    return this.getByRole('tab', { name: /Page templates library/ });
   }
 
-  get pageLayoutsPane() {
+  get pageTemplatesPane() {
     return this._get(
-      this.getByRole('tabpanel', { name: /Page layouts library/ }),
-      'pageLayouts',
-      PageLayouts
+      this.getByRole('tabpanel', { name: /Page templates library/ }),
+      'pageTemplates',
+      PageTemplates
     );
   }
 }
@@ -103,5 +111,11 @@ export class Media extends Container {
 
   item(index) {
     return this.node.querySelectorAll('[data-testid^=mediaElement]')[index];
+  }
+}
+
+export class Media3P extends Container {
+  constructor(node, path) {
+    super(node, path);
   }
 }

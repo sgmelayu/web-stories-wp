@@ -20,8 +20,7 @@ namespace Google\Web_Stories\Tests;
 /**
  * @coversDefaultClass \Google\Web_Stories\Experiments
  */
-class Experiments extends \WP_UnitTestCase {
-	use Private_Access;
+class Experiments extends Test_Case {
 
 	/**
 	 * @var int
@@ -45,11 +44,11 @@ class Experiments extends \WP_UnitTestCase {
 	}
 
 	/**
-	 * @covers ::init
+	 * @covers ::register
 	 */
-	public function test_init() {
+	public function test_register() {
 		$experiments = new \Google\Web_Stories\Experiments();
-		$experiments->init();
+		$experiments->register();
 
 		// Because WEBSTORIES_DEV_MODE is false by default.
 		$this->assertFalse( has_action( 'admin_menu', [ $experiments, 'add_menu_page' ] ) );

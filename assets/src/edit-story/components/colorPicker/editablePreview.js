@@ -21,24 +21,33 @@ import PropTypes from 'prop-types';
 import styled from 'styled-components';
 import { EditableInput } from 'react-color/lib/components/common';
 import { useCallback, useMemo, useRef, useLayoutEffect, useState } from 'react';
-
-/**
- * Internal dependencies
- */
 import {
   Text,
   THEME_CONSTANTS,
   useKeyDownEffect,
-} from '../../../design-system';
+} from '@web-stories-wp/design-system';
+
+/**
+ * Internal dependencies
+ */
+import { focusStyle } from '../panels/shared';
 
 const Preview = styled.button`
   margin: 0;
-  padding: 0;
+  padding: 7px;
   border: 1px solid ${({ theme }) => theme.colors.border.defaultNormal};
   border-radius: 2px;
   background: transparent;
   color: ${({ theme }) => theme.colors.fg.primary};
   width: 100%;
+
+  ${focusStyle};
+`;
+
+const Wrapper = styled.div`
+  input {
+    ${focusStyle};
+  }
 `;
 
 function EditablePreview({ label, value, width, format, onChange }) {
@@ -92,7 +101,11 @@ function EditablePreview({ label, value, width, format, onChange }) {
 
   if (!isEditing) {
     return (
-      <Preview aria-label={label} onClick={enableEditing}>
+      <Preview
+        aria-label={label}
+        onClick={enableEditing}
+        onFocus={enableEditing}
+      >
         <Text size={THEME_CONSTANTS.TYPOGRAPHY.PRESET_SIZES.SMALL}>
           {format(value)}
         </Text>
@@ -101,7 +114,7 @@ function EditablePreview({ label, value, width, format, onChange }) {
   }
 
   return (
-    <div ref={wrapperRef} tabIndex={-1} onBlur={handleOnBlur}>
+    <Wrapper ref={wrapperRef} tabIndex={-1} onBlur={handleOnBlur}>
       <EditableInput
         value={value}
         ref={editableRef}
@@ -109,7 +122,7 @@ function EditablePreview({ label, value, width, format, onChange }) {
         onChangeComplete={disableEditing}
         style={inputStyles}
       />
-    </div>
+    </Wrapper>
   );
 }
 

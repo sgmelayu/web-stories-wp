@@ -20,10 +20,10 @@ import { boolean } from '@storybook/addon-knobs';
 import { useState } from 'react';
 import { TransitionGroup } from 'react-transition-group';
 import styled, { ThemeProvider } from 'styled-components';
+import { theme as dsTheme, ThemeGlobals } from '@web-stories-wp/design-system';
 /**
  * Internal dependencies
  */
-import { theme as dsTheme, ThemeGlobals } from '../../../../../design-system';
 import { TIPS } from '../../constants';
 import { QuickTip as HelpCenterQuickTip } from '..';
 
@@ -52,7 +52,7 @@ export const QuickTip = () => {
   const [toggled, setToggled] = useState(true);
   return (
     <ThemeProvider theme={dsTheme}>
-      <ThemeGlobals.OverrideFocusOutline />
+      <ThemeGlobals.Styles />
       <button onClick={() => setToggled((v) => !v)}>{'toggleTips'}</button>
       <Bg>
         <Container>

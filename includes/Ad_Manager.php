@@ -29,7 +29,7 @@ namespace Google\Web_Stories;
 /**
  * Class Ad_Manager
  */
-class Ad_Manager {
+class Ad_Manager extends Service_Base {
 	/**
 	 * Initializes all hooks.
 	 *
@@ -37,7 +37,7 @@ class Ad_Manager {
 	 *
 	 * @return void
 	 */
-	public function init() {
+	public function register() {
 		add_action( 'web_stories_print_analytics', [ $this, 'print_ad_manager_tag' ] );
 	}
 
@@ -48,7 +48,7 @@ class Ad_Manager {
 	 *
 	 * @return string Slot ID.
 	 */
-	private function get_slot_id() {
+	private function get_slot_id(): string {
 		return (string) get_option( Settings::SETTING_NAME_AD_MANAGER_SLOT_ID );
 	}
 
@@ -59,7 +59,7 @@ class Ad_Manager {
 	 *
 	 * @return bool
 	 */
-	private function is_enabled() {
+	private function is_enabled(): bool {
 		return ( 'admanager' === (string) get_option( Settings::SETTING_NAME_AD_NETWORK, 'none' ) );
 	}
 

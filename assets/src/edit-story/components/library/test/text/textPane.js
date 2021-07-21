@@ -17,14 +17,14 @@
 /**
  * External dependencies
  */
-import { act, fireEvent } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import { FlagsProvider } from 'flagged';
 import { curatedFontNames } from '@web-stories-wp/fonts';
 
 /**
  * Internal dependencies
  */
-import { renderWithTheme } from '../../../../testUtils/index';
+import { renderWithTheme } from '../../../../testUtils';
 import FontContext from '../../../../app/font/context';
 import useFont from '../../../../app/font/useFont';
 import fontsListResponse from '../../../form/advancedDropDown/test/fontsResponse.json';
@@ -41,8 +41,12 @@ describe('TextPane', () => {
   beforeAll(() => {
     useLibrary.mockImplementation((selector) =>
       selector({
+        state: {
+          textSets: {},
+        },
         actions: {
           insertElement: insertElement,
+          setPageCanvasPromise: jest.fn(),
         },
       })
     );
@@ -69,24 +73,32 @@ describe('TextPane', () => {
         ensureMenuFontsLoaded: () => {},
       },
     };
-    await act(() => {
-      const { getByRole } = renderWithTheme(
-        <FlagsProvider
-          features={{
-            showTextSets: false,
-            showTextAndShapesSearchInput: false,
-          }}
-        >
-          <FontContext.Provider value={fontContextValues}>
-            <TextPane isActive />
-          </FontContext.Provider>
-        </FlagsProvider>
-      );
 
-      fireEvent.click(getByRole('button', { name: 'Heading 1' }));
+    renderWithTheme(
+      <FlagsProvider
+        features={{
+          showTextSets: false,
+          showTextAndShapesSearchInput: false,
+          enableSmartTextColor: true,
+        }}
+      >
+        <FontContext.Provider value={fontContextValues}>
+          <TextPane isActive />
+        </FontContext.Provider>
+      </FlagsProvider>
+    );
+
+    act(() => {
+      fireEvent.click(screen.getByRole('button', { name: 'Title 1' }));
     });
 
-    expect(insertElement).toHaveBeenCalledTimes(1);
-    expect(insertElement).toHaveBeenCalledWith('text', PRESETS[0].element);
+    await waitFor(() => expect(insertElement).toHaveBeenCalledTimes(1));
+    // Height is being assigned in the process of text insertion.
+    await waitFor(() =>
+      expect(insertElement).toHaveBeenCalledWith('text', {
+        ...PRESETS[0].element,
+        height: 0,
+      })
+    );
   });
 });

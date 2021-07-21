@@ -19,17 +19,17 @@
  */
 import { useCallback, useEffect, useRef } from 'react';
 import { __ } from '@web-stories-wp/i18n';
+import { useSnackbar } from '@web-stories-wp/design-system';
 
 /**
  * Internal dependencies
  */
 import usePreventWindowUnload from '../../utils/usePreventWindowUnload';
 import { useUploader } from '../uploader';
-import { useSnackbar } from '../snackbar';
 import localStore, { LOCAL_STORAGE_PREFIX } from '../../utils/localStore';
-import { useMediaUploadQueue } from './utils';
+import useMediaUploadQueue from './utils/useMediaUploadQueue';
 import getResourceFromLocalFile from './utils/getResourceFromLocalFile';
-import useTranscodeVideo from './utils/useTranscodeVideo';
+import useFFmpeg from './utils/useFFmpeg';
 
 const storageKey = LOCAL_STORAGE_PREFIX.VIDEO_OPTIMIZATION_DIALOG_DISMISSED;
 
@@ -65,12 +65,8 @@ function useUploadMedia({
     },
     actions: { addItem, removeItem },
   } = useMediaUploadQueue();
-  const {
-    isFeatureEnabled,
-    isTranscodingEnabled,
-    canTranscodeFile,
-    isFileTooLarge,
-  } = useTranscodeVideo();
+  const { isTranscodingEnabled, canTranscodeFile, isFileTooLarge } =
+    useFFmpeg();
 
   /**
    * @type {import('react').MutableRefObject<Array<Object<*>>>} mediaRef Ref for current media items.
@@ -88,7 +84,8 @@ function useUploadMedia({
 
     if (isTranscoding && isDialogDismissed) {
       showSnackbar({
-        message: __('Video optimization in progress.', 'web-stories'),
+        message: __('Video optimization in progress', 'web-stories'),
+        dismissable: true,
       });
     }
   }, [isTranscoding, showSnackbar]);
@@ -155,12 +152,17 @@ function useUploadMedia({
   // Handle *failed* items.
   // Remove resources from media library and canvas.
   useEffect(() => {
-    for (const { id, onUploadError, error } of failures) {
+    for (const { id, onUploadError, error, resource } of failures) {
       if (onUploadError) {
         onUploadError({ id });
       }
       deleteMediaElement({ id });
       removeItem({ id });
+
+      const thumbnailSrc =
+        resource && ['video', 'gif'].includes(resource.type)
+          ? resource.poster
+          : resource.src;
 
       showSnackbar({
         message:
@@ -169,6 +171,11 @@ function useUploadMedia({
             'File could not be uploaded. Please try a different file.',
             'web-stories'
           ),
+        thumbnail: thumbnailSrc && {
+          src: thumbnailSrc,
+          alt: resource?.alt,
+        },
+        dismissable: true,
       });
     }
   }, [failures, deleteMediaElement, removeItem, showSnackbar]);
@@ -183,11 +190,18 @@ function useUploadMedia({
      * @param {Function} args.onUploadProgress Callback for when upload progresses.
      * @param {Function} args.onUploadError Callback for when upload fails.
      * @param {Function} args.onUploadSuccess Callback for when upload succeeds.
+     * @param {Object} args.additionalData Object of additionalData.
      * @return {void}
      */
     async (
       files,
-      { onUploadStart, onUploadProgress, onUploadError, onUploadSuccess } = {}
+      {
+        onUploadStart,
+        onUploadProgress,
+        onUploadError,
+        onUploadSuccess,
+        additionalData,
+      } = {}
     ) => {
       // If there are no files passed, don't try to upload.
       if (!files?.length) {
@@ -200,8 +214,7 @@ function useUploadMedia({
           // We don't want to display placeholders / progress bars for items that
           // aren't supported anyway.
 
-          const canTranscode =
-            isFeatureEnabled && isTranscodingEnabled && canTranscodeFile(file);
+          const canTranscode = isTranscodingEnabled && canTranscodeFile(file);
           const isTooLarge = canTranscode && isFileTooLarge(file);
 
           try {
@@ -209,6 +222,7 @@ function useUploadMedia({
           } catch (e) {
             showSnackbar({
               message: e.message,
+              dismissable: true,
             });
 
             return;
@@ -220,7 +234,7 @@ function useUploadMedia({
           // having to update the dimensions later on as the information becomes available.
           // Downside: it takes a tad longer for the file to initially appear.
           // Upside: file is displayed with the right dimensions from the beginning.
-          const resource = await getResourceFromLocalFile(file);
+          const { resource, posterFile } = await getResourceFromLocalFile(file);
           addItem({
             file,
             resource,
@@ -228,6 +242,8 @@ function useUploadMedia({
             onUploadProgress,
             onUploadError,
             onUploadSuccess,
+            additionalData,
+            posterFile,
           });
         })
       );
@@ -237,7 +253,6 @@ function useUploadMedia({
       validateFileForUpload,
       addItem,
       canTranscodeFile,
-      isFeatureEnabled,
       isTranscodingEnabled,
       isFileTooLarge,
     ]

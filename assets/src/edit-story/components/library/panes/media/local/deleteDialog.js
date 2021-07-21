@@ -21,16 +21,19 @@ import PropTypes from 'prop-types';
 import { useCallback } from 'react';
 import { __ } from '@web-stories-wp/i18n';
 import { trackError } from '@web-stories-wp/tracking';
+import {
+  Text,
+  THEME_CONSTANTS,
+  useSnackbar,
+} from '@web-stories-wp/design-system';
 
 /**
  * Internal dependencies
  */
 import { useAPI } from '../../../../../app/api';
-import { Plain } from '../../../../button';
-import Dialog from '../../../../dialog';
-import { useSnackbar } from '../../../../../app/snackbar';
 import { useLocalMedia } from '../../../../../app/media';
 import { useStory } from '../../../../../app/story';
+import Dialog from '../../../../dialog';
 
 /**
  * Display a confirmation dialog for when a user wants to delete a media element.
@@ -38,7 +41,7 @@ import { useStory } from '../../../../../app/story';
  * @param {Object} props Component props.
  * @param {number} props.mediaId Selected media element's ID.
  * @param {string} props.type Selected media element's type.
- * @param {function()} props.onClose Callback to toggle dialog display on close.
+ * @param {Function} props.onClose Callback to toggle dialog display on close.
  * @return {null|*} The dialog element.
  */
 function DeleteDialog({ mediaId, type, onClose }) {
@@ -63,6 +66,7 @@ function DeleteDialog({ mediaId, type, onClose }) {
       trackError('local_media_deletion', err.message);
       showSnackbar({
         message: __('Failed to delete media item.', 'web-stories'),
+        dismissable: true,
       });
     }
   }, [
@@ -90,19 +94,20 @@ function DeleteDialog({ mediaId, type, onClose }) {
   // Keep icon and menu displayed if menu is open (even if user's mouse leaves the area).
   return (
     <Dialog
-      open
+      isOpen
       onClose={onClose}
       title={type === 'image' ? imageDialogTitle : videoDialogTitle}
-      actions={
-        <>
-          <Plain onClick={onClose}>{__('Cancel', 'web-stories')}</Plain>
-          <Plain onClick={onDelete}>{__('Delete', 'web-stories')}</Plain>
-        </>
-      }
+      secondaryText={__('Cancel', 'web-stories')}
+      onPrimary={onDelete}
+      primaryText={__('Delete', 'web-stories')}
       maxWidth={512}
     >
-      {type === 'image' ? imageDialogDescription : videoDialogDescription}
-      <strong>{__('This action can not be undone.', 'web-stories')}</strong>
+      <Text size={THEME_CONSTANTS.TYPOGRAPHY.PRESET_SIZES.SMALL}>
+        {type === 'image' ? imageDialogDescription : videoDialogDescription}
+      </Text>
+      <Text size={THEME_CONSTANTS.TYPOGRAPHY.PRESET_SIZES.SMALL} isBold>
+        {__('This action can not be undone.', 'web-stories')}
+      </Text>
     </Dialog>
   );
 }

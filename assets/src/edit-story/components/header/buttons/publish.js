@@ -21,35 +21,51 @@ import { useCallback, useEffect, useState } from 'react';
 import { toDate, isAfter, subMinutes, getOptions } from '@web-stories-wp/date';
 import { __ } from '@web-stories-wp/i18n';
 import { trackEvent } from '@web-stories-wp/tracking';
-
+import { useFeature } from 'flagged';
 /**
  * Internal dependencies
  */
-import { TRANSITION_DURATION } from '../../dialog';
 import { useStory, useLocalMedia, useConfig } from '../../../app';
 import useRefreshPostEditURL from '../../../utils/useRefreshPostEditURL';
-import TitleMissingDialog from '../titleMissingDialog';
-import useHeader from '../use';
+import { useCheckpoint, ReviewChecklistDialog } from '../../checklist';
 import ButtonWithChecklistWarning from './buttonWithChecklistWarning';
 
+const TRANSITION_DURATION = 300;
+
 function Publish() {
-  const { isSaving, date, storyId, saveStory, title } = useStory(
+  const isEnabledChecklistCompanion = useFeature('enableChecklistCompanion');
+
+  const { isSaving, date, storyId, saveStory, title, editLink } = useStory(
     ({
       state: {
         meta: { isSaving },
-        story: { date, storyId, title },
+        story: { date, storyId, title, editLink },
       },
       actions: { saveStory },
-    }) => ({ isSaving, date, storyId, saveStory, title })
+    }) => ({ isSaving, date, storyId, saveStory, title, editLink })
   );
   const { isUploading } = useLocalMedia((state) => ({
     isUploading: state.state.isUploading,
   }));
-  const { titleInput } = useHeader();
+
+  const { shouldReviewDialogBeSeen, onReviewDialogRequest } = useCheckpoint(
+    ({
+      actions: { onReviewDialogRequest },
+      state: { shouldReviewDialogBeSeen },
+    }) => ({
+      shouldReviewDialogBeSeen,
+      onReviewDialogRequest,
+    })
+  );
+
+  const openChecklist = useCallback(() => {
+    onReviewDialogRequest();
+  }, [onReviewDialogRequest]);
+
   const [showDialog, setShowDialog] = useState(false);
   const { capabilities } = useConfig();
 
-  const refreshPostEditURL = useRefreshPostEditURL(storyId);
+  const refreshPostEditURL = useRefreshPostEditURL(storyId, editLink);
   // Offset the date by one minute to accommodate for network latency.
   const hasFutureDate = isAfter(
     subMinutes(toDate(date, getOptions()), 1),
@@ -58,7 +74,7 @@ function Publish() {
 
   useEffect(() => {
     if (showDialog) {
-      trackEvent('missing_title_dialog');
+      trackEvent('review_prepublish_checklist');
     }
   }, [showDialog]);
 
@@ -74,21 +90,21 @@ function Publish() {
   }, [refreshPostEditURL, saveStory, hasFutureDate, title]);
 
   const handlePublish = useCallback(() => {
-    if (!title) {
+    if (isEnabledChecklistCompanion && shouldReviewDialogBeSeen) {
       setShowDialog(true);
       return;
     }
 
     publish();
-  }, [title, publish]);
+  }, [isEnabledChecklistCompanion, shouldReviewDialogBeSeen, publish]);
 
-  const fixTitle = useCallback(() => {
+  const handleReviewChecklist = useCallback(() => {
     setShowDialog(false);
-    // Focus title input when dialog is closed
+    // Focus Checklist Tab
     // Disable reason: If component unmounts, nothing bad can happen
     // eslint-disable-next-line @wordpress/react-no-unsafe-timeout
-    setTimeout(() => titleInput?.focus(), TRANSITION_DURATION);
-  }, [titleInput]);
+    setTimeout(() => openChecklist(), TRANSITION_DURATION);
+  }, [openChecklist]);
 
   const handleClose = useCallback(() => setShowDialog(false), []);
 
@@ -103,10 +119,10 @@ function Publish() {
         disabled={!capabilities?.hasPublishAction || isSaving || isUploading}
         text={text}
       />
-      <TitleMissingDialog
-        open={Boolean(showDialog)}
+      <ReviewChecklistDialog
+        isOpen={showDialog}
         onIgnore={publish}
-        onFix={fixTitle}
+        onReview={handleReviewChecklist}
         onClose={handleClose}
       />
     </>

@@ -28,9 +28,13 @@ namespace Google\Web_Stories\Integrations;
 
 use DOMElement;
 use Google\Web_Stories\AMP\Integration\AMP_Story_Sanitizer;
+use Google\Web_Stories\Experiments;
 use Google\Web_Stories\Model\Story;
+use Google\Web_Stories\Settings;
 use Google\Web_Stories\Story_Post_Type;
 use Google\Web_Stories\Traits\Publisher;
+use Google\Web_Stories\Service_Base;
+use Google\Web_Stories\Traits\Screen;
 use WP_Post;
 use WP_Screen;
 
@@ -39,8 +43,8 @@ use WP_Screen;
  *
  * @SuppressWarnings(PHPMD.ExcessiveClassComplexity)
  */
-class AMP {
-	use Publisher;
+class AMP extends Service_Base {
+	use Publisher, Screen;
 
 	/**
 	 * Slug of the AMP validated URL post type.
@@ -50,18 +54,37 @@ class AMP {
 	const AMP_VALIDATED_URL_POST_TYPE = 'amp_validated_url';
 
 	/**
+	 * Experiments instance.
+	 *
+	 * @var Experiments Experiments instance.
+	 */
+	private $experiments;
+
+	/**
+	 * HTML constructor.
+	 *
+	 * @since 1.10.0
+	 *
+	 * @param Experiments $experiments Experiments instance.
+	 */
+	public function __construct( Experiments $experiments ) {
+		$this->experiments = $experiments;
+	}
+
+	/**
 	 * Initializes all hooks.
 	 *
 	 * @since 1.2.0
 	 *
 	 * @return void
 	 */
-	public function init() {
+	public function register() {
 		add_filter( 'option_amp-options', [ $this, 'filter_amp_options' ] );
 		add_filter( 'amp_supportable_post_types', [ $this, 'filter_supportable_post_types' ] );
 		add_filter( 'amp_to_amp_linking_element_excluded', [ $this, 'filter_amp_to_amp_linking_element_excluded' ], 10, 4 );
 		add_filter( 'amp_content_sanitizers', [ $this, 'add_amp_content_sanitizers' ] );
 		add_filter( 'amp_validation_error_sanitized', [ $this, 'filter_amp_validation_error_sanitized' ], 10, 2 );
+		add_filter( 'amp_skip_post', [ $this, 'filter_amp_skip_post' ], 10, 2 );
 
 		// This filter is actually used in this plugin's `Sanitization` class.
 		add_filter( 'web_stories_amp_validation_error_sanitized', [ $this, 'filter_amp_validation_error_sanitized' ], 10, 2 );
@@ -76,7 +99,7 @@ class AMP {
 	 *
 	 * @return array Filtered options.
 	 */
-	public function filter_amp_options( $options ) {
+	public function filter_amp_options( $options ): array {
 		if ( $this->get_request_post_type() === Story_Post_Type::POST_TYPE_SLUG ) {
 			$options['theme_support']          = 'standard';
 			$options['supported_post_types'][] = Story_Post_Type::POST_TYPE_SLUG;
@@ -97,7 +120,7 @@ class AMP {
 	 *
 	 * @return array Supportable post types.
 	 */
-	public function filter_supportable_post_types( $post_types ) {
+	public function filter_supportable_post_types( $post_types ): array {
 		if ( $this->get_request_post_type() === Story_Post_Type::POST_TYPE_SLUG ) {
 			$post_types = array_merge( $post_types, [ Story_Post_Type::POST_TYPE_SLUG ] );
 		} else {
@@ -115,7 +138,7 @@ class AMP {
 	 * @param array $sanitizers Sanitizers.
 	 * @return array Sanitizers.
 	 */
-	public function add_amp_content_sanitizers( $sanitizers ) {
+	public function add_amp_content_sanitizers( $sanitizers ): array {
 		if ( ! is_singular( 'web-story' ) ) {
 			return $sanitizers;
 		}
@@ -125,16 +148,18 @@ class AMP {
 			return $sanitizers;
 		}
 
+		$video_cache_enabled = $this->experiments->is_experiment_enabled( 'videoCache' ) && (bool) get_option( Settings::SETTING_NAME_VIDEO_CACHE );
+
 		$story = new Story();
 		$story->load_from_post( $post );
 		$sanitizers[ AMP_Story_Sanitizer::class ] = [
 			'publisher_logo'             => $this->get_publisher_logo(),
+			'publisher'                  => $this->get_publisher_name(),
 			'publisher_logo_placeholder' => $this->get_publisher_logo_placeholder(),
 			'poster_images'              => [
-				'poster-portrait-src'  => $story->get_poster_portrait(),
-				'poster-square-src'    => $story->get_poster_square(),
-				'poster-landscape-src' => $story->get_poster_landscape(),
+				'poster-portrait-src' => $story->get_poster_portrait(),
 			],
+			'video_cache'                => $video_cache_enabled,
 		];
 
 		return $sanitizers;
@@ -198,12 +223,43 @@ class AMP {
 	 * @param DOMElement $element  The element considered for excluding from AMP-to-AMP linking. May be instance of `a`, `area`, or `form`.
 	 * @return bool Whether AMP-to-AMP is excluded.
 	 */
-	public function filter_amp_to_amp_linking_element_excluded( $excluded, $url, $rel, $element ) {
+	public function filter_amp_to_amp_linking_element_excluded( $excluded, $url, $rel, $element ): bool {
 		if ( $element instanceof DOMElement && $element->parentNode instanceof DOMElement && 'amp-story-player' === $element->parentNode->tagName ) {
 			return true;
 		}
 
 		return $excluded;
+	}
+
+	/**
+	 * Filters whether to skip the post from AMP.
+	 *
+	 * Skips the post if the AMP plugin's version is lower than what is bundled in this plugin.
+	 * Prevents issues where this plugin uses newer features that the plugin doesn't know about yet,
+	 * causing false positives with validation.
+	 *
+	 * @link https://github.com/google/web-stories-wp/issues/7131
+	 *
+	 * @since 1.6.0
+	 *
+	 * @param bool $skipped Whether the post should be skipped from AMP.
+	 * @param int  $post    Post ID.
+	 *
+	 * @return bool Whether post should be skipped from AMP.
+	 */
+	public function filter_amp_skip_post( $skipped, $post ): bool {
+		// This is the opposite to the `AMP__VERSION >= WEBSTORIES_AMP_VERSION` check in the HTML renderer.
+		if (
+			'web-story' === get_post_type( $post )
+			&&
+			defined( '\AMP__VERSION' )
+			&&
+			version_compare( WEBSTORIES_AMP_VERSION, AMP__VERSION, '>' )
+		) {
+			return true;
+		}
+
+		return $skipped;
 	}
 
 	/**
@@ -235,7 +291,7 @@ class AMP {
 			return $this->get_validated_url_post_type( (int) $_GET['post'] );
 		}
 
-		$current_screen = function_exists( 'get_current_screen' ) ? get_current_screen() : null;
+		$current_screen = $this->get_current_screen();
 
 		if ( $current_screen instanceof WP_Screen ) {
 			$current_post = get_post();

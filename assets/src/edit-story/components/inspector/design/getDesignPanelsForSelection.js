@@ -36,7 +36,6 @@ import {
   VideoAccessibilityPanel,
   ElementAlignmentPanel,
   VideoOptionsPanel,
-  VideoPosterPanel,
   StylePresetPanel,
   ColorPresetPanel,
 } from '../../panels/design';
@@ -94,11 +93,6 @@ function getDesignPanelsForSelection(elements) {
         type: PanelTypes.PAGE_BACKGROUND,
         Panel: PageBackgroundPanel,
       });
-      // Always display Presets as the first panel for background.
-      panels.unshift({
-        type: PanelTypes.STYLE_PRESETS,
-        Panel: ColorPresetPanel,
-      });
     }
 
     panels.push({
@@ -128,9 +122,8 @@ function getDesignPanelsForSelection(elements) {
           return { type, Panel: StylePresetPanel };
         case PanelTypes.LAYER_STYLE:
           return { type, Panel: LayerStylePanel };
-        case PanelTypes.BACKGROUND_OVERLAY:
-          // Only display when isBackground.
-          return null;
+        case PanelTypes.FILTER:
+          return { type, Panel: FilterPanel };
         case PanelTypes.SIZE_POSITION:
           return { type, Panel: SizePositionPanel };
         case PanelTypes.LINK:
@@ -147,8 +140,6 @@ function getDesignPanelsForSelection(elements) {
           return { type, Panel: BorderStylePanel };
         case PanelTypes.VIDEO_OPTIONS:
           return { type, Panel: VideoOptionsPanel };
-        case PanelTypes.VIDEO_POSTER:
-          return { type, Panel: VideoPosterPanel };
         case PanelTypes.CAPTIONS:
           return { type, Panel: CaptionsPanel };
         case PanelTypes.VIDEO_ACCESSIBILITY:

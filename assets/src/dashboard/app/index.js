@@ -17,22 +17,27 @@
 /**
  * External dependencies
  */
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheetManager, ThemeProvider } from 'styled-components';
 import stylisRTLPlugin from 'stylis-plugin-rtl';
 import PropTypes from 'prop-types';
 import { __, sprintf } from '@web-stories-wp/i18n';
 import { trackScreenView } from '@web-stories-wp/tracking';
-
-/**
- * Internal dependencies
- */
 import {
   theme as externalDesignSystemTheme,
   lightMode,
   ThemeGlobals,
-} from '../../design-system';
-import theme, { GlobalStyle } from '../theme';
+  useSnackbar,
+  SnackbarProvider,
+  Snackbar,
+  ModalGlobalStyle,
+  usePrevious,
+} from '@web-stories-wp/design-system';
+
+/**
+ * Internal dependencies
+ */
+import { GlobalStyle } from '../theme';
 import KeyboardOnlyOutline from '../utils/keyboardOnlyOutline';
 import {
   APP_ROUTES,
@@ -45,16 +50,15 @@ import { AppFrame, LeftRail, NavProvider, PageContent } from '../components';
 import ApiProvider from './api/apiProvider';
 import { ConfigProvider } from './config';
 import { Route, RouterProvider, matchPath, useRouteHistory } from './router';
-import { SnackbarProvider } from './snackbar';
 import {
   EditorSettingsView,
   ExploreTemplatesView,
   MyStoriesView,
   SavedTemplatesView,
-  StoryAnimTool,
   TemplateDetailsView,
 } from './views';
 import useApi from './api/useApi';
+import useApiAlerts from './api/useApiAlerts';
 
 const AppContent = () => {
   const {
@@ -62,17 +66,37 @@ const AppContent = () => {
       currentPath,
       queryParams: { id: templateId },
     },
+    actions: { push },
   } = useRouteHistory();
-  const { currentTemplate } = useApi(
+  const { currentTemplate, addInitialFetchListener } = useApi(
     ({
+      actions: {
+        storyApi: { addInitialFetchListener },
+      },
       state: {
         templates: { templates },
       },
     }) => ({
       currentTemplate:
         templateId !== undefined ? templates[templateId]?.title : undefined,
+      addInitialFetchListener,
     })
   );
+  const isFirstLoadOnMyStories = useRef(currentPath === APP_ROUTES.MY_STORIES);
+  const [isRedirectComplete, setIsRedirectComplete] = useState(
+    !isFirstLoadOnMyStories.current
+  );
+
+  // Direct user to templates on first load if they
+  // have no stories created.
+  useEffect(() => {
+    return addInitialFetchListener?.((storyStatuses) => {
+      if (storyStatuses?.all <= 0 && isFirstLoadOnMyStories.current) {
+        push(APP_ROUTES.TEMPLATES_GALLERY);
+      }
+      setIsRedirectComplete(true);
+    });
+  }, [addInitialFetchListener, push, currentPath]);
 
   const fullPath = useMemo(() => {
     return currentPath.includes(APP_ROUTES.TEMPLATE_DETAIL) &&
@@ -85,6 +109,10 @@ const AppContent = () => {
   }, [currentPath, currentTemplate]);
 
   useEffect(() => {
+    if (!isRedirectComplete) {
+      return;
+    }
+
     if (currentPath.includes(APP_ROUTES.TEMPLATE_DETAIL) && !currentTemplate) {
       return;
     }
@@ -109,64 +137,80 @@ const AppContent = () => {
 
     // Disable reason: avoid sending duplicate tracking events.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fullPath]);
+  }, [fullPath, isRedirectComplete]);
 
   const hideLeftRail =
     matchPath(currentPath, NESTED_APP_ROUTES.SAVED_TEMPLATE_DETAIL) ||
     matchPath(currentPath, NESTED_APP_ROUTES.TEMPLATES_GALLERY_DETAIL);
 
+  useApiAlerts();
+  const { clearSnackbar, removeSnack, placement, currentSnacks } =
+    useSnackbar();
+
+  // if the current path changes clear the snackbar
+  const prevPath = usePrevious(currentPath);
+
+  useEffect(() => {
+    if (currentPath !== prevPath) {
+      clearSnackbar();
+    }
+  }, [clearSnackbar, currentPath, prevPath]);
+
   return (
-    <AppFrame>
-      {!hideLeftRail && <LeftRail />}
-      <PageContent fullWidth={hideLeftRail}>
-        <Route
-          exact
-          path={APP_ROUTES.MY_STORIES}
-          component={<MyStoriesView />}
-        />
-        <Route
-          exact
-          path={APP_ROUTES.TEMPLATES_GALLERY}
-          component={<ExploreTemplatesView />}
-        />
-        <Route
-          path={NESTED_APP_ROUTES.TEMPLATES_GALLERY_DETAIL}
-          component={<TemplateDetailsView />}
-        />
-        <Route
-          exact
-          path={APP_ROUTES.SAVED_TEMPLATES}
-          component={<SavedTemplatesView />}
-        />
-        <Route
-          path={NESTED_APP_ROUTES.SAVED_TEMPLATE_DETAIL}
-          component={<TemplateDetailsView />}
-        />
-        <Route
-          path={APP_ROUTES.EDITOR_SETTINGS}
-          component={<EditorSettingsView />}
-        />
-        <Route
-          path={APP_ROUTES.STORY_ANIM_TOOL}
-          component={<StoryAnimTool />}
-        />
-      </PageContent>
-    </AppFrame>
+    <>
+      <AppFrame>
+        {!hideLeftRail && <LeftRail />}
+        <PageContent fullWidth={hideLeftRail}>
+          <Route
+            exact
+            path={APP_ROUTES.MY_STORIES}
+            component={<MyStoriesView />}
+          />
+          <Route
+            exact
+            path={APP_ROUTES.TEMPLATES_GALLERY}
+            component={<ExploreTemplatesView />}
+          />
+          <Route
+            path={NESTED_APP_ROUTES.TEMPLATES_GALLERY_DETAIL}
+            component={<TemplateDetailsView />}
+          />
+          <Route
+            exact
+            path={APP_ROUTES.SAVED_TEMPLATES}
+            component={<SavedTemplatesView />}
+          />
+          <Route
+            path={NESTED_APP_ROUTES.SAVED_TEMPLATE_DETAIL}
+            component={<TemplateDetailsView />}
+          />
+          <Route
+            path={APP_ROUTES.EDITOR_SETTINGS}
+            component={<EditorSettingsView />}
+          />
+        </PageContent>
+      </AppFrame>
+      <Snackbar.Container
+        notifications={currentSnacks}
+        onRemove={removeSnack}
+        placement={placement}
+        max={1}
+      />
+    </>
   );
 };
 
 function App({ config }) {
   const { isRTL } = config;
-  // TODO strip local dashboard theme out and rely on theme from design-system
   const activeTheme = {
-    DEPRECATED_THEME: theme,
     ...externalDesignSystemTheme,
     colors: lightMode,
   };
   return (
     <StyleSheetManager stylisPlugins={isRTL ? [stylisRTLPlugin] : []}>
       <ThemeProvider theme={activeTheme}>
-        <ThemeGlobals.OverrideFocusOutline />
+        <ThemeGlobals.Styles />
+        <ModalGlobalStyle />
         <ConfigProvider config={config}>
           <ApiProvider>
             <NavProvider>

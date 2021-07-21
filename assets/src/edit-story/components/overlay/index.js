@@ -20,11 +20,7 @@
 import styled from 'styled-components';
 import { createPortal } from 'react-dom';
 import { forwardRef } from 'react';
-
-/**
- * Internal dependencies
- */
-import { useContext } from '../../../design-system';
+import { useContext } from '@web-stories-wp/design-system';
 
 /**
  * Internal dependencies
@@ -42,12 +38,16 @@ const Wrapper = styled.div`
   z-index: ${({ zIndex }) => `${zIndex}`};
 `;
 
-function InOverlayWithRef({ zIndex, pointerEvents, render, children }, ref) {
+function InOverlayWithRef(
+  { zIndex, pointerEvents, render, children = null },
+  ref
+) {
   const { container, overlay } = useContext(Context);
   if (!container || !overlay) {
     return null;
   }
   const slot = (
+    /* eslint-disable-next-line styled-components-a11y/no-static-element-interactions -- No role required here. */
     <Wrapper
       ref={ref}
       zIndex={zIndex || 0}

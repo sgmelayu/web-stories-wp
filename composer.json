@@ -5,14 +5,14 @@
   "homepage": "https://github.com/google/web-stories-wp",
   "license": "Apache-2.0",
   "require": {
-    "php": "^5.6 || ^7.0 || ^8.0",
+    "php": "^7.0 || ^8.0",
     "ext-dom": "*",
     "ext-iconv": "*",
     "ext-json": "*",
     "ext-libxml": "*",
     "ext-mbstring": "*",
-    "ampproject/amp-toolbox": "^0.1",
-    "ampproject/amp-wp": "dev-develop",
+    "ampproject/amp-toolbox": "0.6.0",
+    "ampproject/amp-wp": "2.1.3",
     "civicrm/composer-downloads-plugin": "^3.0",
     "cweagans/composer-patches": "^1.6",
     "enshrined/svg-sanitize": "^0.14.0",
@@ -25,21 +25,21 @@
     "ampproject/optimizer": "dev-develop"
   },
   "require-dev": {
-    "automattic/vipwpcs": "^2.1",
+    "automattic/vipwpcs": "^2.3",
     "dealerdirect/phpcodesniffer-composer-installer": "^0.7",
     "dg/bypass-finals": "1.1.3",
     "php-stubs/wordpress-stubs": "^5.7",
     "phpcompatibility/phpcompatibility-wp": "^2.1",
     "phpmd/phpmd": "^2.9",
-    "phpunit/phpunit": "^5.7 || ^6.5 || ^7.5",
-    "roave/security-advisories": "dev-master",
+    "roave/security-advisories": "dev-latest",
     "sirbrillig/phpcs-variable-analysis": "^2.8",
-    "wp-coding-standards/wpcs": "^2.2"
+    "wp-coding-standards/wpcs": "^2.3",
+    "yoast/wp-test-utils": "^0.2.1"
   },
   "config": {
     "discard-changes": true,
     "platform": {
-      "php": "5.6"
+      "php": "7.0.0"
     },
     "sort-packages": true
   },
@@ -63,12 +63,13 @@
     },
     "enable-patching": true,
     "exclude-from-files": [
-      "ampproject/amp-wp/back-compat/back-compat.php",
-      "ampproject/amp-wp/includes/amp-helper-functions.php",
-      "ampproject/amp-wp/includes/admin/functions.php",
-      "ampproject/amp-wp/includes/deprecated.php",
-      "ampproject/amp-wp/docs/includes/register-wp-cli-commands.php"
-    ]
+      "ampproject/amp-wp/includes/bootstrap.php"
+    ],
+    "patches": {
+      "phpunit/phpunit-mock-objects": {
+        "Fix PHPUnit for PHP 7.4": "patches/phpunit-mock-objects.patch"
+      }
+    }
   },
   "autoload": {
     "psr-4": {

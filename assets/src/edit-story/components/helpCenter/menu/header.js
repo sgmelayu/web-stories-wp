@@ -18,10 +18,11 @@
  */
 import styled from 'styled-components';
 import { __ } from '@web-stories-wp/i18n';
-/**
- * Internal dependencies
- */
-import { themeHelpers, Text, THEME_CONSTANTS } from '../../../../design-system';
+import {
+  themeHelpers,
+  Text,
+  THEME_CONSTANTS,
+} from '@web-stories-wp/design-system';
 
 const Panel = styled.div`
   padding: 24px 0 16px 0;
@@ -38,7 +39,7 @@ const Heading = styled.h1`
 export function Header() {
   return (
     <Panel>
-      <Heading>{__('Web Stories Help Center', 'web-stories')}</Heading>
+      <Heading as="h2">{__('Web Stories Help Center', 'web-stories')}</Heading>
       <Text size={THEME_CONSTANTS.TYPOGRAPHY.PRESET_SIZES.X_SMALL}>
         {__(
           'Discover tips & resources to help you get the most out of your Web Stories.',

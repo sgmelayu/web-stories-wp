@@ -17,7 +17,7 @@
 /**
  * External dependencies
  */
-import { act, fireEvent } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import { curatedFontNames } from '@web-stories-wp/fonts';
 
 /**
@@ -35,11 +35,15 @@ jest.mock('../../useLibrary');
 describe('TextTab', () => {
   const insertElement = jest.fn();
   beforeAll(() => {
-    useLibrary.mockImplementation(() => ({
-      actions: {
-        insertElement: insertElement,
-      },
-    }));
+    useLibrary.mockImplementation((selector) =>
+      selector({
+        state: {},
+        actions: {
+          insertElement: insertElement,
+          setPageCanvasPromise: jest.fn(),
+        },
+      })
+    );
   });
 
   it('should insert text with default text style on shortcut click', async () => {
@@ -57,17 +61,20 @@ describe('TextTab', () => {
         ensureMenuFontsLoaded: () => {},
       },
     };
-    await act(() => {
-      const { getByLabelText } = renderWithTheme(
-        <FontContext.Provider value={fontContextValues}>
-          <TextIcon />
-        </FontContext.Provider>
-      );
 
-      fireEvent.click(getByLabelText('Add new text element'));
+    renderWithTheme(
+      <FontContext.Provider value={fontContextValues}>
+        <TextIcon isActive />
+      </FontContext.Provider>
+    );
+
+    act(() => {
+      fireEvent.click(screen.getByLabelText('Add new text element'));
     });
 
-    expect(insertElement).toHaveBeenCalledTimes(1);
-    expect(insertElement).toHaveBeenCalledWith('text', DEFAULT_PRESET);
+    await waitFor(() => expect(insertElement).toHaveBeenCalledTimes(1));
+    await waitFor(() =>
+      expect(insertElement).toHaveBeenCalledWith('text', DEFAULT_PRESET)
+    );
   });
 });

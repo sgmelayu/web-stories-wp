@@ -18,12 +18,13 @@
  * External dependencies
  */
 import { render, fireEvent } from '@testing-library/react';
-
+import { createSolid } from '@web-stories-wp/patterns';
 /**
  * Internal dependencies
  */
-import createSolid from '../../../utils/createSolid';
 import { TestFrameElement } from './_utils';
+
+/* eslint-disable testing-library/no-node-access, testing-library/no-container */
 
 describe('FrameElement selection', () => {
   let setSelectedElementsById;
@@ -151,3 +152,5 @@ describe('FrameElement selection', () => {
     expect(toggleElementInSelection).toHaveBeenCalledWith({ elementId: '1' });
   });
 });
+
+/* eslint-enable testing-library/no-node-access, testing-library/no-container */

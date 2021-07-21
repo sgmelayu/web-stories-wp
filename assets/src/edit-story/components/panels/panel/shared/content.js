@@ -19,11 +19,7 @@
  */
 import styled from 'styled-components';
 import PropTypes from 'prop-types';
-
-/**
- * Internal dependencies
- */
-import { useContext } from 'use-context-selector';
+import { useContext } from '@web-stories-wp/design-system';
 
 /**
  * Internal dependencies
@@ -31,7 +27,7 @@ import { useContext } from 'use-context-selector';
 import panelContext from '../context';
 
 const Container = styled.div`
-  padding: ${({ padding }) => padding || '4px 16px 8px'};
+  padding: ${({ padding }) => padding || '8px 16px 8px'};
   overflow: auto;
   background-color: ${({ isSecondary, theme }) =>
     isSecondary ? theme.colors.interactiveBg.secondaryNormal : 'transparent'};

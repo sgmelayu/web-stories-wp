@@ -17,15 +17,16 @@
 /**
  * External dependencies
  */
-import { render, fireEvent, act } from '@testing-library/react';
-
+import { render, fireEvent, act, screen } from '@testing-library/react';
+import { createSolid } from '@web-stories-wp/patterns';
 /**
  * Internal dependencies
  */
 import { TestFrameElement } from '../../../components/canvas/test/_utils';
-import createSolid from '../../../utils/createSolid';
 
 jest.useFakeTimers();
+
+/* eslint-disable testing-library/no-node-access, testing-library/no-container */
 
 describe('TextFrame: enter edit mode', () => {
   let element;
@@ -67,7 +68,7 @@ describe('TextFrame: enter edit mode', () => {
 
   it('should go to edit mode on a single click when selected', () => {
     setSelected();
-    const { queryByText } = render(
+    render(
       <TestFrameElement
         storyContext={storyContext}
         editingElementContext={editingElementContext}
@@ -75,7 +76,7 @@ describe('TextFrame: enter edit mode', () => {
       />
     );
 
-    const frame = queryByText(element.content);
+    const frame = screen.queryByText(element.content);
 
     act(() => jest.runOnlyPendingTimers());
 
@@ -133,3 +134,5 @@ describe('TextFrame: enter edit mode', () => {
     ).toHaveBeenCalledWith('1', { selectAll: true });
   });
 });
+
+/* eslint-enable testing-library/no-node-access, testing-library/no-container */

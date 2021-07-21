@@ -17,7 +17,7 @@
 /**
  * External dependencies
  */
-import { fireEvent } from '@testing-library/react';
+import { fireEvent, screen } from '@testing-library/react';
 import '@testing-library/jest-dom/extend-expect';
 import { __ } from '@web-stories-wp/i18n';
 
@@ -31,27 +31,29 @@ describe('RadioGroup', () => {
   const options = [
     {
       value: 'a',
-      name: __('Option A', 'web-stories'),
+      label: __('Option A', 'web-stories'),
       helper: __('This is the best option', 'web-stories'),
     },
     {
       value: 'b',
-      name: __('Option B', 'web-stories'),
+      label: __('Option B', 'web-stories'),
       helper: __('Also a good option', 'web-stories'),
     },
   ];
 
   it('should render with correct options', () => {
-    const { getByRole } = renderWithTheme(
+    renderWithTheme(
       <RadioGroup
+        name="test"
+        groupLabel="test"
         onChange={() => null}
         options={options}
         value={options[0].value}
       />
     );
 
-    const optionA = getByRole('radio', { name: 'Option A' });
-    const optionB = getByRole('radio', { name: 'Option B' });
+    const optionA = screen.getByRole('radio', { name: 'Option A' });
+    const optionB = screen.getByRole('radio', { name: 'Option B' });
 
     expect(optionA).toBeInTheDocument();
     expect(optionA).toBeChecked();
@@ -60,18 +62,20 @@ describe('RadioGroup', () => {
 
   it('should change the value when clicking', () => {
     const onChange = jest.fn();
-    const { getByRole } = renderWithTheme(
+
+    renderWithTheme(
       <RadioGroup
+        name="test"
+        groupLabel="test"
         onChange={onChange}
         options={options}
         value={options[0].value}
       />
     );
-    const optionB = getByRole('radio', { name: 'Option B' });
+    const optionB = screen.getByRole('radio', { name: 'Option B' });
     fireEvent.click(optionB);
     expect(onChange).toHaveBeenCalledTimes(1);
 
-    const any = expect.anything();
-    expect(onChange).toHaveBeenCalledWith('b', any);
+    expect(onChange).toHaveBeenCalledWith(expect.any(Object));
   });
 });

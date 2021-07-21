@@ -17,63 +17,69 @@
 /**
  * External dependencies
  */
-import { __ } from '@web-stories-wp/i18n';
-
-/**
- * Internal dependencies
- */
-/**
- * External dependencies
- */
+import { useFeature } from 'flagged';
 import PropTypes from 'prop-types';
+import { __ } from '@web-stories-wp/i18n';
 import styled from 'styled-components';
-
-/**
- * Internal dependencies
- */
-import { usePrepublishChecklist } from '../../inspector/prepublish';
-import { PRE_PUBLISH_MESSAGE_TYPES } from '../../../app/prepublish';
 import {
-  Icons,
   Button as DefaultButton,
   BUTTON_SIZES,
   BUTTON_TYPES,
   BUTTON_VARIANTS,
-  TOOLTIP_PLACEMENT,
   Tooltip,
-} from '../../../../design-system';
+} from '@web-stories-wp/design-system';
+
+/**
+ * Internal dependencies
+ */
+import {
+  useCheckpoint,
+  PPC_CHECKPOINT_STATE,
+  ChecklistIcon,
+} from '../../checklist';
 
 const Button = styled(DefaultButton)`
+  padding: 4px 6px;
+  height: 32px;
   svg {
-    margin-right: -10px;
-    margin-left: 2px;
+    width: 24px;
+    height: auto;
   }
 `;
 
 function ButtonWithChecklistWarning({ text, ...buttonProps }) {
-  const { checklist, refreshChecklist } = usePrepublishChecklist();
-  const hasErrors = checklist.some(
-    ({ type }) => PRE_PUBLISH_MESSAGE_TYPES.ERROR === type
-  );
+  const isEnabledChecklistCompanion = useFeature('enableChecklistCompanion');
+
+  const { checkpoint } = useCheckpoint(({ state: { checkpoint } }) => ({
+    checkpoint,
+  }));
+
   const button = (
     <Button
       variant={BUTTON_VARIANTS.RECTANGLE}
       type={BUTTON_TYPES.PRIMARY}
       size={BUTTON_SIZES.SMALL}
-      onPointerEnter={refreshChecklist}
       {...buttonProps}
     >
       {text}
-      {hasErrors && <Icons.ExclamationOutline height={24} width={24} />}
+      {isEnabledChecklistCompanion && <ChecklistIcon checkpoint={checkpoint} />}
     </Button>
   );
 
-  return hasErrors ? (
-    <Tooltip
-      title={__('There are items in the checklist to resolve', 'web-stories')}
-      placement={TOOLTIP_PLACEMENT.BOTTOM}
-      hasTail
-    >
+  const TOOLTIP_TEXT = {
+    [PPC_CHECKPOINT_STATE.ALL]: __(
+      'Make updates before publishing to improve discoverability and performance on search engines',
+      'web-stories'
+    ),
+    [PPC_CHECKPOINT_STATE.ONLY_RECOMMENDED]: __(
+      'Review checklist to improve performance before publishing',
+      'web-stories'
+    ),
+    [PPC_CHECKPOINT_STATE.UNAVAILABLE]: null,
+  };
+
+  return isEnabledChecklistCompanion ? (
+    <Tooltip title={TOOLTIP_TEXT[checkpoint]} hasTail>
       {button}
     </Tooltip>
   ) : (

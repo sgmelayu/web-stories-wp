@@ -29,11 +29,12 @@
 namespace Google\Web_Stories;
 
 use Google\Web_Stories\Integrations\Site_Kit;
+use Google\Web_Stories\User\Preferences;
 
 /**
  * Tracking class.
  */
-class Tracking {
+class Tracking extends Service_Base {
 	/**
 	 * Web Stories tracking script handle.
 	 *
@@ -70,14 +71,23 @@ class Tracking {
 	private $site_kit;
 
 	/**
+	 * Assets instance.
+	 *
+	 * @var Assets Assets instance.
+	 */
+	private $assets;
+
+	/**
 	 * Tracking constructor.
 	 *
 	 * @since 1.4.0
 	 *
 	 * @param Experiments $experiments Experiments instance.
 	 * @param Site_Kit    $site_kit Site_Kit instance.
+	 * @param Assets      $assets Assets instance.
 	 */
-	public function __construct( Experiments $experiments, Site_Kit $site_kit ) {
+	public function __construct( Experiments $experiments, Site_Kit $site_kit, Assets $assets ) {
+		$this->assets      = $assets;
 		$this->experiments = $experiments;
 		$this->site_kit    = $site_kit;
 	}
@@ -91,9 +101,9 @@ class Tracking {
 	 *
 	 * @return void
 	 */
-	public function init() {
+	public function register() {
 		// By not passing an actual script src we can print only the inline script.
-		wp_register_script(
+		$this->assets->register_script(
 			self::SCRIPT_HANDLE,
 			false,
 			[],
@@ -108,13 +118,24 @@ class Tracking {
 	}
 
 	/**
+	 * Get the action to use for registering the service.
+	 *
+	 * @since 1.6.0
+	 *
+	 * @return string Registration action to use.
+	 */
+	public static function get_registration_action(): string {
+		return 'admin_init';
+	}
+
+	/**
 	 * Returns tracking settings to pass to the inline script.
 	 *
 	 * @since 1.0.0
 	 *
 	 * @return array Tracking settings.
 	 */
-	public function get_settings() {
+	public function get_settings(): array {
 		return [
 			'trackingAllowed' => $this->is_active(),
 			'trackingId'      => self::TRACKING_ID,
@@ -134,7 +155,7 @@ class Tracking {
 	 *
 	 * @return array User properties.
 	 */
-	private function get_user_properties() {
+	private function get_user_properties(): array {
 		$role        = ! empty( wp_get_current_user()->roles ) ? wp_get_current_user()->roles[0] : '';
 		$experiments = implode( ',', $this->experiments->get_enabled_experiments() );
 
@@ -161,7 +182,7 @@ class Tracking {
 	 *
 	 * @return bool True if tracking enabled, and False if not.
 	 */
-	public function is_active() {
-		return (bool) get_user_meta( get_current_user_id(), User_Preferences::OPTIN_META_KEY, true );
+	public function is_active(): bool {
+		return (bool) get_user_meta( get_current_user_id(), Preferences::OPTIN_META_KEY, true );
 	}
 }

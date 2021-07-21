@@ -17,12 +17,11 @@
 /**
  * External dependencies
  */
-import { useCallback, useMemo, useReducer } from 'react';
+import { useCallback, useMemo, useReducer, useRef } from 'react';
 import queryString from 'query-string';
 import { useFeatures } from 'flagged';
 import { __, sprintf } from '@web-stories-wp/i18n';
 import { getTimeTracker } from '@web-stories-wp/tracking';
-
 /**
  * Internal dependencies
  */
@@ -38,11 +37,12 @@ import storyReducer, {
   defaultStoriesState,
   ACTION_TYPES as STORY_ACTION_TYPES,
 } from '../reducer/stories';
-import { addQueryArgs } from '../../../design-system';
-import { reshapeStoryObject, reshapeStoryPreview } from '../serializers';
+import { reshapeStoryObject } from '../serializers';
 import { ERRORS } from '../textContent';
 
-const useStoryApi = (dataAdapter, { editStoryURL, storyApi, encodeMarkup }) => {
+const useStoryApi = (dataAdapter, { storyApi, encodeMarkup }) => {
+  const isInitialFetch = useRef(true);
+  const initialFetchListeners = useMemo(() => new Map(), []);
   const [state, dispatch] = useReducer(storyReducer, defaultStoriesState);
   const flags = useFeatures();
 
@@ -71,7 +71,7 @@ const useStoryApi = (dataAdapter, { editStoryURL, storyApi, encodeMarkup }) => {
       }
 
       const query = {
-        _embed: 'author',
+        _embed: 'wp:lock,wp:lockuser,author',
         context: 'edit',
         _web_stories_envelope: true,
         search: searchTerm || undefined,
@@ -98,6 +98,14 @@ const useStoryApi = (dataAdapter, { editStoryURL, storyApi, encodeMarkup }) => {
           response.headers &&
           JSON.parse(response.headers['X-WP-TotalByStatus']);
 
+        // Hook into first fetch of story statuses.
+        if (isInitialFetch.current) {
+          initialFetchListeners.forEach((listener) => {
+            listener(totalStoriesByStatus);
+          });
+        }
+        isInitialFetch.current = false;
+
         // Hardening in case data returned by the server is malformed.
         // For example, story_data could be missing/empty.
         const cleanStories = response.body.filter((story) =>
@@ -118,7 +126,6 @@ const useStoryApi = (dataAdapter, { editStoryURL, storyApi, encodeMarkup }) => {
           dispatch({
             type: STORY_ACTION_TYPES.FETCH_STORIES_SUCCESS,
             payload: {
-              editStoryURL,
               stories: cleanStories,
               totalPages,
               totalStoriesByStatus: {
@@ -147,7 +154,7 @@ const useStoryApi = (dataAdapter, { editStoryURL, storyApi, encodeMarkup }) => {
         trackTiming();
       }
     },
-    [storyApi, dataAdapter, editStoryURL]
+    [storyApi, dataAdapter, initialFetchListeners]
   );
 
   const updateStory = useCallback(
@@ -158,7 +165,7 @@ const useStoryApi = (dataAdapter, { editStoryURL, storyApi, encodeMarkup }) => {
         const path = queryString.stringifyUrl({
           url: `${storyApi}${story.id}/`,
           query: {
-            _embed: 'author',
+            _embed: 'wp:lock,wp:lockuser,author',
           },
         });
 
@@ -174,7 +181,7 @@ const useStoryApi = (dataAdapter, { editStoryURL, storyApi, encodeMarkup }) => {
 
         dispatch({
           type: STORY_ACTION_TYPES.UPDATE_STORY,
-          payload: reshapeStoryObject(editStoryURL)(response),
+          payload: reshapeStoryObject(response),
         });
       } catch (err) {
         dispatch({
@@ -188,7 +195,7 @@ const useStoryApi = (dataAdapter, { editStoryURL, storyApi, encodeMarkup }) => {
         trackTiming();
       }
     },
-    [storyApi, dataAdapter, editStoryURL]
+    [storyApi, dataAdapter]
   );
 
   const trashStory = useCallback(
@@ -214,95 +221,6 @@ const useStoryApi = (dataAdapter, { editStoryURL, storyApi, encodeMarkup }) => {
       }
     },
     [storyApi, dataAdapter]
-  );
-
-  const clearStoryPreview = useCallback(() => {
-    dispatch({
-      type: STORY_ACTION_TYPES.CLEAR_STORY_PREVIEW,
-    });
-  }, []);
-
-  const createStoryPreview = useCallback(
-    async (dashboardStory) => {
-      dispatch({
-        type: STORY_ACTION_TYPES.CREATING_STORY_PREVIEW,
-        payload: true,
-      });
-
-      const trackTiming = getTimeTracker('load_create_story_preview');
-
-      try {
-        const {
-          author,
-          createdBy,
-          created,
-          modified,
-          pages,
-          password,
-          title,
-          excerpt,
-          status,
-        } = dashboardStory;
-
-        const getStoryPropsToSave = await import(
-          /* webpackChunkName: "chunk-getStoryPropsToSave" */ '../../../edit-story/app/story/utils/getStoryPropsToSave'
-        );
-        const storyProps = await getStoryPropsToSave.default({
-          story: {
-            status: status || 'auto-draft',
-            title: title,
-            author: { id: author || 1, name: '' },
-            slug: title,
-            date: created || Date.now().toString(),
-            modified: modified || Date.now().toString(),
-            featuredMedia: {
-              id: 0,
-              url: '',
-              width: 1,
-              height: 1,
-            },
-            password: password || '',
-            excerpt: excerpt || '',
-          },
-          pages,
-          metadata: {
-            publisher: {
-              name: createdBy || '',
-            },
-          },
-          flags,
-        });
-
-        const preppedStoryProps = reshapeStoryPreview(storyProps);
-
-        const getStoryMarkup = await import(
-          /* webpackChunkName: "chunk-getStoryMarkup" */ '../../../edit-story/output/utils/getStoryMarkup'
-        );
-
-        const markup = await getStoryMarkup.default(
-          preppedStoryProps.story,
-          preppedStoryProps.pages,
-          preppedStoryProps.metadata,
-          flags
-        );
-
-        dispatch({
-          type: STORY_ACTION_TYPES.CREATE_STORY_PREVIEW_SUCCESS,
-          payload: markup.toString(),
-        });
-      } catch (err) {
-        dispatch({
-          type: STORY_ACTION_TYPES.CREATE_STORY_PREVIEW_FAILURE,
-          payload: {
-            message: ERRORS.RENDER_PREVIEW.MESSAGE,
-            code: err.code,
-          },
-        });
-      } finally {
-        trackTiming();
-      }
-    },
-    [flags]
   );
 
   const createStoryFromTemplate = useCallback(
@@ -348,9 +266,7 @@ const useStoryApi = (dataAdapter, { editStoryURL, storyApi, encodeMarkup }) => {
           type: STORY_ACTION_TYPES.CREATE_STORY_FROM_TEMPLATE_SUCCESS,
         });
 
-        window.location = addQueryArgs(editStoryURL, {
-          post: response.id,
-        });
+        window.location = response.edit_link;
       } catch (err) {
         dispatch({
           type: STORY_ACTION_TYPES.CREATE_STORY_FROM_TEMPLATE_FAILURE,
@@ -366,7 +282,7 @@ const useStoryApi = (dataAdapter, { editStoryURL, storyApi, encodeMarkup }) => {
         });
       }
     },
-    [dataAdapter, editStoryURL, storyApi, flags]
+    [dataAdapter, storyApi, flags]
   );
 
   const duplicateStory = useCallback(
@@ -386,7 +302,7 @@ const useStoryApi = (dataAdapter, { editStoryURL, storyApi, encodeMarkup }) => {
         const path = queryString.stringifyUrl({
           url: storyApi,
           query: {
-            _embed: 'author',
+            _embed: 'wp:lock,wp:lockuser,author',
           },
         });
 
@@ -403,7 +319,7 @@ const useStoryApi = (dataAdapter, { editStoryURL, storyApi, encodeMarkup }) => {
             publisher_logo,
             title: {
               raw: sprintf(
-                /* translators: %s: story title */
+                /* translators: %s: story title. */
                 __('%s (Copy)', 'web-stories'),
                 title.raw
               ),
@@ -413,7 +329,7 @@ const useStoryApi = (dataAdapter, { editStoryURL, storyApi, encodeMarkup }) => {
         });
         dispatch({
           type: STORY_ACTION_TYPES.DUPLICATE_STORY,
-          payload: reshapeStoryObject(editStoryURL)(response),
+          payload: reshapeStoryObject(response),
         });
       } catch (err) {
         dispatch({
@@ -427,31 +343,40 @@ const useStoryApi = (dataAdapter, { editStoryURL, storyApi, encodeMarkup }) => {
         trackTiming();
       }
     },
-    [storyApi, dataAdapter, editStoryURL, encodeMarkup]
+    [storyApi, dataAdapter, encodeMarkup]
+  );
+
+  const addInitialFetchListener = useCallback(
+    (listener) => {
+      const key = Symbol();
+      initialFetchListeners.set(key, listener);
+      return () => {
+        initialFetchListeners.delete(key);
+      };
+    },
+    [initialFetchListeners]
   );
 
   const api = useMemo(
     () => ({
-      clearStoryPreview,
       duplicateStory,
       fetchStories,
       createStoryFromTemplate,
-      createStoryPreview,
       trashStory,
       updateStory,
+      addInitialFetchListener,
     }),
     [
-      clearStoryPreview,
       createStoryFromTemplate,
-      createStoryPreview,
       duplicateStory,
       trashStory,
       updateStory,
       fetchStories,
+      addInitialFetchListener,
     ]
   );
 
-  return { stories: state, api };
+  return useMemo(() => ({ stories: state, api }), [state, api]);
 };
 
 export default useStoryApi;

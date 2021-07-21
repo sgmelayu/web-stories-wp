@@ -20,20 +20,18 @@
 import { useCallback, useMemo } from 'react';
 import PropTypes from 'prop-types';
 import styled from 'styled-components';
-
-/**
- * Internal dependencies
- */
 import {
   ANIMATION_EFFECTS,
   ANIMATION_PARTS,
   BACKGROUND_ANIMATION_EFFECTS,
   FIELD_TYPES,
-} from '../../../../../animation';
-import {
   getAnimationEffectProps,
   AnimationProps,
-} from '../../../../../animation/parts';
+} from '@web-stories-wp/animation';
+
+/**
+ * Internal dependencies
+ */
 import EffectInput from './effectInput';
 
 export function getEffectName(type) {
@@ -66,9 +64,7 @@ export function getEffectDirection(effect = {}) {
 }
 const AnimationGrid = styled.div`
   display: grid;
-  grid-gap: 15px;
   grid-template-columns: auto auto;
-  grid-auto-rows: 32px;
 `;
 
 const AnimationGridField = styled.div(

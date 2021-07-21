@@ -13,106 +13,85 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 /**
  * External dependencies
  */
 import { useMemo, useRef } from 'react';
 import PropTypes from 'prop-types';
 import styled, { css } from 'styled-components';
-import { __ } from '@web-stories-wp/i18n';
-
-/**
- * Internal dependencies
- */
+import { __, _x } from '@web-stories-wp/i18n';
+import {
+  Button,
+  BUTTON_SIZES,
+  BUTTON_TYPES,
+  BUTTON_VARIANTS,
+  Icons,
+  Tooltip,
+} from '@web-stories-wp/design-system';
 import {
   DIRECTION,
   ROTATION,
   SCALE_DIRECTION,
   SCALE_DIRECTION_MAP,
-} from '../../../../../animation';
+} from '@web-stories-wp/animation';
+/**
+ * Internal dependencies
+ */
 import { useConfig } from '../../../../app/config';
 import useRadioNavigation from '../../../form/shared/useRadioNavigation';
-import WithTooltip from '../../../tooltip';
 
-const Svg = styled.svg`
-  display: block;
-  height: ${({ size }) => size};
-  width: ${({ size }) => size};
-  fill: none;
-  transform-origin: 50% 50%;
-  transform: ${({ direction }) => {
-    switch (direction) {
-      case DIRECTION.RIGHT_TO_LEFT:
-        return 'rotate(270deg)';
-      case DIRECTION.TOP_TO_BOTTOM:
-        return 'rotate(180deg)';
-      case DIRECTION.LEFT_TO_RIGHT:
-        return 'rotate(90deg)';
-      case ROTATION.COUNTER_CLOCKWISE:
-        return 'rotateX(180deg) rotateZ(90deg)';
-      case SCALE_DIRECTION.SCALE_OUT_BOTTOM_LEFT:
-        return 'rotate(-135deg)';
-      case SCALE_DIRECTION.SCALE_IN_TOP_LEFT:
-        return 'rotate(135deg)';
-      case SCALE_DIRECTION.SCALE_OUT_TOP_RIGHT:
-        return 'rotate(-315deg)';
-      case SCALE_DIRECTION.SCALE_IN_BOTTOM_RIGHT:
-        return 'rotate(315deg)';
-      default:
-        return 'rotate(0deg)';
-    }
-  }};
-`;
-
-const Icon = styled.div`
-  padding: 4px;
-  border-radius: 4px;
-  stroke: #e4e5e6;
-  stroke-width: 1px;
+const StyledButton = styled(Button)`
+  z-index: 0;
+  width: 28px;
+  height: 28px;
   ${({ selected, disabled, theme }) =>
     selected &&
     !disabled &&
     css`
-      background-color: ${theme.DEPRECATED_THEME.colors.accent.primary};
+      background-color: ${theme.colors.interactiveBg.secondaryPress};
     `}
 
-  ${({ disabled }) =>
-    disabled &&
-    css`
-      stroke: #5e6668;
-    `}
+  svg {
+    transform-origin: 50% 50%;
+    transform: ${({ direction }) => {
+      switch (direction) {
+        case DIRECTION.RIGHT_TO_LEFT:
+          return 'rotate(270deg)';
+        case DIRECTION.TOP_TO_BOTTOM:
+          return 'rotate(180deg)';
+        case DIRECTION.LEFT_TO_RIGHT:
+          return 'rotate(90deg)';
+        case ROTATION.COUNTER_CLOCKWISE:
+          return 'rotateX(180deg) rotateZ(90deg)';
+        case SCALE_DIRECTION.SCALE_OUT_BOTTOM_LEFT:
+          return 'rotate(-135deg)';
+        case SCALE_DIRECTION.SCALE_IN_TOP_LEFT:
+          return 'rotate(135deg)';
+        case SCALE_DIRECTION.SCALE_OUT_TOP_RIGHT:
+          return 'rotate(-315deg)';
+        case SCALE_DIRECTION.SCALE_IN_BOTTOM_RIGHT:
+          return 'rotate(315deg)';
+        default:
+          return 'rotate(0deg)';
+      }
+    }};
+  }
 `;
 
-const RotationIcon = ({ direction }) => (
-  <Svg size="16px" viewBox="0 0 19 18" direction={direction}>
-    <path
-      strokeLinecap="round"
-      d="M1 17.5V17.5C1 10.5964 6.59644 5 13.5 5L17.5 5M17.5 5L13.5 1M17.5 5L13.5 9"
-    />
-  </Svg>
-);
-
-const DirectionIcon = ({ direction }) => (
-  <Svg size="13px" viewBox="0 0 10 11" direction={direction}>
-    <path strokeLinecap="round" d="M5 11L5 1M5 1L9 5M5 1L1 5" />
-  </Svg>
-);
-
-const Direction = ({ className, direction, selected, disabled }) => (
-  <Icon
+const Direction = ({ className, direction, ...rest }) => (
+  <StyledButton
+    variant={BUTTON_VARIANTS.SQUARE}
+    type={BUTTON_TYPES.TERTIARY}
+    size={BUTTON_SIZES.SMALL}
     className={className}
     direction={direction}
-    selected={selected}
-    disabled={disabled}
+    {...rest}
   >
     {[...Object.values(DIRECTION), ...Object.values(SCALE_DIRECTION)].includes(
       direction
-    ) ? (
-      <DirectionIcon direction={direction} />
-    ) : (
-      <RotationIcon direction={direction} />
-    )}
-  </Icon>
+    ) && <Icons.ArrowUp />}
+  </StyledButton>
 );
 
 // Must be a styled component to add component selectors in css
@@ -120,108 +99,91 @@ const DirectionIndicator = styled(Direction)``;
 
 const Fieldset = styled.fieldset`
   position: relative;
-  height: 80px;
-  width: 80px;
-  border: 1px solid #393d3f;
+  height: 91px;
+  width: 88px;
+  margin-top: 1px;
+  border-right: 1px solid ${({ theme }) => theme.colors.border.defaultNormal};
 `;
 
 const Figure = styled.div`
   position: absolute;
-  display: block;
   top: 50%;
   left: 50%;
   width: 8px;
   height: 8px;
-  background: ${({ theme }) => theme.DEPRECATED_THEME.colors.fg.v9};
-  background: #e4e5e6;
+  background-color: ${({ theme }) => theme.colors.fg.primary};
   border-radius: 2px;
   transform: translate(-50%, -50%);
 `;
 
+const SPACE_FROM_EDGE = 3;
 const Label = styled.label`
   position: absolute;
-  cursor: pointer;
+  cursor: ${({ disabled }) => (disabled ? 'default' : 'pointer')};
 
   ${({ direction }) => {
     switch (direction) {
       case DIRECTION.RIGHT_TO_LEFT:
         return css`
           top: 50%;
-          right: 4px;
+          right: ${SPACE_FROM_EDGE}px;
           transform: translateY(-50%);
         `;
       case DIRECTION.TOP_TO_BOTTOM:
         return css`
-          top: 4px;
+          top: ${SPACE_FROM_EDGE}px;
           left: 50%;
           transform: translateX(-50%);
         `;
       case DIRECTION.LEFT_TO_RIGHT:
         return css`
           top: 50%;
-          left: 4px;
+          left: ${SPACE_FROM_EDGE}px;
           transform: translateY(-50%);
-        `;
-      case ROTATION.CLOCKWISE:
-        return css`
-          top: 4px;
-          left: 4px;
-          transform: translateX(20%);
         `;
       case ROTATION.COUNTER_CLOCKWISE:
         return css`
-          bottom: 4px;
-          right: 4px;
+          bottom: ${SPACE_FROM_EDGE}px;
+          right: ${SPACE_FROM_EDGE}px;
           transform: translate(-10%, -10%);
         `;
 
       case SCALE_DIRECTION.SCALE_OUT_BOTTOM_LEFT:
         return css`
-          bottom: 4px;
-          left: 4px;
+          bottom: ${SPACE_FROM_EDGE}px;
+          left: ${SPACE_FROM_EDGE}px;
         `;
       case SCALE_DIRECTION.SCALE_IN_TOP_LEFT:
         return css`
-          top: 4px;
-          left: 4px;
+          top: ${SPACE_FROM_EDGE}px;
+          left: ${SPACE_FROM_EDGE}px;
         `;
       case SCALE_DIRECTION.SCALE_OUT_TOP_RIGHT:
         return css`
-          top: 4px;
-          right: 4px;
+          top: ${SPACE_FROM_EDGE}px;
+          right: ${SPACE_FROM_EDGE}px;
         `;
       case SCALE_DIRECTION.SCALE_IN_BOTTOM_RIGHT:
         return css`
-          bottom: 4px;
-          right: 4px;
+          bottom: ${SPACE_FROM_EDGE}px;
+          right: ${SPACE_FROM_EDGE}px;
         `;
 
       default:
         return css`
-          bottom: 4px;
+          bottom: ${SPACE_FROM_EDGE}px;
           left: 50%;
           transform: translateX(-50%);
         `;
     }
   }}
-
-  input:focus ~ * > ${DirectionIndicator} {
-    outline: 2px auto
-      ${({ theme }) => theme.DEPRECATED_THEME.colors.accent.primary};
-  }
 `;
 
-const hidden = css`
+const HiddenLegend = styled.legend`
   position: absolute;
   opacity: 0;
   clip-path: polygon(0 0);
   cursor: pointer;
-`;
-const HiddenLegend = styled.legend`
-  ${hidden}
-`;
-const HiddenInput = styled.input`
-  ${hidden}
 `;
 
 const RadioGroup = styled.div`
@@ -233,14 +195,38 @@ const RadioGroup = styled.div`
 `;
 
 const translations = {
-  [DIRECTION.RIGHT_TO_LEFT]: __('right to left', 'web-stories'),
-  [DIRECTION.LEFT_TO_RIGHT]: __('left to right', 'web-stories'),
-  [DIRECTION.TOP_TO_BOTTOM]: __('top to bottom', 'web-stories'),
-  [DIRECTION.BOTTOM_TO_TOP]: __('bottom to top', 'web-stories'),
-  [ROTATION.CLOCKWISE]: __('clockwise', 'web-stories'),
-  [ROTATION.COUNTER_CLOCKWISE]: __('counterclockwise', 'web-stories'),
-  [SCALE_DIRECTION.SCALE_IN]: __('scale in', 'web-stories'),
-  [SCALE_DIRECTION.SCALE_OUT]: __('scale out', 'web-stories'),
+  [DIRECTION.RIGHT_TO_LEFT]: _x(
+    'right to left',
+    'animation direction',
+    'web-stories'
+  ),
+  [DIRECTION.LEFT_TO_RIGHT]: _x(
+    'left to right',
+    'animation direction',
+    'web-stories'
+  ),
+  [DIRECTION.TOP_TO_BOTTOM]: _x(
+    'top to bottom',
+    'animation direction',
+    'web-stories'
+  ),
+  [DIRECTION.BOTTOM_TO_TOP]: _x(
+    'bottom to top',
+    'animation direction',
+    'web-stories'
+  ),
+  [ROTATION.CLOCKWISE]: _x('clockwise', 'rotation direction', 'web-stories'),
+  [ROTATION.COUNTER_CLOCKWISE]: _x(
+    'counterclockwise',
+    'rotation direction',
+    'web-stories'
+  ),
+  [SCALE_DIRECTION.SCALE_IN]: _x('scale in', 'scale direction', 'web-stories'),
+  [SCALE_DIRECTION.SCALE_OUT]: _x(
+    'scale out',
+    'scale direction',
+    'web-stories'
+  ),
 };
 
 const valueForInternalValue = (value) => {
@@ -356,17 +342,9 @@ export const DirectionRadioInput = ({
               aria-label={translations[direction]}
               htmlFor={direction}
               direction={direction}
+              disabled={isDisabled}
             >
-              <HiddenInput
-                id={direction}
-                type="radio"
-                name="direction"
-                value={valueForInternalValue(direction)}
-                onChange={onChange}
-                checked={value === direction || direction?.includes(value)}
-                disabled={isDisabled}
-              />
-              <WithTooltip
+              <Tooltip
                 title={isDisabled ? tooltip : ''}
                 placement={
                   isInternalScaleDirection(direction)
@@ -378,8 +356,9 @@ export const DirectionRadioInput = ({
                   direction={direction}
                   selected={value === direction || direction?.includes(value)}
                   disabled={isDisabled}
+                  onClick={() => onChange(valueForInternalValue(direction))}
                 />
-              </WithTooltip>
+              </Tooltip>
             </Label>
           );
         })}
@@ -407,12 +386,4 @@ Direction.propTypes = {
   direction: directionPropType,
   selected: PropTypes.bool,
   disabled: PropTypes.bool,
-};
-
-DirectionIcon.propTypes = {
-  direction: directionPropType,
-};
-
-RotationIcon.propTypes = {
-  direction: directionPropType,
 };

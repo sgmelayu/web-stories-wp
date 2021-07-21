@@ -38,9 +38,11 @@ jest.mock('../wpAdapter', () => ({
         {
           id: 123,
           status: 'publish',
+          featured_media_url: 'https://www.featured-media-123',
           author: 1,
           link: 'https://www.story-link.com',
           preview_link: 'https://www.story-link.com/?preview=true',
+          edit_link: 'https://www.story-link.com/wp-admin/post.php?id=123',
           title: { raw: 'Carlos', rendered: 'Carlos' },
           content: { raw: 'Content', rendered: 'Content' },
           story_data: { pages: [{ id: 1, elements: [] }] },
@@ -56,8 +58,10 @@ jest.mock('../wpAdapter', () => ({
     const title = typeof data.title === 'string' ? data.title : data.title.raw;
     const content =
       typeof data.content === 'string' ? data.content : data?.content?.raw;
+    const id = data.id || 456;
     return Promise.resolve({
-      id: data.id || 456,
+      id,
+      featured_media_url: `https://www.featured-media-${data.id || 456}`,
       status: 'publish',
       title: { raw: title, rendered: title },
       content: { raw: content, rendered: content },
@@ -69,6 +73,7 @@ jest.mock('../wpAdapter', () => ({
       date_gmt: '1970-01-01T00:00:00.000',
       link: 'https://www.story-link.com',
       preview_link: 'https://www.story-link.com/?preview=true',
+      edit_link: 'https://www.story-link.com/wp-admin/post.php?id=' + id,
       _embedded: { author: [{ id: 1, name: 'admin' }] },
     });
   },
@@ -86,6 +91,7 @@ jest.mock('../wpAdapter', () => ({
       date_gmt: '1970-01-01T00:00:00.000',
       link: 'https://www.story-link.com',
       preview_link: 'https://www.story-link.com/?preview=true',
+      edit_link: 'https://www.story-link.com/wp-admin/post.php?id=' + id,
     });
   },
 }));
@@ -95,9 +101,7 @@ describe('ApiProvider', () => {
     const { result } = renderHook(() => useApi(), {
       // eslint-disable-next-line react/display-name
       wrapper: (props) => (
-        <ConfigProvider
-          config={{ api: { stories: 'stories' }, editStoryURL: 'editStory' }}
-        >
+        <ConfigProvider config={{ api: { stories: 'stories' } }}>
           <ApiProvider {...props} />
         </ConfigProvider>
       ),
@@ -109,22 +113,30 @@ describe('ApiProvider', () => {
 
     expect(result.current.state.stories.stories).toStrictEqual({
       123: {
-        bottomTargetAction: 'editStory&post=123',
-        centerTargetAction: '',
-        editStoryLink: 'editStory&post=123',
+        bottomTargetAction:
+          'https://www.story-link.com/wp-admin/post.php?id=123',
+        editStoryLink: 'https://www.story-link.com/wp-admin/post.php?id=123',
         id: 123,
         modified: '1970-01-01T00:00:00.000',
         modified_gmt: '1970-01-01T00:00:00.000Z',
-
+        featuredMediaUrl: 'https://www.featured-media-123',
         created: '1970-01-01T00:00:00.000',
         created_gmt: '1970-01-01T00:00:00.000Z',
         author: 'admin',
         link: 'https://www.story-link.com',
+        lockUser: {
+          avatar: null,
+          id: 0,
+          name: '',
+        },
+        locked: false,
         originalStoryData: {
           id: 123,
+          featured_media_url: 'https://www.featured-media-123',
           modified: '1970-01-01T00:00:00.000',
           modified_gmt: '1970-01-01T00:00:00.000',
           preview_link: 'https://www.story-link.com/?preview=true',
+          edit_link: 'https://www.story-link.com/wp-admin/post.php?id=123',
           date: '1970-01-01T00:00:00.000',
           date_gmt: '1970-01-01T00:00:00.000',
           status: 'publish',
@@ -148,12 +160,6 @@ describe('ApiProvider', () => {
           },
           _embedded: { author: [{ id: 1, name: 'admin' }] },
         },
-        pages: [
-          {
-            elements: [],
-            id: 1,
-          },
-        ],
         previewLink: 'https://www.story-link.com/?preview=true',
         status: 'publish',
         title: 'Carlos',
@@ -165,9 +171,7 @@ describe('ApiProvider', () => {
     const { result } = renderHook(() => useApi(), {
       // eslint-disable-next-line react/display-name
       wrapper: (props) => (
-        <ConfigProvider
-          config={{ api: { stories: 'stories' }, editStoryURL: 'editStory' }}
-        >
+        <ConfigProvider config={{ api: { stories: 'stories' } }}>
           <ApiProvider {...props} />
         </ConfigProvider>
       ),
@@ -181,17 +185,12 @@ describe('ApiProvider', () => {
       await result.current.actions.storyApi.updateStory({
         id: 123,
         modified: undefined,
-        pages: [
-          {
-            elements: [],
-            id: 1,
-          },
-        ],
         status: 'publish',
         title: { raw: 'New Title' },
         content: { raw: 'Content', rendered: 'Content' },
         link: 'https://www.story-link.com',
         preview_link: 'https://www.story-link.com/?preview=true',
+        edit_link: 'https://www.story-link.com/wp-admin/post.php?id=123',
         originalStoryData: {
           author: 1,
         },
@@ -200,9 +199,10 @@ describe('ApiProvider', () => {
 
     expect(result.current.state.stories.stories).toStrictEqual({
       123: {
-        bottomTargetAction: 'editStory&post=123',
-        centerTargetAction: '',
-        editStoryLink: 'editStory&post=123',
+        bottomTargetAction:
+          'https://www.story-link.com/wp-admin/post.php?id=123',
+        featuredMediaUrl: 'https://www.featured-media-123',
+        editStoryLink: 'https://www.story-link.com/wp-admin/post.php?id=123',
         id: 123,
         modified: '1970-01-01T00:00:00.000',
         modified_gmt: '1970-01-01T00:00:00.000Z',
@@ -210,11 +210,19 @@ describe('ApiProvider', () => {
         created_gmt: '1970-01-01T00:00:00.000Z',
         author: 'admin',
         link: 'https://www.story-link.com',
+        lockUser: {
+          avatar: null,
+          id: 0,
+          name: '',
+        },
+        locked: false,
         originalStoryData: {
           id: 123,
           modified: '1970-01-01T00:00:00.000',
           modified_gmt: '1970-01-01T00:00:00.000',
+          featured_media_url: 'https://www.featured-media-123',
           preview_link: 'https://www.story-link.com/?preview=true',
+          edit_link: 'https://www.story-link.com/wp-admin/post.php?id=123',
           date: '1970-01-01T00:00:00.000',
           date_gmt: '1970-01-01T00:00:00.000',
           status: 'publish',
@@ -238,12 +246,6 @@ describe('ApiProvider', () => {
           },
           _embedded: { author: [{ id: 1, name: 'admin' }] },
         },
-        pages: [
-          {
-            elements: [],
-            id: 1,
-          },
-        ],
         previewLink: 'https://www.story-link.com/?preview=true',
         status: 'publish',
         title: 'New Title',
@@ -255,9 +257,7 @@ describe('ApiProvider', () => {
     const { result } = renderHook(() => useApi(), {
       // eslint-disable-next-line react/display-name
       wrapper: (props) => (
-        <ConfigProvider
-          config={{ api: { stories: 'stories' }, editStoryURL: 'editStory' }}
-        >
+        <ConfigProvider config={{ api: { stories: 'stories' } }}>
           <ApiProvider {...props} />
         </ConfigProvider>
       ),
@@ -302,9 +302,10 @@ describe('ApiProvider', () => {
 
     expect(result.current.state.stories.stories).toStrictEqual({
       123: {
-        bottomTargetAction: 'editStory&post=123',
-        centerTargetAction: '',
-        editStoryLink: 'editStory&post=123',
+        bottomTargetAction:
+          'https://www.story-link.com/wp-admin/post.php?id=123',
+        featuredMediaUrl: 'https://www.featured-media-123',
+        editStoryLink: 'https://www.story-link.com/wp-admin/post.php?id=123',
         id: 123,
         modified: '1970-01-01T00:00:00.000',
         modified_gmt: '1970-01-01T00:00:00.000Z',
@@ -312,11 +313,19 @@ describe('ApiProvider', () => {
         created_gmt: '1970-01-01T00:00:00.000Z',
         author: 'admin',
         link: 'https://www.story-link.com',
+        lockUser: {
+          avatar: null,
+          id: 0,
+          name: '',
+        },
+        locked: false,
         originalStoryData: {
           id: 123,
           modified: '1970-01-01T00:00:00.000',
           modified_gmt: '1970-01-01T00:00:00.000',
+          featured_media_url: 'https://www.featured-media-123',
           preview_link: 'https://www.story-link.com/?preview=true',
+          edit_link: 'https://www.story-link.com/wp-admin/post.php?id=123',
           date: '1970-01-01T00:00:00.000',
           date_gmt: '1970-01-01T00:00:00.000',
           status: 'publish',
@@ -340,20 +349,15 @@ describe('ApiProvider', () => {
           },
           _embedded: { author: [{ id: 1, name: 'admin' }] },
         },
-        pages: [
-          {
-            elements: [],
-            id: 1,
-          },
-        ],
         previewLink: 'https://www.story-link.com/?preview=true',
         status: 'publish',
         title: 'Carlos',
       },
       456: {
-        bottomTargetAction: 'editStory&post=456',
-        centerTargetAction: '',
-        editStoryLink: 'editStory&post=456',
+        bottomTargetAction:
+          'https://www.story-link.com/wp-admin/post.php?id=456',
+        featuredMediaUrl: 'https://www.featured-media-456',
+        editStoryLink: 'https://www.story-link.com/wp-admin/post.php?id=456',
         id: 456,
         modified: '1970-01-01T00:00:00.000',
         modified_gmt: '1970-01-01T00:00:00.000Z',
@@ -361,11 +365,19 @@ describe('ApiProvider', () => {
         created_gmt: '1970-01-01T00:00:00.000Z',
         author: 'admin',
         link: 'https://www.story-link.com',
+        lockUser: {
+          avatar: null,
+          id: 0,
+          name: '',
+        },
+        locked: false,
         originalStoryData: {
           id: 456,
           modified: '1970-01-01T00:00:00.000',
           modified_gmt: '1970-01-01T00:00:00.000',
+          featured_media_url: 'https://www.featured-media-456',
           preview_link: 'https://www.story-link.com/?preview=true',
+          edit_link: 'https://www.story-link.com/wp-admin/post.php?id=456',
           date: '1970-01-01T00:00:00.000',
           date_gmt: '1970-01-01T00:00:00.000',
           status: 'publish',
@@ -389,12 +401,6 @@ describe('ApiProvider', () => {
           },
           _embedded: { author: [{ id: 1, name: 'admin' }] },
         },
-        pages: [
-          {
-            elements: [],
-            id: 1,
-          },
-        ],
         previewLink: 'https://www.story-link.com/?preview=true',
         status: 'publish',
         title: 'Carlos (Copy)',
@@ -406,9 +412,7 @@ describe('ApiProvider', () => {
     const { result } = renderHook(() => useApi(), {
       // eslint-disable-next-line react/display-name
       wrapper: (props) => (
-        <ConfigProvider
-          config={{ api: { stories: 'stories' }, editStoryURL: 'editStory' }}
-        >
+        <ConfigProvider config={{ api: { stories: 'stories' } }}>
           <ApiProvider {...props} />
         </ConfigProvider>
       ),
@@ -425,5 +429,35 @@ describe('ApiProvider', () => {
     });
 
     expect(result.current.state.stories.stories).toStrictEqual({});
+  });
+
+  it('should call initialFetch listeners once when first storystatuses returned', async () => {
+    const listenerMock = jest.fn();
+    const { result } = renderHook(() => useApi(), {
+      // eslint-disable-next-line react/display-name
+      wrapper: (props) => (
+        <ConfigProvider config={{ api: { stories: 'stories' } }}>
+          <ApiProvider {...props} />
+        </ConfigProvider>
+      ),
+    });
+
+    act(() => {
+      result.current.actions.storyApi.addInitialFetchListener(listenerMock);
+    });
+
+    await act(async () => {
+      await result.current.actions.storyApi.fetchStories({});
+    });
+
+    expect(listenerMock).toHaveBeenCalledTimes(1);
+    expect(listenerMock).toHaveBeenCalledWith({ all: 1, draft: 0, publish: 1 });
+
+    // Run again just to make sure it doesn't call the listeners more than once
+    await act(async () => {
+      await result.current.actions.storyApi.fetchStories({});
+    });
+
+    expect(listenerMock).toHaveBeenCalledTimes(1);
   });
 });

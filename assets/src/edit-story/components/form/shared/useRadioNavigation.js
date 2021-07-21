@@ -18,10 +18,7 @@
  * External dependencies
  */
 import { useCallback } from 'react';
-/**
- * Internal dependencies
- */
-import { useKeyDownEffect } from '../../../../design-system';
+import { useKeyDownEffect } from '@web-stories-wp/design-system';
 
 function useRadioNavigation(ref) {
   const changeCurrent = useCallback(
@@ -46,8 +43,9 @@ function useRadioNavigation(ref) {
         return;
       }
 
-      // Now focus this one
+      // Now select this one
       list[newIndex].focus();
+      list[newIndex].click();
     },
     [ref]
   );

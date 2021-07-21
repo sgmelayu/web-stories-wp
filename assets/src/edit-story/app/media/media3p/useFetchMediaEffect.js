@@ -18,11 +18,11 @@
  * External dependencies
  */
 import { useEffect, useRef } from 'react';
+import { useSnackbar } from '@web-stories-wp/design-system';
 
 /**
  * Internal dependencies
  */
-import { useSnackbar } from '../../snackbar';
 import { useMedia3pApi } from './api';
 import { PROVIDERS } from './providerConfiguration';
 
@@ -100,7 +100,10 @@ export default function useFetchMediaEffect({
         });
       } catch (e) {
         fetchMediaError({ provider, pageToken });
-        showSnackbar({ message: PROVIDERS[provider].fetchMediaErrorMessage });
+        showSnackbar({
+          message: PROVIDERS[provider].fetchMediaErrorMessage,
+          dismissable: true,
+        });
       }
     }
 

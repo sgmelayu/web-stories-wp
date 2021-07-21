@@ -22,15 +22,14 @@ use Google\Web_Stories\Settings;
 /**
  * @coversDefaultClass \Google\Web_Stories\Analytics
  */
-class Analytics extends \WP_UnitTestCase {
-	use Private_Access;
+class Analytics extends Test_Case {
 
 	/**
-	 * @covers ::init
+	 * @covers ::register
 	 */
-	public function test_init() {
+	public function test_register() {
 		$analytics = new \Google\Web_Stories\Analytics();
-		$analytics->init();
+		$analytics->register();
 
 		$this->assertSame( 10, has_filter( 'web_stories_print_analytics', [ $analytics, 'print_analytics_tag' ] ) );
 	}

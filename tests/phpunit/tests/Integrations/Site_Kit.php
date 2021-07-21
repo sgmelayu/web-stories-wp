@@ -18,14 +18,12 @@
 namespace Google\Web_Stories\Tests\Integrations;
 
 use Google\Web_Stories\Story_Post_Type;
-use Google\Web_Stories\Tests\Private_Access;
+use Google\Web_Stories\Tests\Test_Case;
 
 /**
  * @coversDefaultClass \Google\Web_Stories\Integrations\Site_Kit
  */
-class Site_Kit extends \WP_UnitTestCase {
-	use Private_Access;
-
+class Site_Kit extends Test_Case {
 	/**
 	 * Story id.
 	 *
@@ -45,21 +43,21 @@ class Site_Kit extends \WP_UnitTestCase {
 	}
 
 	/**
-	 * @covers ::init
+	 * @covers ::register
 	 */
-	public function test_init() {
+	public function test_register() {
 		$analytics = $this->createMock( \Google\Web_Stories\Analytics::class );
 		add_action( 'web_stories_print_analytics', [ $analytics, 'print_analytics_tag' ] );
 
 		$site_kit = new \Google\Web_Stories\Integrations\Site_Kit( $analytics );
-		$site_kit->init();
+		$site_kit->register();
 
 		$this->assertSame( 10, has_filter( 'googlesitekit_amp_gtag_opt', [ $site_kit, 'filter_site_kit_gtag_opt' ] ) );
 		$this->assertSame( 10, has_action( 'web_stories_print_analytics', [ $analytics, 'print_analytics_tag' ] ) );
 	}
 
 	/**
-	 * @covers ::init
+	 * @covers ::register
 	 * @covers ::is_analytics_module_active
 	 * @runInSeparateProcess
 	 * @preserveGlobalState disabled
@@ -73,7 +71,7 @@ class Site_Kit extends \WP_UnitTestCase {
 		add_action( 'web_stories_print_analytics', [ $analytics, 'print_analytics_tag' ] );
 
 		$site_kit = new \Google\Web_Stories\Integrations\Site_Kit( $analytics );
-		$site_kit->init();
+		$site_kit->register();
 
 		$this->assertSame( 10, has_filter( 'googlesitekit_amp_gtag_opt', [ $site_kit, 'filter_site_kit_gtag_opt' ] ) );
 		$this->assertFalse( has_action( 'web_stories_print_analytics', [ $analytics, 'print_analytics_tag' ] ) );
@@ -171,7 +169,9 @@ class Site_Kit extends \WP_UnitTestCase {
 			'installed'       => false,
 			'active'          => false,
 			'analyticsActive' => false,
-			'link'            => __( 'https://wordpress.org/plugins/google-site-kit/', 'web-stories' ),
+			'adsenseActive'   => false,
+			'analyticsLink'   => __( 'https://wordpress.org/plugins/google-site-kit/', 'web-stories' ),
+			'adsenseLink'     => __( 'https://wordpress.org/plugins/google-site-kit/', 'web-stories' ),
 		];
 
 		$actual = $site_kit->get_plugin_status();
@@ -192,7 +192,9 @@ class Site_Kit extends \WP_UnitTestCase {
 			'installed'       => false,
 			'active'          => false,
 			'analyticsActive' => false,
-			'link'            => __( 'https://wordpress.org/plugins/google-site-kit/', 'web-stories' ),
+			'adsenseActive'   => false,
+			'analyticsLink'   => __( 'https://wordpress.org/plugins/google-site-kit/', 'web-stories' ),
+			'adsenseLink'     => __( 'https://wordpress.org/plugins/google-site-kit/', 'web-stories' ),
 		];
 
 		$actual = $site_kit->get_plugin_status();
@@ -216,7 +218,9 @@ class Site_Kit extends \WP_UnitTestCase {
 			'installed'       => true,
 			'active'          => true,
 			'analyticsActive' => false,
-			'link'            => __( 'https://wordpress.org/plugins/google-site-kit/', 'web-stories' ),
+			'adsenseActive'   => false,
+			'analyticsLink'   => __( 'https://wordpress.org/plugins/google-site-kit/', 'web-stories' ),
+			'adsenseLink'     => __( 'https://wordpress.org/plugins/google-site-kit/', 'web-stories' ),
 		];
 
 		$actual = $site_kit->get_plugin_status();
@@ -227,6 +231,7 @@ class Site_Kit extends \WP_UnitTestCase {
 	/**
 	 * @covers ::get_plugin_status
 	 * @covers ::is_analytics_module_active
+	 * @covers ::is_adsense_module_active
 	 * @runInSeparateProcess
 	 * @preserveGlobalState disabled
 	 */
@@ -242,7 +247,9 @@ class Site_Kit extends \WP_UnitTestCase {
 			'installed'       => true,
 			'active'          => true,
 			'analyticsActive' => true,
-			'link'            => __( 'https://wordpress.org/plugins/google-site-kit/', 'web-stories' ),
+			'adsenseActive'   => false,
+			'adsenseLink'     => __( 'https://wordpress.org/plugins/google-site-kit/', 'web-stories' ),
+			'analyticsLink'   => __( 'https://wordpress.org/plugins/google-site-kit/', 'web-stories' ),
 		];
 
 		$actual = $site_kit->get_plugin_status();
@@ -250,9 +257,11 @@ class Site_Kit extends \WP_UnitTestCase {
 		$this->assertEqualSetsWithIndex( $expected, $actual );
 	}
 
+
 	/**
 	 * @covers ::get_plugin_status
 	 * @covers ::is_analytics_module_active
+	 * @covers ::is_adsense_module_active
 	 * @runInSeparateProcess
 	 * @preserveGlobalState disabled
 	 */
@@ -267,7 +276,75 @@ class Site_Kit extends \WP_UnitTestCase {
 			'installed'       => true,
 			'active'          => true,
 			'analyticsActive' => false,
-			'link'            => __( 'https://wordpress.org/plugins/google-site-kit/', 'web-stories' ),
+			'adsenseActive'   => false,
+			'adsenseLink'     => __( 'https://wordpress.org/plugins/google-site-kit/', 'web-stories' ),
+			'analyticsLink'   => __( 'https://wordpress.org/plugins/google-site-kit/', 'web-stories' ),
+		];
+
+		$actual = $site_kit->get_plugin_status();
+
+		$this->assertEqualSetsWithIndex( $expected, $actual );
+	}
+
+	/**
+	 * @covers ::get_plugin_status
+	 * @covers ::is_analytics_module_active
+	 * @covers ::is_adsense_module_active
+	 * @runInSeparateProcess
+	 * @preserveGlobalState disabled
+	 */
+	public function test_get_plugin_status_adsense_module_active() {
+		define( 'GOOGLESITEKIT_VERSION', '1.2.3' );
+		update_option( 'googlesitekit_active_modules', [ 'adsense' ], false );
+		update_option(
+			'googlesitekit_adsense_settings',
+			[
+				'useSnippet'       => true,
+				'webStoriesAdUnit' => '12345',
+				'clientID'         => '98765',
+			],
+			false
+		);
+
+		$analytics = $this->createMock( \Google\Web_Stories\Analytics::class );
+		$site_kit  = new \Google\Web_Stories\Integrations\Site_Kit( $analytics );
+
+		$expected = [
+			'installed'       => true,
+			'active'          => true,
+			'analyticsActive' => false,
+			'adsenseActive'   => true,
+			'adsenseLink'     => __( 'https://wordpress.org/plugins/google-site-kit/', 'web-stories' ),
+			'analyticsLink'   => __( 'https://wordpress.org/plugins/google-site-kit/', 'web-stories' ),
+		];
+
+		$actual = $site_kit->get_plugin_status();
+
+		$this->assertEqualSetsWithIndex( $expected, $actual );
+	}
+
+
+	/**
+	 * @covers ::get_plugin_status
+	 * @covers ::is_analytics_module_active
+	 * @covers ::is_adsense_module_active
+	 * @runInSeparateProcess
+	 * @preserveGlobalState disabled
+	 */
+	public function test_get_plugin_status_adsense_module_no_snippet() {
+		define( 'GOOGLESITEKIT_VERSION', '1.2.3' );
+		update_option( 'googlesitekit_active_modules', [ 'adsense' ], false );
+
+		$analytics = $this->createMock( \Google\Web_Stories\Analytics::class );
+		$site_kit  = new \Google\Web_Stories\Integrations\Site_Kit( $analytics );
+
+		$expected = [
+			'installed'       => true,
+			'active'          => true,
+			'analyticsActive' => false,
+			'adsenseActive'   => false,
+			'adsenseLink'     => __( 'https://wordpress.org/plugins/google-site-kit/', 'web-stories' ),
+			'analyticsLink'   => __( 'https://wordpress.org/plugins/google-site-kit/', 'web-stories' ),
 		];
 
 		$actual = $site_kit->get_plugin_status();

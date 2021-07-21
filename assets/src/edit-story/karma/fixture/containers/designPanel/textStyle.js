@@ -31,7 +31,7 @@ export class TextStyle extends AbstractPanel {
 
   get bold() {
     return this._get(
-      this.getByRole('button', { name: /Toggle: bold/ }),
+      this.getByRole('button', { name: /Bold/ }),
       'bold',
       ToggleButton
     );
@@ -39,7 +39,7 @@ export class TextStyle extends AbstractPanel {
 
   get italic() {
     return this._get(
-      this.getByRole('button', { name: /Toggle: italic/ }),
+      this.getByRole('button', { name: /Italic/ }),
       'italic',
       ToggleButton
     );
@@ -47,8 +47,16 @@ export class TextStyle extends AbstractPanel {
 
   get underline() {
     return this._get(
-      this.getByRole('button', { name: /Toggle: underline/ }),
+      this.getByRole('button', { name: /Underline/ }),
       'underline',
+      ToggleButton
+    );
+  }
+
+  get uppercase() {
+    return this._get(
+      this.getByRole('button', { name: /Uppercase/ }),
+      'uppercase',
       ToggleButton
     );
   }
@@ -70,11 +78,13 @@ export class TextStyle extends AbstractPanel {
   }
 
   get fontColor() {
-    return this._get(
+    const color = this._get(
       this.getByRole('region', { name: /Color input: Text/ }),
       'fontColor',
       Color
     );
+    color.label = 'Text color';
+    return color;
   }
 
   get fontSize() {

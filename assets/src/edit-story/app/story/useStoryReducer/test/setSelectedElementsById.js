@@ -15,9 +15,12 @@
  */
 
 /**
+ * External dependencies
+ */
+import { STORY_ANIMATION_STATE } from '@web-stories-wp/animation';
+/**
  * Internal dependencies
  */
-import { STORY_ANIMATION_STATE } from '../../../../../animation';
 import { setupReducer } from './_utils';
 
 describe('setSelectedElementsById', () => {
@@ -147,12 +150,34 @@ describe('setSelectedElementsById', () => {
     expect(result.selection).toStrictEqual(['e2', 'e3']);
   });
 
+  it('should remove video placeholder if included among other elements', () => {
+    const { restore, setSelectedElementsById } = setupReducer();
+
+    // Set an initial state.
+    restore({
+      pages: [
+        {
+          id: '111',
+          elements: [
+            { id: 'e1', resource: { isPlaceholder: true } },
+            { id: 'e2' },
+            { id: 'e3' },
+          ],
+        },
+      ],
+      current: '111',
+      selection: [],
+    });
+
+    // Try setting all elements as selected
+    const result = setSelectedElementsById({ elementIds: ['e2', 'e1', 'e3'] });
+
+    expect(result.selection).toStrictEqual(['e2', 'e3']);
+  });
+
   it('should not update animationState if nothing has changed', () => {
-    const {
-      restore,
-      setSelectedElementsById,
-      updateAnimationState,
-    } = setupReducer();
+    const { restore, setSelectedElementsById, updateAnimationState } =
+      setupReducer();
 
     // Set an initial state.
     restore({
@@ -177,11 +202,8 @@ describe('setSelectedElementsById', () => {
   });
 
   it('should reset animationState if selection has changed', () => {
-    const {
-      restore,
-      setSelectedElementsById,
-      updateAnimationState,
-    } = setupReducer();
+    const { restore, setSelectedElementsById, updateAnimationState } =
+      setupReducer();
 
     // Set an initial state.
     restore({

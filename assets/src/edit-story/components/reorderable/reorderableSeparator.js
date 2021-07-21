@@ -39,7 +39,7 @@ const Wrapper = styled.div`
 const Line = styled.div`
   height: 4px;
   margin: 0 0 -4px;
-  background: ${({ theme }) => theme.DEPRECATED_THEME.colors.accent.primary};
+  background: ${({ theme }) => theme.colors.accent.secondary};
   width: 100%;
 `;
 
@@ -59,7 +59,7 @@ function ReorderableSeparator({ position, children = <Line />, ...props }) {
 
   return (
     <Wrapper
-      onMouseOver={handlePointerEnter}
+      onPointerOver={handlePointerEnter}
       ref={separatorRef}
       isReordering={isReordering}
       {...props}

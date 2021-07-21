@@ -17,12 +17,12 @@
 /**
  * External dependencies
  */
-import { waitForElementToBeRemoved } from '@testing-library/react';
+import { waitFor, waitForElementToBeRemoved } from '@testing-library/react';
 
 /**
  * Internal dependencies
  */
-import useInsertElement from '../../../../../components/canvas/useInsertElement';
+import useInsertElement from '../../../../canvas/useInsertElement';
 import { TEXT_ELEMENT_DEFAULT_FONT } from '../../../../../app/font/defaultFonts';
 import { useStory } from '../../../../../app/story';
 import { Fixture } from '../../../../../karma/fixture';
@@ -69,6 +69,7 @@ describe('Text Style Panel', () => {
 
       // Add a new text now.
       await fixture.events.click(fixture.editor.library.textAdd);
+      await waitFor(() => fixture.editor.canvas.framesLayer.frames[2].node);
       // Expect the inputs to be visible again, since the panel should be expanded again.
       expect(
         fixture.editor.inspector.designPanel.textStyle.lineHeight
@@ -172,7 +173,9 @@ describe('Text Style Panel', () => {
         expect(fontWeight.value).toBe('Regular');
 
         await fixture.events.click(fontWeight.select);
-        await fixture.events.click(fontWeight.option('Bold'));
+
+        await fixture.events.sleep(TIMEOUT);
+        await fixture.events.click(await fontWeight.option('Bold'));
         await fixture.events.sleep(TIMEOUT);
         expect(fontWeight.value).toBe('Bold');
 

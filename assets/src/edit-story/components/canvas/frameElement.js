@@ -19,6 +19,7 @@
  */
 import styled from 'styled-components';
 import { useCallback, useLayoutEffect, useRef, useState } from 'react';
+import { useUnits } from '@web-stories-wp/units';
 
 /**
  * Internal dependencies
@@ -31,11 +32,11 @@ import {
   elementWithSize,
   elementWithRotation,
 } from '../../elements/shared';
-import { useUnits } from '../../units';
 import WithMask from '../../masks/frame';
 import WithLink from '../elementLink/frame';
 import { useTransformHandler } from '../transform';
-import { getElementMask, MaskTypes } from '../../masks';
+import { getElementMask } from '../../masks';
+import { MaskTypes } from '../../masks/constants';
 import useDoubleClick from '../../utils/useDoubleClick';
 
 // @todo: should the frame borders follow clip lines?
@@ -60,6 +61,9 @@ const Wrapper = styled.div`
 `;
 
 const EmptyFrame = styled.div`
+  position: absolute;
+  top: 0;
+  left: 0;
   width: 100%;
   height: 100%;
   pointer-events: none;
@@ -176,7 +180,9 @@ function FrameElement({ element }) {
         ref={elementRef}
         data-element-id={id}
         {...box}
-        tabIndex="0"
+        // Needed for being able to focus on the selected element on canvas, e.g. for entering edit mode.
+        // eslint-disable-next-line styled-components-a11y/no-noninteractive-tabindex
+        tabIndex={0}
         aria-labelledby={`layer-${id}`}
         hasMask={isMaskable}
         isAnimating={isAnimating}

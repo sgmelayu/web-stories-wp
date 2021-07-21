@@ -19,7 +19,8 @@
  */
 import PropTypes from 'prop-types';
 import styled from 'styled-components';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useMemo } from 'react';
+import { PAGE_RATIO, useUnits } from '@web-stories-wp/units';
 
 /**
  * Internal dependencies
@@ -27,8 +28,6 @@ import { useEffect, useRef } from 'react';
 import { useStory, useCanvas } from '../../app';
 import withOverlay from '../overlay/withOverlay';
 import InOverlay from '../overlay';
-import { useUnits } from '../../units';
-import { PAGE_RATIO } from '../../constants';
 
 const LASSO_ACTIVE_THRESHOLD = 10;
 
@@ -52,7 +51,7 @@ const Container = withOverlay(styled.div`
 const Lasso = styled.div`
   display: none;
   position: absolute;
-  border: 1px dotted ${({ theme }) => theme.DEPRECATED_THEME.colors.selection};
+  border: 1px dotted ${({ theme }) => theme.colors.border.selection};
   z-index: 1;
 `;
 
@@ -87,6 +86,12 @@ function SelectionCanvas({ children }) {
       };
     }
   );
+
+  const scrollContainer = useMemo(
+    () => fullbleedContainer?.closest('[data-scroll-container]'),
+    [fullbleedContainer]
+  );
+
   const { editorToDataX, editorToDataY } = useUnits((state) => ({
     editorToDataX: state.actions.editorToDataX,
     editorToDataY: state.actions.editorToDataY,
@@ -173,15 +178,13 @@ function SelectionCanvas({ children }) {
   const onMouseUp = () => {
     if (lassoModeRef.current === LassoMode.ON) {
       const [lx, ly, lwidth, lheight] = getLassoBox();
-      const {
-        offsetLeft,
-        offsetTop,
-        offsetHeight,
-        offsetWidth,
-      } = fullbleedContainer;
+      const { offsetLeft, offsetTop, offsetHeight, offsetWidth } =
+        fullbleedContainer;
+      const { offsetLeft: scrollLeft, offsetTop: scrollTop } = scrollContainer;
       // Offset from the fullbleed to the safe zone.
-      const dx = offsetLeft;
-      const dy = offsetTop + (offsetHeight - offsetWidth / PAGE_RATIO) / 2;
+      const dx = offsetLeft + scrollLeft;
+      const dy =
+        offsetTop + scrollTop + (offsetHeight - offsetWidth / PAGE_RATIO) / 2;
       const x = editorToDataX(lx - dx);
       const y = editorToDataY(ly - dy);
       const width = editorToDataX(lwidth);
@@ -196,11 +199,14 @@ function SelectionCanvas({ children }) {
 
   useEffect(updateLasso);
 
+  // data-fix-caret is for allowing caretRangeFromPoint to work in Safari.
+  // See https://github.com/google/web-stories-wp/issues/7745.
   return (
     <Container
       onMouseDown={onMouseDown}
       onMouseMove={onMouseMove}
       onMouseUp={onMouseUp}
+      data-fix-caret
     >
       {children}
       <InOverlay ref={overlayRef}>

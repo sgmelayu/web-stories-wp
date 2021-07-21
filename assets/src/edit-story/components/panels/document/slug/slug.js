@@ -17,9 +17,15 @@
 /**
  * External dependencies
  */
-import { useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import styled from 'styled-components';
 import { __ } from '@web-stories-wp/i18n';
+import {
+  Input,
+  Link,
+  ThemeGlobals,
+  THEME_CONSTANTS,
+} from '@web-stories-wp/design-system';
 
 /**
  * Internal dependencies
@@ -27,9 +33,9 @@ import { __ } from '@web-stories-wp/i18n';
 import { useStory } from '../../../../app/story';
 import cleanForSlug from '../../../../utils/cleanForSlug';
 import inRange from '../../../../utils/inRange';
-import Link from '../../../link';
-import { Row, TextInput, HelperText } from '../../../form';
+import { Row } from '../../../form';
 import { SimplePanel } from '../../panel';
+import { inputContainerStyleOverride } from '../../shared';
 
 export const MIN_MAX = {
   PERMALINK: {
@@ -38,17 +44,31 @@ export const MIN_MAX = {
   },
 };
 
-const BoxedTextInput = styled(TextInput)`
-  padding: 6px 6px;
-  border-radius: 4px;
-  flex-grow: 1;
-  &:focus {
-    background-color: ${({ theme }) => theme.DEPRECATED_THEME.colors.fg.white};
+const PermalinkRow = styled(Row)`
+  margin-bottom: 12px;
+
+  input {
+    color: ${({ theme }) => theme.colors.fg.tertiary};
+
+    :active,
+    :focus,
+    .${ThemeGlobals.FOCUS_VISIBLE_SELECTOR} {
+      color: ${({ theme }) => theme.colors.fg.primary};
+    }
   }
 `;
 
+const LinkContainer = styled.div`
+  margin-bottom: 16px;
+`;
+
 function SlugPanel() {
-  const { slug, link, permalinkConfig, updateStory } = useStory(
+  const {
+    slug: savedSlug,
+    link,
+    permalinkConfig,
+    updateStory,
+  } = useStory(
     ({
       state: {
         story: { slug = '', link, permalinkConfig },
@@ -56,25 +76,33 @@ function SlugPanel() {
       actions: { updateStory },
     }) => ({ slug, link, permalinkConfig, updateStory })
   );
+  const [slug, setSlug] = useState(savedSlug);
+
+  useEffect(() => {
+    /* Update shown slug when slug updates externally */
+    setSlug(savedSlug);
+  }, [savedSlug]);
 
   const updateSlug = useCallback(
-    (value, isEditing) => {
+    (value) => {
       const newSlug = value.slice(0, MIN_MAX.PERMALINK.MAX);
 
       updateStory({
-        properties: { slug: cleanForSlug(newSlug, isEditing) },
+        properties: { slug: cleanForSlug(newSlug) },
       });
     },
     [updateStory]
   );
 
-  const handleChange = useCallback((value) => updateSlug(value, true), [
-    updateSlug,
-  ]);
+  const handleChange = useCallback(
+    (evt) => setSlug(cleanForSlug(evt.target.value, true)),
+    []
+  );
 
-  const handleBlur = useCallback((evt) => updateSlug(evt.target.value, false), [
-    updateSlug,
-  ]);
+  const handleBlur = useCallback(
+    (evt) => updateSlug(evt.target.value),
+    [updateSlug]
+  );
 
   const displayLink =
     slug && permalinkConfig && inRange(slug.length, MIN_MAX.PERMALINK)
@@ -87,23 +115,28 @@ function SlugPanel() {
       title={__('Permalink', 'web-stories')}
       collapsedByDefault={false}
     >
-      <Row>
-        <BoxedTextInput
-          label={__('URL Slug', 'web-stories')}
-          value={slug}
+      <PermalinkRow>
+        <Input
+          value={String(slug)}
           onChange={handleChange}
           onBlur={handleBlur}
           placeholder={__('Enter slug', 'web-stories')}
           aria-label={__('URL slug', 'web-stories')}
           minLength={MIN_MAX.PERMALINK.MIN}
           maxLength={MIN_MAX.PERMALINK.MAX}
+          containerStyleOverride={inputContainerStyleOverride}
         />
-      </Row>
-      <HelperText>
-        <Link rel="noopener noreferrer" target="_blank" href={link}>
+      </PermalinkRow>
+      <LinkContainer>
+        <Link
+          rel="noopener noreferrer"
+          target="_blank"
+          href={link}
+          size={THEME_CONSTANTS.TYPOGRAPHY.PRESET_SIZES.SMALL}
+        >
           {displayLink}
         </Link>
-      </HelperText>
+      </LinkContainer>
     </SimplePanel>
   );
 }

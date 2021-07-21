@@ -18,18 +18,20 @@
  * External dependencies
  */
 import { useCallback, useState } from 'react';
-import styled, { css } from 'styled-components';
+import styled from 'styled-components';
 import PropTypes from 'prop-types';
-import { __, TranslateWithMarkup } from '@web-stories-wp/i18n';
+import { __, TranslateWithMarkup, sprintf } from '@web-stories-wp/i18n';
+import { PatternPropType } from '@web-stories-wp/patterns';
+import { Icons } from '@web-stories-wp/design-system';
 
 /**
  * Internal dependencies
  */
-import { Icons, DropDown } from '../../../../../../design-system';
 import { useStory } from '../../../../../app/story';
-import { PatternPropType } from '../../../../../types';
+import { Select } from '../../../../form';
 import { findMatchingColor } from '../utils';
 import { SAVED_COLOR_SIZE } from '../../../../../constants';
+import { focusStyle } from '../../../shared';
 import ColorGroup from './colorGroup';
 import useApplyColor from './useApplyColor';
 
@@ -46,24 +48,25 @@ const ActionsWrapper = styled.div`
 const AddColorPreset = styled.button`
   background: transparent;
   border: none;
-  color: ${({ theme }) => theme.DEPRECATED_THEME.colors.fg.secondary};
+  color: ${({ theme }) => theme.colors.fg.secondary};
   cursor: pointer;
   padding: 0;
   line-height: 20px;
   svg {
-    color: ${({ theme }) => theme.DEPRECATED_THEME.colors.fg.white};
+    color: ${({ theme }) => theme.colors.fg.secondary};
     width: 32px;
     height: 32px;
   }
+  ${focusStyle};
 `;
 
 const CtaWrapper = styled.div`
   font-size: 14px;
   line-height: 32px;
-  color: ${({ theme }) => theme.DEPRECATED_THEME.colors.fg.tertiary};
+  color: ${({ theme }) => theme.colors.fg.tertiary};
 
   svg {
-    color: ${({ theme }) => theme.DEPRECATED_THEME.colors.fg.white};
+    color: ${({ theme }) => theme.colors.standard.white};
     width: 32px;
     height: 32px;
     vertical-align: bottom;
@@ -71,25 +74,18 @@ const CtaWrapper = styled.div`
 `;
 
 const ColorsWrapper = styled.div`
-  margin-top: 10px;
   max-height: ${SAVED_COLOR_SIZE * 3 + 2 * COLOR_GAP}px;
+  padding: 4px;
+  margin: 6px 0 0 -4px;
+  width: calc(100% + 8px);
   overflow-x: hidden;
   overflow-y: auto;
 `;
 
 const DropDownWrapper = styled.div`
-  width: 145px;
   text-align: left;
   position: relative;
-`;
-
-const StyledDropDown = styled(DropDown)`
-  background-color: transparent;
-  border: 0;
-`;
-
-const menuStylesOverride = css`
-  top: -12px;
+  flex: 1 1 100%;
 `;
 
 const HeaderRow = styled.div`
@@ -103,10 +99,17 @@ const ButtonWrapper = styled.div`
 
 const Strong = styled.span`
   font-size: 24px;
-  color: ${({ theme }) => theme.DEPRECATED_THEME.colors.fg.white};
+  color: ${({ theme }) => theme.colors.standard.white};
 `;
 
-function ColorPresetActions({ color, pushUpdate }) {
+/**
+ * @param {Object} properties Properties.
+ * @param {Object} properties.color Current color.
+ * @param {Function} properties.pushUpdate Update function.
+ * @param {Function} properties.onAction Function called when user initiates an action.
+ * @return {*} Element.
+ */
+function ColorPresetActions({ color, pushUpdate, onAction }) {
   const [showLocalColors, setShowLocalColors] = useState(true);
   const {
     selectedElements,
@@ -164,6 +167,7 @@ function ColorPresetActions({ color, pushUpdate }) {
         updateStory({
           properties: newProps,
         });
+        onAction?.();
       }
     },
     [
@@ -174,6 +178,7 @@ function ColorPresetActions({ color, pushUpdate }) {
       isText,
       globalColors,
       updateStory,
+      onAction,
     ]
   );
 
@@ -193,16 +198,14 @@ function ColorPresetActions({ color, pushUpdate }) {
     <ActionsWrapper>
       <HeaderRow>
         <DropDownWrapper>
-          <StyledDropDown
+          <Select
             options={options}
             selectedValue={showLocalColors ? LOCAL : GLOBAL}
-            onMenuItemClick={(evt, value) =>
-              setShowLocalColors(value === LOCAL)
-            }
-            isInline
-            hasSearch={false}
+            onMenuItemClick={(evt, value) => {
+              setShowLocalColors(value === LOCAL);
+              onAction?.();
+            }}
             aria-label={__('Select color type', 'web-stories')}
-            menuStylesOverride={menuStylesOverride}
           />
         </DropDownWrapper>
         <ButtonWrapper>
@@ -232,7 +235,11 @@ function ColorPresetActions({ color, pushUpdate }) {
                 b: <Strong />,
               }}
             >
-              {__('Click <b>+</b> to save a color', 'web-stories')}
+              {sprintf(
+                /* translators: %s: "plus" icon. */
+                __('Click %s to save a color', 'web-stories'),
+                '<b>+</b>'
+              )}
             </TranslateWithMarkup>
           </CtaWrapper>
         )}
@@ -244,6 +251,7 @@ function ColorPresetActions({ color, pushUpdate }) {
 ColorPresetActions.propTypes = {
   color: PatternPropType,
   pushUpdate: PropTypes.func,
+  onAction: PropTypes.func,
 };
 
 export default ColorPresetActions;

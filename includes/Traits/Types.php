@@ -39,7 +39,7 @@ trait Types {
 	 *
 	 * @return array List of allowed file types.
 	 */
-	public function get_allowed_file_types() {
+	public function get_allowed_file_types() : array {
 		$allowed_mime_types = $this->get_allowed_mime_types();
 		$mime_types         = [];
 
@@ -50,8 +50,21 @@ trait Types {
 			}
 		}
 
+		return $this->get_file_type_exts( $mime_types );
+	}
+
+	/**
+	 * Returns a list of allowed file types.
+	 *
+	 * @since 1.5.0
+	 *
+	 * @param array $mime_types Array of mime types.
+	 *
+	 * @return array
+	 */
+	public function get_file_type_exts( array $mime_types = [] ) : array {
 		$allowed_file_types = [];
-		$all_mime_types     = wp_get_mime_types();
+		$all_mime_types     = get_allowed_mime_types();
 
 		foreach ( $all_mime_types as $ext => $mime ) {
 			if ( in_array( $mime, $mime_types, true ) ) {
@@ -70,9 +83,10 @@ trait Types {
 	 *
 	 * @return array List of allowed mime types.
 	 */
-	public function get_allowed_mime_types() {
+	public function get_allowed_mime_types() : array {
 		$default_allowed_mime_types = [
 			'image' => [
+				'image/webp',
 				'image/png',
 				'image/jpeg',
 				'image/jpg',
@@ -103,7 +117,7 @@ trait Types {
 			}
 
 			// Only add currently supported mime types.
-			$allowed_mime_types[ $media_type ] = array_values( array_intersect( $allowed_mime_types[ $media_type ], wp_get_mime_types() ) );
+			$allowed_mime_types[ $media_type ] = array_values( array_intersect( $allowed_mime_types[ $media_type ], get_allowed_mime_types() ) );
 		}
 
 		return $allowed_mime_types;
@@ -116,10 +130,11 @@ trait Types {
 	 *
 	 * @return array List of allowed mime types.
 	 */
-	public function get_allowed_image_mime_types() {
+	public function get_allowed_image_mime_types() : array {
 		$mime_type         = $this->get_allowed_mime_types();
 		$allowed_mime_type = $mime_type['image'];
 		$image_mime_type   = [
+			'image/webp',
 			'image/png',
 			'image/jpeg',
 			'image/jpg',
@@ -136,6 +151,35 @@ trait Types {
 		 */
 		$image_mime_type = apply_filters( 'web_stories_allowed_image_mime_types', $image_mime_type, $allowed_mime_type );
 
-		return array_intersect( $allowed_mime_type, $image_mime_type );
+		return array_values( array_intersect( $allowed_mime_type, $image_mime_type ) );
+	}
+
+	/**
+	 * Returns a list of transcodable mime types.
+	 *
+	 * @since 1.8.0
+	 *
+	 * @return array List of allowed transcodable mime types.
+	 */
+	public function get_allowed_transcodable_mime_types() : array {
+		return [
+			'video/3gpp',
+			'video/3gpp2',
+			'video/MP2T',
+			'video/mp4',
+			'video/mpeg',
+			'video/ogg',
+			'video/quicktime',
+			'video/webm',
+			'video/x-flv',
+			'video/x-h261',
+			'video/x-h263',
+			'video/x-m4v',
+			'video/x-matroska',
+			'video/x-mjpeg',
+			'video/x-ms-asf',
+			'video/x-msvideo',
+			'video/x-nut',
+		];
 	}
 }

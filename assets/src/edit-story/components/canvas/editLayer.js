@@ -19,14 +19,14 @@
  */
 import styled from 'styled-components';
 import { memo, useEffect, useRef } from 'react';
-import { __ } from '@web-stories-wp/i18n';
+import { _x } from '@web-stories-wp/i18n';
+import { useKeyDownEffect } from '@web-stories-wp/design-system';
 
 /**
  * Internal dependencies
  */
 import StoryPropTypes from '../../types';
 import { getDefinitionForType } from '../../elements';
-import { useKeyDownEffect } from '../../../design-system';
 import { useStory, useCanvas } from '../../app';
 import withOverlay from '../overlay/withOverlay';
 import EditElement from './editElement';
@@ -35,7 +35,7 @@ import useFocusCanvas from './useFocusCanvas';
 
 const LayerWithGrayout = styled(Layer)`
   background-color: ${({ grayout, theme }) =>
-    grayout ? theme.DEPRECATED_THEME.colors.grayout : 'transparent'};
+    grayout ? theme.colors.opacity.overlayDark : 'transparent'};
 `;
 
 const EditPageArea = withOverlay(PageArea);
@@ -84,7 +84,7 @@ function EditLayerForElement({ element }) {
   return (
     <LayerWithGrayout
       ref={ref}
-      aria-label={__('Edit layer', 'web-stories')}
+      aria-label={_x('Edit layer', 'compound noun', 'web-stories')}
       data-testid="editLayer"
       grayout={editModeGrayout}
       zIndex={Z_INDEX.EDIT}
@@ -94,7 +94,12 @@ function EditLayerForElement({ element }) {
         }
       }}
     >
-      <EditPageArea ref={pageAreaRef} showOverflow>
+      <EditPageArea
+        ref={pageAreaRef}
+        isControlled
+        showOverflow
+        overflow="visible"
+      >
         <EditElement element={element} />
       </EditPageArea>
     </LayerWithGrayout>

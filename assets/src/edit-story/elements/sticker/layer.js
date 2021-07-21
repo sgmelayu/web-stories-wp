@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 Google LLC
+ * Copyright 2021 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,29 +13,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+/**
+ * External dependencies
+ */
+import { __ } from '@web-stories-wp/i18n';
+import stickers from '@web-stories-wp/stickers';
 
 /**
  * Internal dependencies
  */
 import StoryPropTypes from '../../types';
-import stickers from '../../stickers';
-
-const style = {
-  display: 'block',
-  height: 20,
-  width: 'auto',
-};
-
-const Noop = () => null;
+import { LayerText } from '../shared/layerText';
 
 function StickerLayerContent({ element }) {
   const { sticker } = element;
-  const Sticker = stickers[sticker.type] || Noop;
-  return <Sticker style={style} />;
+  const layerTitle =
+    stickers[sticker?.type]?.title || __('Sticker', 'web-stories');
+  return <LayerText>{layerTitle}</LayerText>;
 }
-
 StickerLayerContent.propTypes = {
-  element: StoryPropTypes.elements.sticker.isRequired,
+  element: StoryPropTypes.element.isRequired,
 };
 
 export default StickerLayerContent;

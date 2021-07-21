@@ -19,15 +19,14 @@
  */
 import styled from 'styled-components';
 import { text } from '@storybook/addon-knobs';
-import { subMinutes } from '@web-stories-wp/date';
 
 /**
  * Internal dependencies
  */
 import { STORY_STATUS } from '../../../constants';
 import { STORYBOOK_PAGE_SIZE } from '../../../storybookUtils';
-import { CardGridItem, CardPreviewContainer, CardTitle } from '../../';
-import CardGrid from '../';
+import { CardGridItem, CardPreviewContainer, CardTitle } from '../..';
+import CardGrid from '..';
 
 export default {
   title: 'Dashboard/Components/CardGrid',
@@ -62,10 +61,11 @@ const StorybookGridItem = (
       title="Story Title"
       author={'Ron Weasley'}
       status={STORY_STATUS.DRAFT}
-      displayDate={subMinutes(Date.now(), 2)}
+      displayDate="2020-01-30"
       onEditCancel={() => {}}
       onEditComplete={() => {}}
       tabIndex={0}
+      id="id_1"
     />
   </CardGridItem>
 );

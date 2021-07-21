@@ -21,19 +21,22 @@ import PropTypes from 'prop-types';
 import { useCallback } from 'react';
 import styled from 'styled-components';
 import { __ } from '@web-stories-wp/i18n';
-
+import {
+  LockToggle as DefaultLockToggle,
+  NumericInput,
+} from '@web-stories-wp/design-system';
 /**
  * Internal dependencies
  */
 import { TurningLine } from '../../../../icons';
 import clamp from '../../../../utils/clamp';
 import { Row as DefaultRow, usePresubmitHandler } from '../../../form';
-import { useCommonObjectValue } from '../../shared';
-import { metricsForTextPadding } from '../../utils/metricsForTextPadding';
 import {
-  LockToggle as DefaultLockToggle,
-  NumericInput,
-} from '../../../../../design-system';
+  focusStyle,
+  inputContainerStyleOverride,
+  useCommonObjectValue,
+} from '../../shared';
+import { metricsForTextPadding } from '../../utils/metricsForTextPadding';
 import { MULTIPLE_DISPLAY_VALUE, MULTIPLE_VALUE } from '../../../../constants';
 import { getHiddenPadding, removeHiddenPadding } from './utils';
 
@@ -63,6 +66,7 @@ const LockToggle = styled(DefaultLockToggle)`
     right: 0;
     top: calc(100% - 8px);
   `}
+  ${focusStyle};
 `;
 
 const Row = styled(DefaultRow)`
@@ -139,8 +143,7 @@ function PaddingControls({
     ? {
         suffix: __('Padding', 'web-stories'),
         'aria-label': __('Padding', 'web-stories'),
-        onChange: (evt) => {
-          const value = Number(evt?.target?.value);
+        onChange: (evt, value) => {
           handleChange((el) => {
             return {
               horizontal: value + getHiddenPadding(el, 'horizontal'),
@@ -153,8 +156,7 @@ function PaddingControls({
     : {
         suffix: __('Horizontal padding', 'web-stories'),
         'aria-label': __('Horizontal padding', 'web-stories'),
-        onChange: (evt) => {
-          const value = Number(evt?.target?.value);
+        onChange: (evt, value) => {
           handleChange((el) => ({
             horizontal: value + getHiddenPadding(el, 'horizontal'),
           }));
@@ -173,6 +175,7 @@ function PaddingControls({
               : null
           }
           {...firstInputProperties}
+          containerStyleOverride={inputContainerStyleOverride}
         />
         {lockPadding && <Space />}
         <LockToggle
@@ -213,15 +216,13 @@ function PaddingControls({
             }
             suffix={__('Vertical padding', 'web-stories')}
             value={displayedPadding.vertical}
-            onChange={(evt) => {
-              const value = evt?.target?.value;
-              if (value) {
-                handleChange((el) => ({
-                  vertical: Number(value) + getHiddenPadding(el, 'vertical'),
-                }));
-              }
+            onChange={(evt, value) => {
+              handleChange((el) => ({
+                vertical: Number(value) + getHiddenPadding(el, 'vertical'),
+              }));
             }}
             aria-label={__('Vertical padding', 'web-stories')}
+            containerStyleOverride={inputContainerStyleOverride}
           />
           <IconWrapper>
             <TurningLine />

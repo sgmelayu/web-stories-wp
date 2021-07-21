@@ -24,9 +24,6 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 export default {
   rootDir: '../../',
-  transform: {
-    '^.+\\.[jt]sx?$': 'babel-jest',
-  },
   moduleNameMapper: {
     '\\.svg': join(__dirname, '/svgrMock.js'),
     '\\.css': join(__dirname, '/styleMock.js'),
@@ -37,6 +34,7 @@ export default {
     'jest-canvas-mock',
     'core-js',
   ],
+  testEnvironment: 'jsdom',
   testMatch: [
     '**/__tests__/**/*.[jt]s',
     '**/test/**/*.[jt]s',
@@ -68,5 +66,10 @@ export default {
     '!**/stories/**',
   ],
   modulePathIgnorePatterns: ['<rootDir>/build', '<rootDir>/vendor'],
-  reporters: [['jest-silent-reporter', { useDots: true, showWarnings: true }]],
+  reporters: [
+    [
+      'jest-silent-reporter',
+      { useDots: true, showWarnings: true, showPaths: true },
+    ],
+  ],
 };

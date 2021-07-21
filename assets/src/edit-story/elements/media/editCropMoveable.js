@@ -19,16 +19,16 @@
  */
 import PropTypes from 'prop-types';
 import { useEffect, useRef } from 'react';
+import { useUnits } from '@web-stories-wp/units';
+import { getFocalFromOffset } from '@web-stories-wp/media';
 
 /**
  * Internal dependencies
  */
 import Moveable from '../../components/moveable';
 import StoryPropTypes from '../../types';
-import { useUnits } from '../../units';
 import calcRotatedResizeOffset from '../../utils/calcRotatedResizeOffset';
 import getTransformFlip from '../shared/getTransformFlip';
-import getFocalFromOffset from './getFocalFromOffset';
 
 function EditCropMoveable({
   setProperties,
@@ -133,6 +133,8 @@ function EditCropMoveable({
           y: editorToDataY(y + dy),
           width: editorToDataX(resizeWidth),
           height: editorToDataY(resizeHeight),
+          resizeWidth,
+          resizeHeight,
           scale: resizeScale,
           focalX: flip?.horizontal ? 100 - resizeFocalX : resizeFocalX,
           focalY: flip?.vertical ? 100 - resizeFocalY : resizeFocalY,

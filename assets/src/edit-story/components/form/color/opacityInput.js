@@ -21,12 +21,13 @@ import { useState, useCallback, useEffect } from 'react';
 import styled from 'styled-components';
 import PropTypes from 'prop-types';
 import { _x, __ } from '@web-stories-wp/i18n';
+import { PatternPropType } from '@web-stories-wp/patterns';
+import { NumericInput } from '@web-stories-wp/design-system';
 
 /**
  * Internal dependencies
  */
-import { PatternPropType } from '../../../types';
-import { NumericInput } from '../../../../design-system';
+import { inputContainerStyleOverride } from '../../panels/shared';
 import getPreviewOpacity from './getPreviewOpacity';
 
 const Input = styled(NumericInput)`
@@ -41,11 +42,10 @@ function OpacityInput({ value, onChange }) {
 
   // Allow any input, but only persist non-NaN values up-chain
   const handleChange = useCallback(
-    (evt) => {
-      setInputValue(evt.target.value);
-      const val = parseInt(evt.target.value) / 100;
+    (evt, val) => {
+      setInputValue(val);
       if (!isNaN(val)) {
-        onChange(val);
+        onChange(val / 100);
       }
     },
     [onChange]
@@ -69,6 +69,7 @@ function OpacityInput({ value, onChange }) {
       max={100}
       allowEmpty={false}
       isFloat={false}
+      containerStyleOverride={inputContainerStyleOverride}
     />
   );
 }

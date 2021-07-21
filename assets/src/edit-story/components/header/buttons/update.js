@@ -18,22 +18,21 @@
  * External dependencies
  */
 import { __ } from '@web-stories-wp/i18n';
-
-/**
- * Internal dependencies
- */
-import { useStory, useLocalMedia, useHistory } from '../../../app';
-import { useMetaBoxes } from '../../../integrations/wordpress/metaBoxes';
 import {
   Button,
   BUTTON_SIZES,
   BUTTON_TYPES,
   BUTTON_VARIANTS,
   useGlobalKeyDownEffect,
-  Tooltip,
-  TOOLTIP_PLACEMENT,
   Icons,
-} from '../../../../design-system';
+} from '@web-stories-wp/design-system';
+
+/**
+ * Internal dependencies
+ */
+import { useStory, useLocalMedia, useHistory } from '../../../app';
+import { useMetaBoxes } from '../../../integrations/wordpress/metaBoxes';
+import Tooltip from '../../tooltip';
 import ButtonWithChecklistWarning from './buttonWithChecklistWarning';
 
 function Update() {
@@ -85,10 +84,10 @@ function Update() {
     default:
       text = __('Save draft', 'web-stories');
       return (
-        <Tooltip title={text} placement={TOOLTIP_PLACEMENT.BOTTOM} hasTail>
+        <Tooltip title={text} hasTail>
           <Button
             variant={BUTTON_VARIANTS.SQUARE}
-            type={BUTTON_TYPES.TERTIARY}
+            type={BUTTON_TYPES.QUATERNARY}
             size={BUTTON_SIZES.SMALL}
             onClick={() => saveStory({ status: 'draft' })}
             disabled={!isEnabled}

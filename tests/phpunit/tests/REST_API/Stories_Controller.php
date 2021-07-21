@@ -17,18 +17,19 @@
 
 namespace Google\Web_Stories\Tests\REST_API;
 
-use Google\Web_Stories\Experiments;
 use Google\Web_Stories\Settings;
-use Google\Web_Stories\Story_Post_Type;
-use Google\Web_Stories\Tests\Kses_Setup;
+use Google\Web_Stories\Tests\Test_REST_TestCase;
 use Spy_REST_Server;
 use WP_REST_Request;
 
 /**
+ * Class Stories_Controller
+ *
+ * @package Google\Web_Stories\Tests\REST_API
+ *
  * @coversDefaultClass \Google\Web_Stories\REST_API\Stories_Controller
  */
-class Stories_Controller extends \WP_Test_REST_TestCase {
-	use Kses_Setup;
+class Stories_Controller extends Test_REST_TestCase {
 
 	protected $server;
 
@@ -132,11 +133,7 @@ class Stories_Controller extends \WP_Test_REST_TestCase {
 		$wp_rest_server = new Spy_REST_Server();
 		do_action( 'rest_api_init', $wp_rest_server );
 
-		$experiments = $this->createMock( \Google\Web_Stories\Experiments::class );
-		$meta_boxes  = $this->createMock( \Google\Web_Stories\Meta_Boxes::class );
-
-		$story_post_type = new Story_Post_type( $experiments, $meta_boxes );
-		$story_post_type->add_caps_to_roles();
+		$this->add_caps_to_roles();
 
 		$this->set_permalink_structure( '/%postname%/' );
 	}
@@ -146,11 +143,7 @@ class Stories_Controller extends \WP_Test_REST_TestCase {
 		global $wp_rest_server;
 		$wp_rest_server = null;
 
-		$experiments = $this->createMock( \Google\Web_Stories\Experiments::class );
-		$meta_boxes  = $this->createMock( \Google\Web_Stories\Meta_Boxes::class );
-
-		$story_post_type = new Story_Post_type( $experiments, $meta_boxes );
-		$story_post_type->remove_caps_from_roles();
+		$this->remove_caps_from_roles();
 
 		$this->set_permalink_structure( '' );
 
@@ -215,6 +208,32 @@ class Stories_Controller extends \WP_Test_REST_TestCase {
 		$this->assertArrayHasKey( 'preview_link', $data );
 		$view_link = get_preview_post_link( $story );
 		$this->assertSame( $view_link, $data['preview_link'] );
+		$this->assertArrayHasKey( 'edit_link', $data );
+		$edit_link = get_edit_post_link( $story, 'rest-api' );
+		$this->assertSame( $edit_link, $data['edit_link'] );
+		$this->assertArrayHasKey( 'embed_post_link', $data );
+		$this->assertContains( (string) $story, $data['embed_post_link'] );
+	}
+
+	/**
+	 * @covers ::get_item
+	 * @covers ::prepare_item_for_response
+	 */
+	public function test_get_item_no_user() {
+		$story = self::factory()->post->create(
+			[
+				'post_type'   => \Google\Web_Stories\Story_Post_Type::POST_TYPE_SLUG,
+				'post_status' => 'publish',
+				'post_author' => self::$user_id,
+			]
+		);
+		wp_set_current_user( 0 );
+		$request  = new WP_REST_Request( \WP_REST_Server::READABLE, '/web-stories/v1/web-story/' . $story );
+		$response = rest_get_server()->dispatch( $request );
+		$data     = $response->get_data();
+		$this->assertArrayNotHasKey( 'edit_link', $data );
+		$this->assertArrayNotHasKey( 'preview_link', $data );
+		$this->assertArrayNotHasKey( 'embed_post_link', $data );
 	}
 
 
@@ -242,6 +261,34 @@ class Stories_Controller extends \WP_Test_REST_TestCase {
 		$slug         = $story_object->post_name;
 		$this->assertContains( $slug, $data['preview_link'] );
 	}
+
+	/**
+	 * @covers ::get_item
+	 * @covers ::prepare_item_for_response
+	 * @covers \Google\Web_Stories\REST_API\Stories_Base_Controller::prepare_links
+	 */
+	public function test_get_item_lock() {
+		wp_set_current_user( self::$user_id );
+		$future_date = strtotime( '+1 day' );
+		$story       = self::factory()->post->create(
+			[
+				'post_type'   => \Google\Web_Stories\Story_Post_Type::POST_TYPE_SLUG,
+				'post_status' => 'future',
+				'post_date'   => strftime( '%Y-%m-%d %H:%M:%S', $future_date ),
+				'post_author' => self::$user_id,
+			]
+		);
+		$new_lock    = ( time() - 100 ) . ':' . self::$user_id;
+		update_post_meta( $story, '_edit_lock', $new_lock );
+		$request  = new WP_REST_Request( \WP_REST_Server::READABLE, '/web-stories/v1/web-story/' . $story );
+		$response = rest_get_server()->dispatch( $request );
+		$links    = $response->get_links();
+
+		$this->assertArrayHasKey( 'https://api.w.org/lockuser', $links );
+		$this->assertArrayHasKey( 'https://api.w.org/lock', $links );
+	}
+
+
 	/**
 	 * @covers ::get_items
 	 */
@@ -368,8 +415,8 @@ class Stories_Controller extends \WP_Test_REST_TestCase {
 
 		$this->kses_int();
 
-		$unsanitized_content    = file_get_contents( __DIR__ . '/../../data/story_post_content.html' );
-		$unsanitized_story_data = json_decode( file_get_contents( __DIR__ . '/../../data/story_post_content_filtered.json' ), true );
+		$unsanitized_content    = file_get_contents( WEB_STORIES_TEST_DATA_DIR . '/story_post_content.html' );
+		$unsanitized_story_data = json_decode( file_get_contents( WEB_STORIES_TEST_DATA_DIR . '/story_post_content_filtered.json' ), true );
 
 		$request = new WP_REST_Request( \WP_REST_Server::CREATABLE, '/web-stories/v1/web-story' );
 		$request->set_body_params(
@@ -395,8 +442,8 @@ class Stories_Controller extends \WP_Test_REST_TestCase {
 		wp_set_current_user( self::$author_id );
 		$this->kses_int();
 
-		$unsanitized_content    = file_get_contents( __DIR__ . '/../../data/story_post_content.html' );
-		$unsanitized_story_data = json_decode( file_get_contents( __DIR__ . '/../../data/story_post_content_filtered.json' ), true );
+		$unsanitized_content    = file_get_contents( WEB_STORIES_TEST_DATA_DIR . '/story_post_content.html' );
+		$unsanitized_story_data = json_decode( file_get_contents( WEB_STORIES_TEST_DATA_DIR . '/story_post_content_filtered.json' ), true );
 
 		$story = self::factory()->post->create(
 			[
@@ -426,8 +473,8 @@ class Stories_Controller extends \WP_Test_REST_TestCase {
 		wp_set_current_user( self::$user_id );
 		$this->kses_int();
 
-		$unsanitized_content    = file_get_contents( __DIR__ . '/../../data/story_post_content.html' );
-		$unsanitized_story_data = json_decode( file_get_contents( __DIR__ . '/../../data/story_post_content_filtered.json' ), true );
+		$unsanitized_content    = file_get_contents( WEB_STORIES_TEST_DATA_DIR . '/story_post_content.html' );
+		$unsanitized_story_data = json_decode( file_get_contents( WEB_STORIES_TEST_DATA_DIR . '/story_post_content_filtered.json' ), true );
 
 		$story = self::factory()->post->create(
 			[
@@ -438,7 +485,7 @@ class Stories_Controller extends \WP_Test_REST_TestCase {
 		update_option( Settings::SETTING_NAME_ACTIVE_PUBLISHER_LOGO, 0, false );
 		update_option( Settings::SETTING_NAME_PUBLISHER_LOGOS, [], false );
 
-		$attachment_id = self::factory()->attachment->create_upload_object( __DIR__ . '/../../data/attachment.jpg', 0 );
+		$attachment_id = self::factory()->attachment->create_upload_object( WEB_STORIES_TEST_DATA_DIR . '/attachment.jpg', 0 );
 
 		$request = new WP_REST_Request( \WP_REST_Server::CREATABLE, '/web-stories/v1/web-story/' . $story );
 		$request->set_body_params(

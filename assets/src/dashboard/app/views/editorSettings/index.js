@@ -18,32 +18,26 @@
  * External dependencies
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useFeature } from 'flagged';
 import { __, sprintf } from '@web-stories-wp/i18n';
+import { Text, THEME_CONSTANTS } from '@web-stories-wp/design-system';
 
 /**
  * Internal dependencies
  */
-import {
-  Dialog,
-  Button,
-  BUTTON_TYPES,
-  BUTTON_SIZES,
-} from '../../../../design-system';
 import useApi from '../../api/useApi';
-import { Layout } from '../../../components';
+import { Dialog, Layout } from '../../../components';
 import { MIN_IMG_WIDTH, MIN_IMG_HEIGHT } from '../../../constants';
 import { useConfig } from '../../config';
 import { PageHeading } from '../shared';
 import useTelemetryOptIn from '../shared/useTelemetryOptIn';
 import useMediaOptimization from '../shared/useMediaOptimization';
-import { DashboardSnackbar } from '..';
 import GoogleAnalyticsSettings from './googleAnalytics';
 import { Main, Wrapper } from './components';
 import AdManagement from './adManagement';
 import PublisherLogoSettings from './publisherLogo';
 import TelemetrySettings from './telemetry';
 import MediaOptimizationSettings from './mediaOptimization';
+import VideoCacheSettings from './videoCache';
 
 const ACTIVE_DIALOG_REMOVE_LOGO = 'REMOVE_LOGO';
 
@@ -63,6 +57,7 @@ function EditorSettings() {
     mediaById,
     newlyCreatedMediaIds,
     publisherLogoIds,
+    videoCache,
   } = useApi(
     ({
       actions: {
@@ -78,6 +73,7 @@ function EditorSettings() {
           adNetwork,
           publisherLogoIds,
           activePublisherLogoId,
+          videoCache,
         },
         media: { isLoading: isMediaLoading, mediaById, newlyCreatedMediaIds },
       },
@@ -96,6 +92,7 @@ function EditorSettings() {
       mediaById,
       newlyCreatedMediaIds,
       publisherLogoIds,
+      videoCache,
     })
   );
 
@@ -118,8 +115,6 @@ function EditorSettings() {
     toggleWebStoriesMediaOptimization,
     mediaOptimization,
   } = useMediaOptimization();
-
-  const videoOptimization = useFeature('videoOptimization');
 
   const [activeDialog, setActiveDialog] = useState(null);
   const [activeLogo, setActiveLogo] = useState('');
@@ -376,11 +371,17 @@ function EditorSettings() {
               onCheckboxSelected={toggleWebStoriesTrackingOptIn}
               selected={optedIn}
             />
-            {videoOptimization && canUploadFiles && (
+            {canUploadFiles && (
               <MediaOptimizationSettings
                 disabled={disableMediaOptimization}
                 onCheckboxSelected={toggleWebStoriesMediaOptimization}
                 selected={mediaOptimization}
+              />
+            )}
+            {canManageSettings && (
+              <VideoCacheSettings
+                isEnabled={videoCache}
+                updateSettings={updateSettings}
               />
             )}
             {canManageSettings && (
@@ -390,13 +391,11 @@ function EditorSettings() {
                 publisherId={adSensePublisherId}
                 adSenseSlotId={adSenseSlotId}
                 adManagerSlotId={adManagerSlotId}
+                siteKitStatus={siteKitStatus}
               />
             )}
           </Main>
         </Layout.Scrollable>
-        <Layout.Fixed>
-          <DashboardSnackbar />
-        </Layout.Fixed>
       </Wrapper>
 
       <Dialog
@@ -407,29 +406,16 @@ function EditorSettings() {
         )}
         title={__('Are you sure you want to remove this logo?', 'web-stories')}
         onClose={() => setActiveDialog(null)}
-        actions={
-          <>
-            <Button
-              type={BUTTON_TYPES.TERTIARY}
-              onClick={() => setActiveDialog(null)}
-              size={BUTTON_SIZES.SMALL}
-            >
-              {__('Cancel', 'web-stories')}
-            </Button>
-            <Button
-              type={BUTTON_TYPES.PRIMARY}
-              onClick={handleDialogConfirmRemoveLogo}
-              size={BUTTON_SIZES.SMALL}
-            >
-              {__('Delete Logo', 'web-stories')}
-            </Button>
-          </>
-        }
+        secondaryText={__('Cancel', 'web-stories')}
+        onPrimary={handleDialogConfirmRemoveLogo}
+        primaryText={__('Delete Logo', 'web-stories')}
       >
-        {__(
-          'The logo will be removed from any stories that currently use it as their publisher logo.',
-          'web-stories'
-        )}
+        <Text size={THEME_CONSTANTS.TYPOGRAPHY.PRESET_SIZES.SMALL}>
+          {__(
+            'The logo will be removed from any stories that currently use it as their publisher logo.',
+            'web-stories'
+          )}
+        </Text>
       </Dialog>
     </Layout.Provider>
   );

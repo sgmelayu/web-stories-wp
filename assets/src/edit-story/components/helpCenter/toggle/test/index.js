@@ -16,35 +16,34 @@
 /**
  * External dependencies
  */
-import { fireEvent } from '@testing-library/react';
+import { fireEvent, screen } from '@testing-library/react';
+import { renderWithProviders } from '@web-stories-wp/design-system/src/testUtils';
+
 /**
  * Internal dependencies
  */
-import { renderWithProviders } from '../../../../../design-system/testUtils/renderWithProviders';
 import { Toggle } from '..';
 
 describe('help center toggle <Toggle />', () => {
   it('should render', () => {
-    const { getByRole } = renderWithProviders(<Toggle />);
+    renderWithProviders(<Toggle />);
 
-    const toggle = getByRole('button');
+    const toggle = screen.getByRole('button');
     expect(toggle).toBeInTheDocument();
   });
 
   it('should have propper aria attributes when closed', () => {
-    const { getByRole } = renderWithProviders(<Toggle />);
+    renderWithProviders(<Toggle />);
 
-    const toggle = getByRole('button');
+    const toggle = screen.getByRole('button');
     expect(toggle).toHaveAttribute('aria-haspopup');
   });
 
   it('should have propper aria attributes when open', () => {
     const popupId = 'id-for-popup';
-    const { getByRole } = renderWithProviders(
-      <Toggle isOpen popupId={popupId} />
-    );
+    renderWithProviders(<Toggle isOpen popupId={popupId} />);
 
-    const toggle = getByRole('button');
+    const toggle = screen.getByRole('button');
     expect(toggle).toHaveAttribute('aria-expanded');
     expect(toggle).toHaveAttribute('aria-pressed');
     expect(toggle).toHaveAttribute('aria-owns', popupId);
@@ -52,9 +51,9 @@ describe('help center toggle <Toggle />', () => {
 
   it('should fire onClick event when clicked', () => {
     const onClickMock = jest.fn();
-    const { getByRole } = renderWithProviders(<Toggle onClick={onClickMock} />);
+    renderWithProviders(<Toggle onClick={onClickMock} />);
 
-    const toggle = getByRole('button');
+    const toggle = screen.getByRole('button');
     fireEvent.click(toggle);
     expect(onClickMock).toHaveBeenCalledTimes(1);
   });

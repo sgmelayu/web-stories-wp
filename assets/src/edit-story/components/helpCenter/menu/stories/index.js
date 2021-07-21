@@ -19,11 +19,12 @@
 import styled, { ThemeProvider } from 'styled-components';
 import { useState } from 'react';
 import { TransitionGroup } from 'react-transition-group';
+import { theme as dsTheme, ThemeGlobals } from '@web-stories-wp/design-system';
+
 /**
  * Internal dependencies
  */
 import { Menu as HelpCenterMenu } from '..';
-import { theme as dsTheme, ThemeGlobals } from '../../../../../design-system';
 
 export default {
   title: 'Stories Editor/Components/Help Center/Menu',
@@ -48,7 +49,7 @@ export const Menu = () => {
   const [mounted, setMounted] = useState(true);
   return (
     <ThemeProvider theme={dsTheme}>
-      <ThemeGlobals.OverrideFocusOutline />
+      <ThemeGlobals.Styles />
       <button onClick={() => setMounted((v) => !v)}>
         {mounted ? 'unmount' : 'mount'}
       </button>

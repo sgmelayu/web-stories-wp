@@ -24,10 +24,20 @@ import { render } from '@testing-library/react';
  */
 import Save from '../save';
 
+jest.mock('@wordpress/element', () => {
+  const originalModule = jest.requireActual('react');
+  return {
+    ...originalModule,
+    concatChildren: jest.fn(),
+  };
+});
+
 const url =
   'https://preview.amp.dev/documentation/examples/introduction/stories_in_amp';
 const title = 'Stories in AMP';
 const poster = 'https://amp.dev/static/samples/img/story_dog2_portrait.jpg';
+
+/* eslint-disable testing-library/no-node-access */
 
 describe('save', () => {
   it('should add alignnone class by default', () => {
@@ -73,3 +83,5 @@ describe('save', () => {
     expect(container.firstChild).toMatchInlineSnapshot(`null`);
   });
 });
+
+/* eslint-enable testing-library/no-node-access */

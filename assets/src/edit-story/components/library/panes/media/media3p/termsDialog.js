@@ -17,10 +17,9 @@
  * External dependencies
  */
 import { useState, useEffect, useCallback } from 'react';
-import styled from 'styled-components';
 import { __, TranslateWithMarkup } from '@web-stories-wp/i18n';
 import { trackClick, trackEvent } from '@web-stories-wp/tracking';
-
+import { Text, Link, THEME_CONSTANTS } from '@web-stories-wp/design-system';
 /**
  * Internal dependencies
  */
@@ -28,15 +27,6 @@ import localStore, {
   LOCAL_STORAGE_PREFIX,
 } from '../../../../../utils/localStore';
 import Dialog from '../../../../dialog';
-import { Plain } from '../../../../button';
-
-const Paragraph = styled.p`
-  font-family: ${({ theme }) => theme.DEPRECATED_THEME.fonts.body1.family};
-  font-size: ${({ theme }) => theme.DEPRECATED_THEME.fonts.body1.size};
-  line-height: ${({ theme }) => theme.DEPRECATED_THEME.fonts.body1.lineHeight};
-  letter-spacing: ${({ theme }) =>
-    theme.DEPRECATED_THEME.fonts.body1.letterSpacing};
-`;
 
 const TERMS_URL = 'https://wp.stories.google/docs#Terms';
 
@@ -67,19 +57,19 @@ function TermsDialog() {
 
   return (
     <Dialog
-      open={dialogOpen}
+      isOpen={dialogOpen}
+      contentLabel={__('Third party stock content terms', 'web-stories')}
       onClose={acknowledgeTerms}
       ariaHideApp={false}
-      actions={
-        <Plain onClick={acknowledgeTerms}>{__('Dismiss', 'web-stories')}</Plain>
-      }
+      onPrimary={acknowledgeTerms}
+      primaryText={__('Dismiss', 'web-stories')}
     >
-      <Paragraph>
+      <Text size={THEME_CONSTANTS.TYPOGRAPHY.PRESET_SIZES.SMALL}>
         <TranslateWithMarkup
           mapping={{
             a: (
-              //eslint-disable-next-line jsx-a11y/anchor-has-content
-              <a
+              <Link
+                size={THEME_CONSTANTS.TYPOGRAPHY.PRESET_SIZES.SMALL}
                 href={TERMS_URL}
                 rel="noreferrer"
                 target="_blank"
@@ -97,7 +87,7 @@ function TermsDialog() {
             'web-stories'
           )}
         </TranslateWithMarkup>
-      </Paragraph>
+      </Text>
     </Dialog>
   );
 }

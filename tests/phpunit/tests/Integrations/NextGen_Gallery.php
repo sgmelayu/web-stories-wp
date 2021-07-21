@@ -18,17 +18,18 @@
 namespace Google\Web_Stories\Tests\Integrations;
 
 use Google\Web_Stories\Story_Post_Type;
+use Google\Web_Stories\Tests\Test_Case;
 
 /**
  * @coversDefaultClass \Google\Web_Stories\Integrations\NextGen_Gallery
  */
-class NextGen_Gallery extends \WP_UnitTestCase {
+class NextGen_Gallery extends Test_Case {
 	/**
-	 * @covers ::init
+	 * @covers ::register
 	 */
-	public function test_init() {
+	public function test_register() {
 		$nextgen_gallery = new \Google\Web_Stories\Integrations\NextGen_Gallery();
-		$nextgen_gallery->init();
+		$nextgen_gallery->register();
 
 		$this->assertSame( PHP_INT_MAX, has_filter( 'run_ngg_resource_manager', [ $nextgen_gallery, 'filter_run_ngg_resource_manager' ] ) );
 	}

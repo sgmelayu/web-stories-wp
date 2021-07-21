@@ -18,12 +18,11 @@
  * External dependencies
  */
 import { object, boolean } from '@storybook/addon-knobs';
-import { FlagsProvider } from 'flagged';
 
 /**
  * Internal dependencies
  */
-import ColorPicker from '../';
+import ColorPicker from '..';
 
 export default {
   title: 'Stories Editor/Components/Color Picker',
@@ -48,19 +47,15 @@ export const _default = () => {
       },
     ],
   });
-
-  const eyeDropper = boolean('Enable Eyedropper', false);
   const hasGradient = boolean('Has Gradients', false);
   const hasOpacity = boolean('Has Opacity', true);
 
   return (
-    <FlagsProvider features={{ eyeDropper }}>
-      <ColorPicker
-        color={initialColor}
-        onChange={() => {}}
-        hasGradient={hasGradient}
-        hasOpacity={hasOpacity}
-      />
-    </FlagsProvider>
+    <ColorPicker
+      color={initialColor}
+      onChange={() => {}}
+      hasGradient={hasGradient}
+      hasOpacity={hasOpacity}
+    />
   );
 };

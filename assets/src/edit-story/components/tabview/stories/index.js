@@ -20,12 +20,11 @@
 import { useState } from 'react';
 import PropTypes from 'prop-types';
 import styled from 'styled-components';
-
+import { Icons, Text } from '@web-stories-wp/design-system';
 /**
  * Internal dependencies
  */
-import { Icons, Text } from '../../../../design-system';
-import TabView from '../';
+import TabView from '..';
 
 const Wrapper = styled.div`
   display: grid;

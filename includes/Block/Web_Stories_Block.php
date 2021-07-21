@@ -30,14 +30,14 @@ use Google\Web_Stories\Embed_Base;
 use Google\Web_Stories\Story_Query;
 use Google\Web_Stories\Tracking;
 use Google\Web_Stories\Story_Post_Type;
+use Google\Web_Stories\Traits\Post_Type;
 use Google\Web_Stories\Traits\Stories_Script_Data;
-use WP_Post_Type;
 
 /**
  * Latest Stories block class.
  */
 class Web_Stories_Block extends Embed_Base {
-	use Stories_Script_Data;
+	use Stories_Script_Data, Post_Type;
 
 	/**
 	 * Script handle.
@@ -45,13 +45,6 @@ class Web_Stories_Block extends Embed_Base {
 	 * @var string
 	 */
 	const SCRIPT_HANDLE = 'web-stories-block';
-
-	/**
-	 * Block name.
-	 *
-	 * @var string
-	 */
-	const BLOCK_NAME = 'web-stories/embed';
 
 	/**
 	 * Current block's block attributes.
@@ -74,9 +67,11 @@ class Web_Stories_Block extends Embed_Base {
 	 *
 	 * @return void
 	 */
-	public function init() {
-		$this->register_script( self::SCRIPT_HANDLE, [ Embed_Base::STORY_PLAYER_HANDLE, Tracking::SCRIPT_HANDLE ] );
-		$this->register_style( self::SCRIPT_HANDLE, [ Embed_Base::STORY_PLAYER_HANDLE, Embed_Base::SCRIPT_HANDLE ] );
+	public function register() {
+		parent::register();
+		$player_handle = $this->amp_story_player_assets->get_handle();
+		$this->assets->register_script_asset( self::SCRIPT_HANDLE, [ $player_handle, Tracking::SCRIPT_HANDLE ] );
+		$this->assets->register_style_asset( self::SCRIPT_HANDLE, [ $player_handle, parent::SCRIPT_HANDLE ] );
 
 		wp_localize_script(
 			self::SCRIPT_HANDLE,
@@ -84,10 +79,22 @@ class Web_Stories_Block extends Embed_Base {
 			$this->get_script_settings()
 		);
 
+		$this->register_block_type();
+	}
+
+	/**
+	 * Registers a block type from metadata stored in the `block.json` file.
+	 *
+	 * @since 1.9.0
+	 *
+	 * @return void
+	 */
+	protected function register_block_type() {
+		$base_path = $this->assets->get_base_path( 'blocks/embed/block.json' );
 		// Note: does not use 'script' and 'style' args, and instead uses 'render_callback'
 		// to enqueue these assets only when needed.
-		register_block_type(
-			self::BLOCK_NAME,
+		register_block_type_from_metadata(
+			$base_path,
 			[
 				'attributes'      => [
 					'blockType'        => [
@@ -174,28 +181,13 @@ class Web_Stories_Block extends Embed_Base {
 	 *
 	 * @return array Script settings.
 	 */
-	private function get_script_settings() {
-		$rest_base        = Story_Post_Type::POST_TYPE_SLUG;
-		$post_type_object = get_post_type_object( Story_Post_Type::POST_TYPE_SLUG );
-
-		if ( $post_type_object instanceof WP_Post_Type ) {
-			$rest_base = ! empty( $post_type_object->rest_base ) ? $post_type_object->rest_base : $post_type_object->name;
-		}
-
-		$edit_story_url = admin_url(
-			add_query_arg(
-				[
-					'action' => 'edit',
-				],
-				'post.php'
-			)
-		);
+	private function get_script_settings(): array {
+		$rest_base = $this->get_post_type_rest_base( Story_Post_Type::POST_TYPE_SLUG );
 
 		$settings = [
-			'publicPath' => WEBSTORIES_PLUGIN_DIR_URL . 'assets/js/',
+			'publicPath' => $this->assets->get_base_url( 'assets/js/' ),
 			'config'     => [
 				'maxNumOfStories' => self::MAX_NUM_OF_STORIES,
-				'editStoryURL'    => $edit_story_url,
 				'archiveURL'      => get_post_type_archive_link( Story_Post_Type::POST_TYPE_SLUG ),
 				'api'             => [
 					'stories' => sprintf( '/web-stories/v1/%s', $rest_base ),
@@ -222,7 +214,7 @@ class Web_Stories_Block extends Embed_Base {
 	 *
 	 * @return bool Whether or not block attributes have been initialized with given value.
 	 */
-	protected function initialize_block_attributes( $block_attributes = [] ) {
+	protected function initialize_block_attributes( array $block_attributes = [] ): bool {
 		if ( ! empty( $block_attributes ) && is_array( $block_attributes ) ) {
 			$this->block_attributes = $block_attributes;
 			return true;
@@ -239,7 +231,7 @@ class Web_Stories_Block extends Embed_Base {
 	 *
 	 * @return string Rendered block type output.*
 	 */
-	public function render_block( array $attributes ) {
+	public function render_block( array $attributes ): string {
 
 		if ( false === $this->initialize_block_attributes( $attributes ) ) {
 			return '';
@@ -279,7 +271,7 @@ class Web_Stories_Block extends Embed_Base {
 	 *
 	 * @return array
 	 */
-	public function get_mapped_field_states() {
+	public function get_mapped_field_states(): array {
 		$controls = [
 			'show_title'        => 'title',
 			'show_author'       => 'author',
@@ -294,7 +286,7 @@ class Web_Stories_Block extends Embed_Base {
 		foreach ( $controls as $control => $field ) {
 			$key = 'show_' . $field;
 
-			$controls_state[ $control ] = isset( $this->block_attributes['fieldState'][ $key ] ) ? $this->block_attributes['fieldState'][ $key ] : false;
+			$controls_state[ $control ] = $this->block_attributes['fieldState'][ $key ] ?? false;
 		}
 
 		return $controls_state;
@@ -307,7 +299,7 @@ class Web_Stories_Block extends Embed_Base {
 	 *
 	 * @return array Query arguments.
 	 */
-	protected function get_query_args() {
+	protected function get_query_args(): array {
 
 		$attributes = $this->block_attributes;
 
@@ -342,5 +334,4 @@ class Web_Stories_Block extends Embed_Base {
 
 		return $query_args;
 	}
-
 }

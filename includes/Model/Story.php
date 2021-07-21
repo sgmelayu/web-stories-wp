@@ -27,7 +27,7 @@
 namespace Google\Web_Stories\Model;
 
 use Google\Web_Stories\Story_Post_Type;
-use Google\Web_Stories\Media;
+use Google\Web_Stories\Media\Media;
 use WP_Post;
 
 /**
@@ -75,18 +75,6 @@ class Story {
 	 * @var string
 	 */
 	protected $poster_portrait;
-	/**
-	 * Poster url - landscape.
-	 *
-	 * @var string
-	 */
-	protected $poster_landscape;
-	/**
-	 * Poster url - square.
-	 *
-	 * @var string
-	 */
-	protected $poster_square;
 
 	/**
 	 * Date for the story.
@@ -126,7 +114,7 @@ class Story {
 	 *
 	 * @return bool
 	 */
-	public function load_from_post( $_post ) {
+	public function load_from_post( $_post ): bool {
 		$post = get_post( $_post );
 
 		if ( ! $post instanceof WP_Post || Story_Post_Type::POST_TYPE_SLUG !== $post->post_type ) {
@@ -142,9 +130,7 @@ class Story {
 		$thumbnail_id = (int) get_post_thumbnail_id( $post );
 
 		if ( 0 !== $thumbnail_id ) {
-			$this->poster_portrait  = (string) wp_get_attachment_image_url( $thumbnail_id, Media::POSTER_PORTRAIT_IMAGE_SIZE );
-			$this->poster_square    = (string) wp_get_attachment_image_url( $thumbnail_id, Media::POSTER_SQUARE_IMAGE_SIZE );
-			$this->poster_landscape = (string) wp_get_attachment_image_url( $thumbnail_id, Media::POSTER_LANDSCAPE_IMAGE_SIZE );
+			$this->poster_portrait = (string) wp_get_attachment_image_url( $thumbnail_id, Media::POSTER_PORTRAIT_IMAGE_SIZE );
 		}
 
 		return true;
@@ -157,8 +143,8 @@ class Story {
 	 *
 	 * @return string
 	 */
-	public function get_title() {
-		return $this->title;
+	public function get_title(): string {
+		return (string) $this->title;
 	}
 
 	/**
@@ -166,8 +152,8 @@ class Story {
 	 *
 	 * @return string
 	 */
-	public function get_excerpt() {
-		return $this->excerpt;
+	public function get_excerpt(): string {
+		return (string) $this->excerpt;
 	}
 
 	/**
@@ -177,8 +163,8 @@ class Story {
 	 *
 	 * @return string
 	 */
-	public function get_url() {
-		return $this->url;
+	public function get_url(): string {
+		return (string) $this->url;
 	}
 
 	/**
@@ -188,8 +174,8 @@ class Story {
 	 *
 	 * @return string
 	 */
-	public function get_markup() {
-		return $this->markup;
+	public function get_markup(): string {
+		return (string) $this->markup;
 	}
 
 	/**
@@ -199,30 +185,8 @@ class Story {
 	 *
 	 * @return string
 	 */
-	public function get_poster_portrait() {
-		return $this->poster_portrait;
-	}
-
-	/**
-	 * Getter for poster landscape attribute.
-	 *
-	 * @since 1.0.0
-	 *
-	 * @return string
-	 */
-	public function get_poster_landscape() {
-		return $this->poster_landscape;
-	}
-
-	/**
-	 * Getter for poster square attribute.
-	 *
-	 * @since 1.0.0
-	 *
-	 * @return string
-	 */
-	public function get_poster_square() {
-		return $this->poster_square;
+	public function get_poster_portrait(): string {
+		return (string) $this->poster_portrait;
 	}
 
 	/**
@@ -230,8 +194,8 @@ class Story {
 	 *
 	 * @return int
 	 */
-	public function get_id() {
-		return $this->id;
+	public function get_id(): int {
+		return (int) $this->id;
 	}
 
 	/**
@@ -239,8 +203,8 @@ class Story {
 	 *
 	 * @return string
 	 */
-	public function get_author() {
-		return $this->author;
+	public function get_author(): string {
+		return (string) $this->author;
 	}
 
 	/**
@@ -248,8 +212,8 @@ class Story {
 	 *
 	 * @return string
 	 */
-	public function get_date() {
-		return $this->date;
+	public function get_date(): string {
+		return (string) $this->date;
 	}
 
 }

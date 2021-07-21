@@ -18,44 +18,33 @@
  * External dependencies
  */
 import PropTypes from 'prop-types';
-import { useDebouncedCallback } from 'use-debounce';
 
 /**
  * WordPress dependencies
  */
-import { useState } from '@wordpress/element';
+import { useState, useEffect } from '@wordpress/element';
 import apiFetch from '@wordpress/api-fetch';
 import { addQueryArgs } from '@wordpress/url';
 import { __ } from '@wordpress/i18n';
 
 /**
+ * Internal dependencies
+ */
+import useDebounce from '../hooks/useDebounce';
+import Autocomplete from './autocomplete';
+
+/**
  * AuthorSelection props.
  *
  * @typedef AuthorSelectionProps
- *
  * @property {Array<number>} authors List of author IDs.
  * @property {()=>void} setAttributes Callable function for saving attribute values.
  */
 
 /**
- * Internal dependencies
- */
-import { useEffect } from 'react';
-import { FETCH_AUTHORS_DEBOUNCE } from '../constants';
-import Autocomplete from './autocomplete';
-
-/**
- * Module Constants
- */
-const USERS_LIST_QUERY = {
-  per_page: 100,
-};
-
-/**
  * AuthorSelection component. Used for selecting authors of stories.
  *
  * @param {AuthorSelection} props Component props.
- *
  * @return {*} JSX markup.
  */
 const AuthorSelection = ({ authors: authorIds, setAttributes }) => {
@@ -70,7 +59,7 @@ const AuthorSelection = ({ authors: authorIds, setAttributes }) => {
 
     apiFetch({
       path: addQueryArgs('/wp/v2/users', {
-        ...USERS_LIST_QUERY,
+        per_page: 100,
         include: authorIds.join(','),
       }),
     })
@@ -120,7 +109,7 @@ const AuthorSelection = ({ authors: authorIds, setAttributes }) => {
    */
   const onInputChange = (search) => {
     apiFetch({
-      path: addQueryArgs('/wp/v2/users', { ...USERS_LIST_QUERY, search }),
+      path: addQueryArgs('/wp/v2/users', { per_page: 100, search }),
     })
       .then((users) => {
         if ('undefined' !== typeof users && Array.isArray(users)) {
@@ -134,10 +123,7 @@ const AuthorSelection = ({ authors: authorIds, setAttributes }) => {
       });
   };
 
-  const [debouncedOnInputChange] = useDebouncedCallback(
-    onInputChange,
-    FETCH_AUTHORS_DEBOUNCE
-  );
+  const debouncedOnInputChange = useDebounce(onInputChange, 500);
 
   return (
     <Autocomplete

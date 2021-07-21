@@ -19,11 +19,10 @@
  */
 import PropTypes from 'prop-types';
 import { useState, useMemo, useCallback } from 'react';
-
 /**
  * Internal dependencies
  */
-import { useStory } from '../../app';
+import { useStory } from '../../app/story';
 import { useTransform } from '../transform';
 import { getElementProperties } from '../canvas/useInsertElement';
 import { getDefinitionForType } from '../../elements';
@@ -50,9 +49,10 @@ function DropTargetsProvider({ children }) {
     })
   );
 
-  const elements = useMemo(() => currentPage?.elements || [], [
-    currentPage?.elements,
-  ]);
+  const elements = useMemo(
+    () => currentPage?.elements || [],
+    [currentPage?.elements]
+  );
 
   const sortedDropTargetIds = useMemo(
     () =>
@@ -198,7 +198,9 @@ function DropTargetsProvider({ children }) {
         setActiveDropTargetId(null);
 
         const { onDropHandler } = getDefinitionForType(resource.type);
-        if (onDropHandler) {
+        // onDropHandler will play the video, but we don't want that for videos
+        // that don't have a src because they are still uploading.
+        if (onDropHandler && resource.src && !resource.isPlaceholder) {
           onDropHandler(activeDropTargetId);
         }
       };

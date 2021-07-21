@@ -14,9 +14,12 @@
  * limitations under the License.
  */
 /**
+ * External dependencies
+ */
+import { noop } from '@web-stories-wp/design-system';
+/**
  * Internal dependencies
  */
-import { noop } from '../../../../design-system';
 import {
   STORY_CONTEXT_MENU_ITEMS,
   STORY_CONTEXT_MENU_ACTIONS,
@@ -52,10 +55,6 @@ describe('generateStoryMenu', () => {
         href: 'bottom-target-action',
         label: 'Open in editor',
         newTab: false,
-        onClick: expect.any(Function),
-      }),
-      expect.objectContaining({
-        label: 'Preview',
         onClick: expect.any(Function),
       }),
       expect.objectContaining({

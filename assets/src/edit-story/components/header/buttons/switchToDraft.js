@@ -19,20 +19,19 @@
  */
 import { useCallback } from 'react';
 import { __ } from '@web-stories-wp/i18n';
-
-/**
- * Internal dependencies
- */
-import { useStory, useLocalMedia } from '../../../app';
 import {
   Button,
   BUTTON_SIZES,
   BUTTON_TYPES,
   BUTTON_VARIANTS,
-  Tooltip,
-  TOOLTIP_PLACEMENT,
   Icons,
-} from '../../../../design-system';
+} from '@web-stories-wp/design-system';
+
+/**
+ * Internal dependencies
+ */
+import { useStory, useLocalMedia } from '../../../app';
+import Tooltip from '../../tooltip';
 
 function SwitchToDraft() {
   const { isSaving, saveStory } = useStory(
@@ -47,16 +46,16 @@ function SwitchToDraft() {
     isUploading: state.state.isUploading,
   }));
 
-  const handleUnPublish = useCallback(() => saveStory({ status: 'draft' }), [
-    saveStory,
-  ]);
+  const handleUnPublish = useCallback(() => {
+    saveStory({ status: 'draft' });
+  }, [saveStory]);
 
   const label = __('Switch to Draft', 'web-stories');
   return (
-    <Tooltip title={label} placement={TOOLTIP_PLACEMENT.BOTTOM} hasTail>
+    <Tooltip title={label} hasTail>
       <Button
         variant={BUTTON_VARIANTS.SQUARE}
-        type={BUTTON_TYPES.TERTIARY}
+        type={BUTTON_TYPES.QUATERNARY}
         size={BUTTON_SIZES.SMALL}
         onClick={handleUnPublish}
         disabled={isSaving || isUploading}

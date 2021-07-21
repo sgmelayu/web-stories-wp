@@ -23,17 +23,35 @@ import { screen } from '@testing-library/react';
  * Internal dependencies
  */
 import ConfigContext from '../../../../../app/config/context';
-import LinkPanel from '../link';
 import StoryContext from '../../../../../app/story/context';
+import CanvasContext from '../../../../../app/canvas/context';
 import { MULTIPLE_DISPLAY_VALUE } from '../../../../../constants';
 import { renderPanel } from '../../../shared/test/_utils';
+import LinkPanel from '../link';
 
 jest.mock('../../../../../elements');
 
-function renderLinkPanel(selectedElements) {
+function arrange(selectedElements) {
   const configValue = {
     capabilities: {
       hasUploadMediaAction: true,
+    },
+    allowedImageFileTypes: ['gif', 'jpe', 'jpeg', 'jpg', 'png'],
+    allowedImageMimeTypes: [
+      'image/png',
+      'image/jpeg',
+      'image/jpg',
+      'image/gif',
+    ],
+  };
+
+  const canvasContext = {
+    state: {
+      displayLinkGuidelines: true,
+    },
+    actions: {
+      clearEditing: jest.fn(),
+      setDisplayLinkGuidelines: jest.fn(),
     },
   };
 
@@ -43,10 +61,12 @@ function renderLinkPanel(selectedElements) {
     },
   };
 
-  const wrapper = (params) => (
+  const wrapper = ({ children }) => (
     <ConfigContext.Provider value={configValue}>
       <StoryContext.Provider value={storyContextValue}>
-        {params.children}
+        <CanvasContext.Provider value={canvasContext}>
+          {children}
+        </CanvasContext.Provider>
       </StoryContext.Provider>
     </ConfigContext.Provider>
   );
@@ -80,7 +100,7 @@ describe('Panels/Link', () => {
   });
 
   it('should not display metadata fields if URL is missing', () => {
-    renderLinkPanel([DEFAULT_ELEMENT]);
+    arrange([DEFAULT_ELEMENT]);
     expect(
       screen.getByRole('textbox', {
         name: 'Element link',
@@ -99,7 +119,7 @@ describe('Panels/Link', () => {
   });
 
   it('should display an error message for invalid URLs', () => {
-    renderLinkPanel([
+    arrange([
       {
         ...DEFAULT_ELEMENT,
         link: {
@@ -111,7 +131,7 @@ describe('Panels/Link', () => {
   });
 
   it('should not display metadata fields if URL is invalid', () => {
-    renderLinkPanel([
+    arrange([
       {
         ...DEFAULT_ELEMENT,
         link: {
@@ -132,7 +152,7 @@ describe('Panels/Link', () => {
   });
 
   it('should display Mixed placeholder in case of mixed values multi-selection', () => {
-    renderLinkPanel([
+    arrange([
       {
         ...DEFAULT_ELEMENT,
         link: {

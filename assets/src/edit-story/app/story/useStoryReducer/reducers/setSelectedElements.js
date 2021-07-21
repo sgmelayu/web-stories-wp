@@ -15,9 +15,12 @@
  */
 
 /**
+ * External dependencies
+ */
+import { STORY_ANIMATION_STATE } from '@web-stories-wp/animation';
+/**
  * Internal dependencies
  */
-import { STORY_ANIMATION_STATE } from '../../../../../animation';
 import { intersect } from './utils';
 
 /**
@@ -55,12 +58,19 @@ function setSelectedElements(state, { elementIds }) {
     }
   }
 
-  // If it's a multi-selection, filter out the background element
+  // If it's a multi-selection, filter out the background element and video placeholders.
   const currentPage = state.pages.find(({ id }) => id === state.current);
   const isNotBackgroundElement = (id) => currentPage.elements[0].id !== id;
+  const isNotVideoPlaceholder = (id) => {
+    const element = currentPage.elements.find((element) => element.id === id);
+    const isVideoPlaceholder = element?.resource?.isPlaceholder;
+    return !isVideoPlaceholder;
+  };
   const newSelection =
     uniqueElementIds.length > 1
-      ? uniqueElementIds.filter(isNotBackgroundElement)
+      ? uniqueElementIds.filter(
+          (id) => isNotBackgroundElement(id) && isNotVideoPlaceholder(id)
+        )
       : uniqueElementIds;
 
   return {

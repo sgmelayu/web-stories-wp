@@ -18,6 +18,8 @@
  * Internal dependencies
  */
 import { Container } from './container';
+import { QuickActionMenu } from './quickActionMenu';
+import { RightClickMenu } from './rightClickMenu';
 
 /**
  * The editor's canvas. Includes: display, frames, editor layers,
@@ -52,14 +54,6 @@ export class Canvas extends Container {
     );
   }
 
-  get fullbleed() {
-    return this._get(
-      this.getAllByRole('region', { name: 'Fullbleed area' })[0],
-      'fullbleed',
-      Fullbleed
-    );
-  }
-
   get header() {
     return this._get(
       this.getAllByRole('group', { name: 'Story canvas header' })[0],
@@ -67,12 +61,47 @@ export class Canvas extends Container {
       Header
     );
   }
+
+  get quickActionMenu() {
+    return this._get(
+      this.getByRole('menu'),
+      'quickActionMenu',
+      QuickActionMenu
+    );
+  }
+
+  get rightClickMenu() {
+    return this._get(
+      this.getByRole('group', {
+        name: 'Context Menu for the selected element',
+      }),
+      'rightClickMenu',
+      RightClickMenu
+    );
+  }
+}
+
+/**
+ * Abstract layer.
+ */
+class AbstractLayer extends Container {
+  constructor(node, path) {
+    super(node, path);
+  }
+
+  get scrollContainer() {
+    return this.node.querySelector('[data-scroll-container]');
+  }
+
+  get fullbleed() {
+    return this.getByRole('region', { name: 'Fullbleed area' });
+  }
 }
 
 /**
  * Contains element displays.
  */
-class DisplayLayer extends Container {
+class DisplayLayer extends AbstractLayer {
   constructor(node, path) {
     super(node, path);
   }
@@ -124,7 +153,7 @@ class Display extends Container {
 /**
  * Contains element frames.
  */
-class FramesLayer extends Container {
+class FramesLayer extends AbstractLayer {
   constructor(node, path) {
     super(node, path);
   }
@@ -171,22 +200,9 @@ class FramesLayer extends Container {
 }
 
 /**
- * Contains fullbleed.
- */
-class Fullbleed extends Container {
-  constructor(node, path) {
-    super(node, path);
-  }
-
-  get container() {
-    return this.node;
-  }
-}
-
-/**
  * Contains elements in edit-mode.
  */
-class EditLayer extends Container {
+class EditLayer extends AbstractLayer {
   constructor(node, path) {
     super(node, path);
   }

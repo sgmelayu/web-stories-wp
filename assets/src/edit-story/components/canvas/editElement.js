@@ -19,6 +19,7 @@
  */
 import PropTypes from 'prop-types';
 import styled from 'styled-components';
+import { useUnits } from '@web-stories-wp/units';
 
 /**
  * Internal dependencies
@@ -30,7 +31,6 @@ import {
   elementWithSize,
   elementWithRotation,
 } from '../../elements/shared';
-import { useUnits } from '../../units';
 import SingleSelectionMoveable from './singleSelectionMoveable';
 
 const Wrapper = styled.div`
@@ -47,9 +47,13 @@ function EditElement({ element }) {
   }));
 
   const [editWrapper, setEditWrapper] = useState(null);
+  // Needed for elements that can scale in edit mode.
+  const [localProperties, setLocalProperties] = useState(null);
 
   const { Edit, hasEditModeMoveable } = getDefinitionForType(type);
-  const box = getBox(element);
+  const box = getBox(
+    localProperties ? { ...element, ...localProperties } : element
+  );
 
   const moveable = useRef(null);
 
@@ -62,17 +66,15 @@ function EditElement({ element }) {
 
   return (
     <>
-      <Wrapper
-        aria-labelledby={`layer-${id}`}
-        {...box}
-        onMouseDown={(evt) => evt.stopPropagation()}
-        ref={setEditWrapper}
-      >
+      <Wrapper aria-labelledby={`layer-${id}`} {...box} ref={setEditWrapper}>
         <Edit
-          element={element}
+          element={
+            localProperties ? { ...element, ...localProperties } : element
+          }
           box={box}
           editWrapper={hasEditModeMoveable && editWrapper}
           onResize={onResize}
+          setLocalProperties={setLocalProperties}
         />
       </Wrapper>
       {hasEditModeMoveable && editWrapper && (

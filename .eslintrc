@@ -8,9 +8,9 @@
     "plugin:eslint-comments/recommended",
     "plugin:react/recommended",
     "plugin:prettier/recommended",
-    "prettier/react",
     "plugin:jsx-a11y/recommended",
-    "plugin:jsdoc/recommended"
+    "plugin:jsdoc/recommended",
+    "plugin:styled-components-a11y/recommended"
   ],
   "plugins": [
     "@babel",
@@ -20,7 +20,8 @@
     "jsx-a11y",
     "markdown",
     "react",
-    "react-hooks"
+    "react-hooks",
+    "styled-components-a11y"
   ],
   "parserOptions": {
     "ecmaFeatures": {
@@ -65,6 +66,7 @@
       " * limitations under the License.",
       " "
     ] ],
+    "import/no-cycle": "error",
     "import/no-restricted-paths": [ "error", {
       "zones": [ {
         "target": "./packages/migration/src/migrations",
@@ -78,6 +80,10 @@
     "import/dynamic-import-chunkname": [ "error", {
       "webpackChunknameFormat": "[0-9a-zA-Z-_/.[\\]]+"
     } ],
+    "import/no-useless-path-segments": ["error", {
+      "noUselessIndex": true
+    }],
+    "jsx-a11y/label-has-for": "off",
     "no-restricted-properties": "error",
     "no-return-assign": "error",
     "no-return-await": "error",
@@ -182,12 +188,13 @@
       }
     ],
     "jsdoc/check-indentation": "error",
-    "jsdoc/check-syntax": "warn",
+    "jsdoc/check-syntax": "error",
     "jsdoc/require-jsdoc": ["off", {
       "publicOnly": true
     }],
     "jsdoc/require-returns": "warn",
     "jsdoc/require-param-description": "warn",
+    "jsdoc/valid-types": "error",
     "eslint-comments/no-unused-disable": "error",
     "@wordpress/dependency-group": "error",
     "@wordpress/no-unused-vars-before-return": ["error", {
@@ -238,6 +245,13 @@
       "PrimaryLink",
       "SecondaryLink",
       "ExternalLink"
+    ],
+    "testing-library/custom-renders": [
+      "arrange",
+      "renderWithTheme",
+      "renderWithProviders",
+      "renderPanel",
+      "setup"
     ]
   },
   "overrides": [
@@ -255,7 +269,7 @@
       ],
       "extends": [
         "plugin:jest/all",
-        "plugin:testing-library/recommended",
+        "plugin:testing-library/react",
         "plugin:jest-dom/recommended"
       ],
       "plugins": [
@@ -365,6 +379,18 @@
     },
     {
       "files": [
+        "packages/commander/**/*.js",
+        "packages/fonts/src/cli.js",
+        "packages/migration/src/cli.js"
+      ],
+      "rules": {
+        "import/no-useless-path-segments": ["error", {
+          "noUselessIndex": false
+        }]
+      }
+    },
+    {
+      "files": [
         "__mocks__/**/*.js",
         "bin/**/*.js",
         "babel.config.cjs",
@@ -437,7 +463,6 @@
       "files": [
         "assets/src/animation/**/*.js",
         "assets/src/dashboard/**/*.js",
-        "assets/src/design-system/**/*.js",
         "assets/src/edit-story/**/*.js",
         "packages/**/*.js"
       ],

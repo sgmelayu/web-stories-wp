@@ -26,16 +26,16 @@
 
 namespace Google\Web_Stories\Integrations;
 
-use Google\Web_Stories\Customizer;
-use Google\Web_Stories\Stories_Renderer\Renderer;
-use Google\Web_Stories\Traits\Assets;
+use Google\Web_Stories\Admin\Customizer;
+use Google\Web_Stories\Service_Base;
+use Google\Web_Stories\Renderer\Stories\Renderer;
+use Google\Web_Stories\Assets;
 use function Google\Web_Stories\render_theme_stories;
 
 /**
  * Class Core_Themes_Support.
  */
-class Core_Themes_Support {
-	use Assets;
+class Core_Themes_Support extends Service_Base {
 
 	/**
 	 * Default array of core themes to add support to.
@@ -55,6 +55,24 @@ class Core_Themes_Support {
 		'twentyeleven',
 		'twentyten',
 	];
+
+	/**
+	 * Assets instance.
+	 *
+	 * @var Assets Assets instance.
+	 */
+	private $assets;
+
+	/**
+	 * Core theme supports constructor.
+	 *
+	 * @since 1.8.0
+	 *
+	 * @param Assets $assets Assets instance.
+	 */
+	public function __construct( Assets $assets ) {
+		$this->assets = $assets;
+	}
 
 	/**
 	 * Adds theme support for Web Stories.
@@ -82,7 +100,7 @@ class Core_Themes_Support {
 	public function embed_web_stories() {
 		$stylesheet = get_stylesheet();
 		if ( is_readable( sprintf( '%sassets/css/web-stories-theme-style-%s.css', WEBSTORIES_PLUGIN_DIR_PATH, $stylesheet ) ) ) {
-			$this->enqueue_style( 'web-stories-theme-style-' . $stylesheet, [ Renderer::STYLE_HANDLE ] );
+			$this->assets->enqueue_style_asset( 'web-stories-theme-style-' . $stylesheet, [ Renderer::STYLE_HANDLE ] );
 		}
 		?>
 		<div class="web-stories-theme-header-section">
@@ -100,7 +118,7 @@ class Core_Themes_Support {
 	 *
 	 * @return array Updated array of classes.
 	 */
-	public function add_core_theme_classes( $classes ) {
+	public function add_core_theme_classes( $classes ): array {
 
 		$classes[] = 'has-web-stories';
 
@@ -114,7 +132,7 @@ class Core_Themes_Support {
 	 *
 	 * @return void
 	 */
-	public function init() {
+	public function register() {
 
 		if ( ! in_array( get_stylesheet(), self::$supported_themes, true ) ) {
 			return;
@@ -131,5 +149,15 @@ class Core_Themes_Support {
 
 		add_filter( 'body_class', [ $this, 'add_core_theme_classes' ] );
 		add_action( 'wp_body_open', [ $this, 'embed_web_stories' ] );
+	}
+
+	/**
+	 * Get the action to use for registering the service.
+	 *
+	 * @since 1.6.0
+	 * @return string Registration action to use.
+	 */
+	public static function get_registration_action(): string {
+		return 'after_setup_theme';
 	}
 }

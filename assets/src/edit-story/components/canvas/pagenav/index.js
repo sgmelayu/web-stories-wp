@@ -21,18 +21,18 @@ import styled from 'styled-components';
 import PropTypes from 'prop-types';
 import { useCallback } from 'react';
 import { __ } from '@web-stories-wp/i18n';
-
-/**
- * Internal dependencies
- */
 import {
   Button,
   Icons,
   BUTTON_VARIANTS,
   BUTTON_TYPES,
   BUTTON_SIZES,
-} from '../../../../design-system';
-import { useConfig, useStory } from '../../../app';
+} from '@web-stories-wp/design-system';
+
+/**
+ * Internal dependencies
+ */
+import { useConfig, useStory, useLayout } from '../../../app';
 
 const Wrapper = styled.div`
   display: flex;
@@ -45,7 +45,7 @@ const Wrapper = styled.div`
 `;
 
 const FlippableArrow = styled(Icons.ArrowLeftLarge)`
-  transform: rotate(${({ isLeft }) => (isLeft ? 0 : 0.5)}turn);
+  transform: rotate(${({ $isLeft }) => ($isLeft ? 0 : 0.5)}turn);
 `;
 
 function PageNav({ isNext = true }) {
@@ -68,6 +68,19 @@ function PageNav({ isNext = true }) {
       setCurrentPage({ pageId: newPage.id });
     }
   }, [setCurrentPage, currentPageIndex, isNext, pages]);
+
+  const { hasPageNavigation } = useLayout(
+    ({ state: { hasPageNavigation } }) => ({
+      hasPageNavigation,
+    })
+  );
+
+  // Buttons are completely missing if there's no room for them
+  if (!hasPageNavigation) {
+    return false;
+  }
+
+  // If there's room, but it's inactive, just disable
   const displayNav =
     (isNext && currentPageIndex < pages.length - 1) ||
     (!isNext && currentPageIndex > 0);
@@ -94,7 +107,7 @@ function PageNav({ isNext = true }) {
         onClick={handleClick}
         onMouseDown={cancelMouseDown}
       >
-        <FlippableArrow isLeft={isLeft} />
+        <FlippableArrow $isLeft={isLeft} />
       </Button>
     </Wrapper>
   );

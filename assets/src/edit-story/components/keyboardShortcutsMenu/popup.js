@@ -20,11 +20,10 @@
 import PropTypes from 'prop-types';
 import styled, { css } from 'styled-components';
 import { __ } from '@web-stories-wp/i18n';
-
+import { BEZIER } from '@web-stories-wp/design-system';
 /**
  * Internal dependencies
  */
-import { BEZIER } from '../../../animation';
 import { ScheduledTransition } from '../transition/scheduledTransition';
 
 const DURATION = 300;
@@ -35,7 +34,7 @@ const enterStyles = css`
 `;
 const exitStyles = css`
   opacity: 0;
-  transform: translateX(20px);
+  transform: translateX(-20px);
 `;
 
 const transitionStyles = {
@@ -48,10 +47,10 @@ const transitionStyles = {
 const Controller = styled.div`
   position: absolute;
   top: -12px;
-  right: 0;
+  left: 0;
   opacity: 0;
   z-index: 1;
-  transform: translateX(20px);
+  transform: translateX(-20px);
   transition: opacity ${DURATION}ms ${BEZIER.default},
     transform ${DURATION}ms ${BEZIER.default};
 

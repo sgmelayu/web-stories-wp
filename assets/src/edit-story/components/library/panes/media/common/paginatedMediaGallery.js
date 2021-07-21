@@ -18,7 +18,7 @@
  * External dependencies
  */
 import PropTypes from 'prop-types';
-import React, {
+import {
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -27,22 +27,28 @@ import React, {
 } from 'react';
 import { useDebouncedCallback } from 'use-debounce';
 import { __ } from '@web-stories-wp/i18n';
+import styled from 'styled-components';
+import { Text, THEME_CONSTANTS } from '@web-stories-wp/design-system';
 
 /**
  * Internal dependencies
  */
-import MediaGallery from '../common/mediaGallery';
+import { PROVIDERS } from '../../../../../app/media/media3p/providerConfiguration';
+import MediaGallery from './mediaGallery';
 import {
   MediaGalleryContainer,
   MediaGalleryInnerContainer,
   MediaGalleryLoadingPill,
   MediaGalleryMessage,
-} from '../common/styles';
-import { PROVIDERS } from '../../../../../app/media/media3p/providerConfiguration';
+} from './styles';
 
 const ROOT_MARGIN = 300;
 
 const SHOW_LOADING_PILL_DELAY_MS = 1000;
+
+const StyledText = styled(Text)`
+  color: ${({ theme }) => theme.colors.fg.secondary};
+`;
 
 function PaginatedMediaGallery({
   providerType,
@@ -54,6 +60,7 @@ function PaginatedMediaGallery({
   hasMore,
   onInsert,
   setNextPage,
+  canEditMedia,
 }) {
   // State and callback ref necessary to load on scroll.
   const refContainer = useRef();
@@ -95,11 +102,7 @@ function PaginatedMediaGallery({
   }, [searchTerm, selectedCategoryId]);
 
   // After scroll or resize, see if we need the load the next page.
-  const [handleScrollOrResize] = useDebouncedCallback(
-    loadNextPageIfNeeded,
-    500,
-    [loadNextPageIfNeeded]
-  );
+  const handleScrollOrResize = useDebouncedCallback(loadNextPageIfNeeded, 500);
 
   // After loading a next page, see if we need to load another,
   // ie. when the page of results isn't full.
@@ -134,12 +137,13 @@ function PaginatedMediaGallery({
   const mediaGallery =
     isMediaLoaded && resources.length === 0 ? (
       <MediaGalleryMessage>
-        {__('No media found', 'web-stories')}
+        {__('No media found.', 'web-stories')}
       </MediaGalleryMessage>
     ) : (
       <div style={{ marginBottom: 15 }}>
         <MediaGallery
           providerType={providerType}
+          canEditMedia={canEditMedia}
           resources={resources}
           onInsert={onInsert}
         />
@@ -174,7 +178,12 @@ function PaginatedMediaGallery({
       </MediaGalleryContainer>
       {showLoadingPill && (
         <MediaGalleryLoadingPill data-testid={'loading-pill'}>
-          {__('Loading…', 'web-stories')}
+          <StyledText
+            forwardedAs="span"
+            size={THEME_CONSTANTS.TYPOGRAPHY.PRESET_SIZES.SMALL}
+          >
+            {__('Loading…', 'web-stories')}
+          </StyledText>
         </MediaGalleryLoadingPill>
       )}
       {!showLoadingPill && attribution}
@@ -192,6 +201,11 @@ PaginatedMediaGallery.propTypes = {
   setNextPage: PropTypes.func.isRequired,
   searchTerm: PropTypes.string,
   selectedCategoryId: PropTypes.string,
+  canEditMedia: PropTypes.bool,
+};
+
+PaginatedMediaGallery.defaultProps = {
+  canEditMedia: false,
 };
 
 export default PaginatedMediaGallery;

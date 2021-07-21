@@ -15,10 +15,16 @@
  */
 
 /**
+ * External dependencies
+ */
+import { waitFor } from '@testing-library/react';
+
+/**
  * Internal dependencies
  */
 import { Fixture } from '../../../../../karma/fixture';
 import { useStory } from '../../../../../app/story';
+import { PRESET_TYPES } from '../constants';
 
 describe('Panel: Color Presets', () => {
   let fixture;
@@ -27,7 +33,7 @@ describe('Panel: Color Presets', () => {
     fixture = new Fixture();
     await fixture.render();
     localStorage.setItem(
-      'web_stories_ui_panel_settings:stylepreset-color',
+      `web_stories_ui_panel_settings:stylepreset-${PRESET_TYPES.COLOR}`,
       JSON.stringify({ isCollapsed: false, height: 200 })
     );
   });
@@ -45,6 +51,7 @@ describe('Panel: Color Presets', () => {
   describe('CUJ: Creator can Apply or Save a Color from/to Their Preset Library: Add Colors', () => {
     it('should display color presets panel for a text element', async () => {
       await fixture.events.click(fixture.editor.library.textAdd);
+      await waitFor(() => fixture.editor.canvas.framesLayer.frames[1].node);
       const addButton =
         fixture.editor.inspector.designPanel.colorPreset.global.add;
       expect(addButton).toBeTruthy();
@@ -77,6 +84,7 @@ describe('Panel: Color Presets', () => {
 
     it('should allow applying global colors', async () => {
       await fixture.events.click(fixture.editor.library.textAdd);
+      await waitFor(() => fixture.editor.canvas.framesLayer.frames[1].node);
       await fixture.events.click(
         fixture.editor.inspector.designPanel.colorPreset.global.add
       );
@@ -93,6 +101,7 @@ describe('Panel: Color Presets', () => {
 
     it('should allow applying local colors', async () => {
       await fixture.events.click(fixture.editor.library.textAdd);
+      await waitFor(() => fixture.editor.canvas.framesLayer.frames[1].node);
       await fixture.events.click(
         fixture.editor.inspector.designPanel.colorPreset.local.add
       );
@@ -112,6 +121,7 @@ describe('Panel: Color Presets', () => {
     it('should allow deleting local and global color presets', async () => {
       // Add text element and a color preset.
       await fixture.events.click(fixture.editor.library.textAdd);
+      await waitFor(() => fixture.editor.canvas.framesLayer.frames[1].node);
       await fixture.events.click(
         fixture.editor.inspector.designPanel.colorPreset.global.add
       );
@@ -134,8 +144,18 @@ describe('Panel: Color Presets', () => {
 
       expect(deleteGlobalButton).toBeTruthy();
 
-      // Delete both local and global presets.
+      // Delete global preset.
       await fixture.events.click(deleteGlobalButton);
+
+      // Confirm in the dialog since it's a global color.
+      await waitFor(() => {
+        expect(fixture.screen.getByRole('dialog')).toBeTruthy();
+      });
+      await fixture.events.click(
+        fixture.screen.getByRole('button', { name: 'Delete' })
+      );
+
+      // Delete local preset.
       await fixture.events.click(
         fixture.editor.inspector.designPanel.colorPreset.local.delete
       );

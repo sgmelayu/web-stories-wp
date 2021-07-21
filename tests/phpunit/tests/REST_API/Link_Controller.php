@@ -2,14 +2,20 @@
 
 namespace Google\Web_Stories\Tests\REST_API;
 
-use Google\Web_Stories\Experiments;
-use Google\Web_Stories\Story_Post_Type;
+use Google\Web_Stories\Tests\Test_REST_TestCase;
 use Spy_REST_Server;
 use WP_Error;
 use WP_REST_Request;
 use WP_REST_Server;
 
-class Link_Controller extends \WP_Test_REST_TestCase {
+/**
+ * Class Link_Controller
+ *
+ * @package Google\Web_Stories\Tests\REST_API
+ *
+ * @coversDefaultClass  Google\Web_Stories\REST_API\Link_Controller
+ */
+class Link_Controller extends Test_REST_TestCase {
 	/**
 	 * @var WP_REST_Server
 	 */
@@ -64,11 +70,7 @@ class Link_Controller extends \WP_Test_REST_TestCase {
 
 		$this->request_count = 0;
 
-		$experiments = $this->createMock( \Google\Web_Stories\Experiments::class );
-		$meta_boxes  = $this->createMock( \Google\Web_Stories\Meta_Boxes::class );
-
-		$story_post_type = new Story_Post_type( $experiments, $meta_boxes );
-		$story_post_type->add_caps_to_roles();
+		$this->add_caps_to_roles();
 	}
 
 	public function tearDown() {
@@ -78,11 +80,7 @@ class Link_Controller extends \WP_Test_REST_TestCase {
 
 		remove_filter( 'pre_http_request', [ $this, 'mock_http_request' ] );
 
-		$experiments = $this->createMock( \Google\Web_Stories\Experiments::class );
-		$meta_boxes  = $this->createMock( \Google\Web_Stories\Meta_Boxes::class );
-
-		$story_post_type = new Story_Post_type( $experiments, $meta_boxes );
-		$story_post_type->remove_caps_from_roles();
+		$this->remove_caps_from_roles();
 
 		parent::tearDown();
 	}
@@ -128,7 +126,7 @@ class Link_Controller extends \WP_Test_REST_TestCase {
 				'response' => [
 					'code' => 200,
 				],
-				'body'     => file_get_contents( __DIR__ . '/../../data/characters.example.com.html' ),
+				'body'     => file_get_contents( WEB_STORIES_TEST_DATA_DIR . '/characters.example.com.html' ),
 			];
 		}
 
@@ -137,7 +135,7 @@ class Link_Controller extends \WP_Test_REST_TestCase {
 				'response' => [
 					'code' => 200,
 				],
-				'body'     => file_get_contents( __DIR__ . '/../../data/example.com.html' ),
+				'body'     => file_get_contents( WEB_STORIES_TEST_DATA_DIR . '/example.com.html' ),
 			];
 		}
 
@@ -146,7 +144,7 @@ class Link_Controller extends \WP_Test_REST_TestCase {
 				'response' => [
 					'code' => 200,
 				],
-				'body'     => file_get_contents( __DIR__ . '/../../data/amp.dev.html' ),
+				'body'     => file_get_contents( WEB_STORIES_TEST_DATA_DIR . '/amp.dev.html' ),
 			];
 		}
 

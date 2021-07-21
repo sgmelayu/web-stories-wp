@@ -15,10 +15,13 @@
  */
 
 /**
+ * External dependencies
+ */
+import stickers from '@web-stories-wp/stickers';
+/**
  * Internal dependencies
  */
 import StoryPropTypes from '../../types';
-import stickers from '../../stickers';
 
 const style = {
   display: 'block',
@@ -32,7 +35,7 @@ const Noop = () => null;
 
 function StickerOutput({ element }) {
   const { sticker } = element;
-  const Sticker = stickers[sticker.type] || Noop;
+  const Sticker = stickers[sticker.type]?.svg || Noop;
   return <Sticker className="fill" style={style} />;
 }
 

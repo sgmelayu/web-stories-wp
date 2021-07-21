@@ -17,14 +17,13 @@
  * External dependencies
  */
 import { action } from '@storybook/addon-actions';
-
+import { SnackbarContext } from '@web-stories-wp/design-system';
 /**
  * Internal dependencies
  */
 import MissingUploadPermissionDialog from '../missingUploadPermissionDialog';
 import ApiContext from '../../../../../../app/api/context';
 import MediaContext from '../../../../../../app/media/context';
-import SnackbarContext from '../../../../../../app/snackbar/context';
 
 export default {
   title: 'Stories Editor/Components/Dialog/Missing Upload Permission',
@@ -48,7 +47,7 @@ export const _default = () => {
     <SnackbarContext.Provider value={snackbarValue}>
       <MediaContext.Provider value={mediaValue}>
         <ApiContext.Provider value={apiValue}>
-          <MissingUploadPermissionDialog open onClose={action('closed')} />
+          <MissingUploadPermissionDialog isOpen onClose={action('closed')} />
         </ApiContext.Provider>
       </MediaContext.Provider>
     </SnackbarContext.Provider>

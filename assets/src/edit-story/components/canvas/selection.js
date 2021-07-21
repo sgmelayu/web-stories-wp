@@ -15,9 +15,13 @@
  */
 
 /**
+ * External dependencies
+ */
+import { STORY_ANIMATION_STATE } from '@web-stories-wp/animation';
+
+/**
  * Internal dependencies
  */
-import { STORY_ANIMATION_STATE } from '../../../animation';
 import { useStory, useCanvas } from '../../app';
 import SingleSelectionMoveable from './singleSelectionMoveable';
 import MultiSelectionMoveable from './multiSelectionMoveable';
@@ -48,6 +52,12 @@ function Selection() {
   // No need for displaying non-functional frame for selected background.
   const isBackground = selectedElements[0].id === currentPage.elements?.[0]?.id;
   if (isBackground) {
+    return null;
+  }
+
+  // No need for displaying non-functional frame for video placeholders.
+  const isVideoPlaceholder = selectedElements[0]?.resource?.isPlaceholder;
+  if (isVideoPlaceholder) {
     return null;
   }
 

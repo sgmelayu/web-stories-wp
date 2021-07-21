@@ -17,7 +17,7 @@
 /**
  * Internal dependencies
  */
-import { validateAdManagerSlotIdFormat } from '../';
+import { validateAdManagerSlotIdFormat } from '..';
 
 const idsToValidate = [
   ['/123456789/amp_story_dfp_example', true],
@@ -25,6 +25,7 @@ const idsToValidate = [
   ['/123456789/a4a/trailing-slash/', false],
   ['/not/numeric/start', false],
   ['clearly wrong', false],
+  ['/1234567,1234/Travel', true],
 ];
 
 describe('validateAdManagerSlotIdFormat', () => {

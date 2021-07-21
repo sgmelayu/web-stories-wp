@@ -13,22 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 /**
  * External dependencies
  */
 import { renderHook } from '@testing-library/react-hooks';
-import { fireEvent, render } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 /**
  * Internal dependencies
  */
 import { useRef } from 'react';
+import { useContextSelector, useFocusOut } from '@web-stories-wp/design-system';
 import useFocusHighlight from '../useFocusHighlight';
-import { useContextSelector, useFocusOut } from '../../../../design-system';
 
-jest.mock('../../../../design-system/utils/useContextSelector');
-jest.mock('../../../../design-system/utils/useFocusOut');
+jest.mock('@web-stories-wp/design-system');
 
 describe('useFocusHighlight()', () => {
   jest.useFakeTimers();
@@ -84,8 +84,8 @@ describe('useFocusHighlight()', () => {
       return <input data-testid="focusable-input" ref={mockRef} />;
     };
 
-    const { getByTestId } = render(<Wrapper />);
-    const input = getByTestId('focusable-input');
+    render(<Wrapper />);
+    const input = screen.getByTestId('focusable-input');
     fireEvent.click(input);
     expect(cancelEffect).toHaveBeenCalledWith(key);
   });
@@ -105,12 +105,12 @@ describe('useFocusHighlight()', () => {
       return <input data-testid="focusable-input" ref={mockRef} />;
     };
 
-    const { getByTestId } = render(<Wrapper />);
+    render(<Wrapper />);
 
-    getByTestId('focusable-input').focus();
-    expect(getByTestId('focusable-input')).toHaveFocus();
+    screen.getByTestId('focusable-input').focus();
+    expect(screen.getByTestId('focusable-input')).toHaveFocus();
     userEvent.tab();
     expect(cancelEffect).toHaveBeenCalledWith(key);
-    expect(getByTestId('focusable-input')).not.toHaveFocus();
+    expect(screen.getByTestId('focusable-input')).not.toHaveFocus();
   });
 });

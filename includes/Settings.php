@@ -31,7 +31,7 @@ namespace Google\Web_Stories;
 /**
  * Settings class.
  */
-class Settings {
+class Settings extends Service_Base {
 	/**
 	 * Settings group.
 	 *
@@ -103,14 +103,32 @@ class Settings {
 	const SETTING_NAME_PUBLISHER_LOGOS = 'web_stories_publisher_logos';
 
 	/**
+	 * Video cache setting name.
+	 *
+	 * @var string
+	 */
+	const SETTING_NAME_VIDEO_CACHE = 'web_stories_video_cache';
+
+	/**
 	 * Initializes the Settings logic.
 	 *
 	 * @since 1.0.0
 	 *
 	 * @return void
 	 */
-	public function init() {
+	public function register() {
 		add_action( 'init', [ $this, 'register_settings' ] );
+	}
+
+	/**
+	 * Get the action priority to use for registering the service.
+	 *
+	 * @since 1.6.0
+	 *
+	 * @return int Registration action priority to use.
+	 */
+	public static function get_registration_action_priority(): int {
+		return 5;
 	}
 
 	/**
@@ -204,6 +222,17 @@ class Settings {
 						],
 					],
 				],
+			]
+		);
+
+		register_setting(
+			self::SETTING_GROUP,
+			self::SETTING_NAME_VIDEO_CACHE,
+			[
+				'description'  => __( 'Video Cache', 'web-stories' ),
+				'type'         => 'boolean',
+				'default'      => false,
+				'show_in_rest' => true,
 			]
 		);
 

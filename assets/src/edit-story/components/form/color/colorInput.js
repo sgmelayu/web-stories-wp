@@ -19,27 +19,32 @@
  */
 import styled, { css } from 'styled-components';
 import PropTypes from 'prop-types';
-import { useCallback, useState, useRef, useMemo } from 'react';
+import { forwardRef, useCallback, useState, useRef, useMemo } from 'react';
 import { __ } from '@web-stories-wp/i18n';
+import {
+  getPreviewText,
+  getOpaquePattern,
+  PatternPropType,
+} from '@web-stories-wp/patterns';
+import {
+  HexInput,
+  Text,
+  THEME_CONSTANTS,
+  Swatch,
+  PLACEMENT,
+} from '@web-stories-wp/design-system';
 
 /**
  * Internal dependencies
  */
 import useUnmount from '../../../utils/useUnmount';
-import { PatternPropType } from '../../../types';
 import { MULTIPLE_VALUE, MULTIPLE_DISPLAY_VALUE } from '../../../constants';
 import Popup from '../../popup';
-import {
-  HexInput,
-  Text,
-  THEME_CONSTANTS,
-  Tooltip as DefaultTooltip,
-  Swatch,
-  getOpaquePattern,
-} from '../../../../design-system';
-import getPreviewText from '../../../../design-system/components/hex/getPreviewText';
 import ColorPicker from '../../colorPicker';
 import useInspector from '../../inspector/useInspector';
+import DefaultTooltip from '../../tooltip';
+import { focusStyle, inputContainerStyleOverride } from '../../panels/shared';
+import { useCanvas } from '../../../app';
 
 const Preview = styled.div`
   height: 36px;
@@ -112,15 +117,22 @@ const TextualPreview = styled.div`
   height: 32px;
 `;
 
-function ColorInput({
-  onChange,
-  hasGradient,
-  hasOpacity,
-  value,
-  label,
-  colorPickerActions,
-  changedStyle,
-}) {
+const StyledSwatch = styled(Swatch)`
+  ${focusStyle};
+`;
+
+const ColorInput = forwardRef(function ColorInput(
+  {
+    onChange,
+    hasGradient,
+    hasOpacity,
+    value,
+    label,
+    colorPickerActions,
+    changedStyle,
+  },
+  ref
+) {
   const isMixed = value === MULTIPLE_VALUE;
   value = isMixed ? '' : value;
 
@@ -131,6 +143,12 @@ function ColorInput({
 
   const [pickerOpen, setPickerOpen] = useState(false);
   const previewRef = useRef(null);
+
+  const { isEyedropperActive } = useCanvas(
+    ({ state: { isEyedropperActive } }) => ({
+      isEyedropperActive,
+    })
+  );
 
   const {
     refs: { inspector },
@@ -159,15 +177,17 @@ function ColorInput({
         // And the text is an input field
         <Preview ref={previewRef}>
           <Input
+            ref={ref}
             aria-label={label}
-            value={value}
+            value={isMixed ? null : value}
             onChange={onChange}
             isIndeterminate={isMixed}
             placeholder={isMixed ? MULTIPLE_DISPLAY_VALUE : ''}
+            containerStyleOverride={inputContainerStyleOverride}
           />
           <ColorPreview>
             <Tooltip title={tooltip} hasTail>
-              <Swatch isSmall pattern={previewPattern} {...buttonProps} />
+              <StyledSwatch isSmall pattern={previewPattern} {...buttonProps} />
             </Tooltip>
           </ColorPreview>
         </Preview>
@@ -178,6 +198,7 @@ function ColorInput({
             <ColorPreview>
               <Swatch
                 isSmall
+                isPreview
                 role="status"
                 tabIndex="-1"
                 pattern={previewPattern}
@@ -195,22 +216,27 @@ function ColorInput({
         anchor={previewRef}
         dock={inspector}
         isOpen={pickerOpen}
-        placement={'left-start'}
+        placement={PLACEMENT.LEFT_START}
         spacing={spacing}
-      >
-        <ColorPicker
-          color={isMixed ? null : value}
-          onChange={onChange}
-          hasGradient={hasGradient}
-          hasOpacity={hasOpacity}
-          onClose={onClose}
-          renderFooter={colorPickerActions}
-          changedStyle={changedStyle}
-        />
-      </Popup>
+        invisible={isEyedropperActive}
+        renderContents={({ propagateDimensionChange }) => (
+          <ColorPicker
+            color={isMixed ? null : value}
+            isEyedropperActive={isEyedropperActive}
+            onChange={onChange}
+            hasGradient={hasGradient}
+            hasOpacity={hasOpacity}
+            onClose={onClose}
+            renderFooter={(props) =>
+              colorPickerActions?.(props, null, propagateDimensionChange)
+            }
+            changedStyle={changedStyle}
+          />
+        )}
+      />
     </>
   );
-}
+});
 
 ColorInput.propTypes = {
   value: PropTypes.oneOfType([PatternPropType, PropTypes.string]),

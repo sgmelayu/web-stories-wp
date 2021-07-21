@@ -29,7 +29,7 @@ namespace Google\Web_Stories;
 /**
  * Class Analytics
  */
-class Analytics {
+class Analytics extends Service_Base {
 	/**
 	 * Initializes all hooks.
 	 *
@@ -37,7 +37,7 @@ class Analytics {
 	 *
 	 * @return void
 	 */
-	public function init() {
+	public function register() {
 		add_action( 'web_stories_print_analytics', [ $this, 'print_analytics_tag' ] );
 	}
 
@@ -48,7 +48,7 @@ class Analytics {
 	 *
 	 * @return string Tracking ID.
 	 */
-	public function get_tracking_id() {
+	public function get_tracking_id(): string {
 		return (string) get_option( Settings::SETTING_NAME_TRACKING_ID );
 	}
 
@@ -64,7 +64,7 @@ class Analytics {
 	 * @param string $tracking_id Tracking ID.
 	 * @return array <amp-analytics> configuration.
 	 */
-	public function get_default_configuration( $tracking_id ) {
+	public function get_default_configuration( $tracking_id ): array {
 		$config = [
 			'vars'     => [
 				'gtag_id' => $tracking_id,
@@ -185,28 +185,6 @@ class Analytics {
 					'vars'    => [
 						'event_name'     => 'custom',
 						'event_action'   => 'story_page_attachment_exit',
-						'event_category' => '${title}',
-						'send_to'        => $tracking_id,
-					],
-				],
-				// Fired when the bookend is shown to the user, after the last page of the current story.
-				'storyBookendEnter'   => [
-					'on'      => 'story-bookend-enter',
-					'request' => 'event',
-					'vars'    => [
-						'event_name'     => 'custom',
-						'event_action'   => 'story_bookend_enter',
-						'event_category' => '${title}',
-						'send_to'        => $tracking_id,
-					],
-				],
-				// Fired when the bookend is dismissed by the user.
-				'storyBookendExit'    => [
-					'on'      => 'story-bookend-exit',
-					'request' => 'event',
-					'vars'    => [
-						'event_name'     => 'custom',
-						'event_action'   => 'story_bookend_exit',
 						'event_category' => '${title}',
 						'send_to'        => $tracking_id,
 					],

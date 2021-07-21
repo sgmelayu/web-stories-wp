@@ -22,18 +22,26 @@ import PropTypes from 'prop-types';
 import styled from 'styled-components';
 import { v4 as uuidv4 } from 'uuid';
 import { trackEvent } from '@web-stories-wp/tracking';
-
-/**
- * Internal dependencies
- */
+import {
+  _n,
+  sprintf,
+  __,
+  _x,
+  translateToInclusiveList,
+} from '@web-stories-wp/i18n';
 import {
   THEME_CONSTANTS,
   Text,
   Toggle,
   Headline,
-} from '../../../../../../design-system';
+  useLiveRegion,
+} from '@web-stories-wp/design-system';
+
+/**
+ * Internal dependencies
+ */
 import { FullWidthWrapper } from '../../common/styles';
-import PillGroup from '../../shared/pillGroup';
+import { ChipGroup } from '../../shared';
 import localStore, {
   LOCAL_STORAGE_PREFIX,
 } from '../../../../../utils/localStore';
@@ -56,8 +64,11 @@ const TitleBar = styled.div`
 
 const TextSetsToggle = styled.div`
   display: flex;
-  p {
+
+  label {
+    cursor: pointer;
     margin: auto 12px;
+    color: ${({ theme }) => theme.colors.fg.secondary};
   }
 `;
 
@@ -88,9 +99,20 @@ function TextSetsPane({ paneRef }) {
 
   const addIdToTextSets = useCallback(
     (textSetsArray = []) =>
-      textSetsArray.map((elements) => {
+      textSetsArray.map(({ textSetFonts = [], textSetCategory, elements }) => {
         return {
           id: `text_set_${uuidv4()}`,
+          title: sprintf(
+            /* translators: 1: text set category. 2: list of fonts. */
+            _n(
+              'Text set %1$s with %2$s font',
+              'Text set %1$s with %2$s fonts',
+              textSetFonts.length,
+              'web-stories'
+            ),
+            CATEGORIES[textSetCategory],
+            translateToInclusiveList(textSetFonts)
+          ),
           elements,
         };
       }),
@@ -112,6 +134,7 @@ function TextSetsPane({ paneRef }) {
 
   const categories = useMemo(
     () => [
+      { id: null, label: _x('All', 'text sets', 'web-stories') },
       ...Object.keys(textSets).map((category) => ({
         id: category,
         label: CATEGORIES[category] ?? category,
@@ -120,12 +143,26 @@ function TextSetsPane({ paneRef }) {
     [textSets]
   );
 
-  const handleSelectedCategory = useCallback((selectedCategory) => {
-    setSelectedCat(selectedCategory);
-    localStore.setItemByKey(`${LOCAL_STORAGE_PREFIX.TEXT_SET_SETTINGS}`, {
-      selectedCategory,
-    });
-  }, []);
+  const speak = useLiveRegion();
+
+  const handleSelectedCategory = useCallback(
+    (selectedCategory) => {
+      setSelectedCat(selectedCategory);
+      speak(
+        selectedCategory === null
+          ? __('Show all text sets', 'web-stories')
+          : sprintf(
+              /* translators: %s: filter category name */
+              __('Selected text set filter %s', 'web-stories'),
+              CATEGORIES[selectedCategory]
+            )
+      );
+      localStore.setItemByKey(`${LOCAL_STORAGE_PREFIX.TEXT_SET_SETTINGS}`, {
+        selectedCategory,
+      });
+    },
+    [speak]
+  );
 
   const onChangeShowInUse = useCallback(
     () => requestAnimationFrame(() => setShowInUse((prevVal) => !prevVal)),
@@ -148,12 +185,16 @@ function TextSetsPane({ paneRef }) {
       <TitleBar>
         <Headline
           as="h3"
-          size={THEME_CONSTANTS.TYPOGRAPHY.PRESET_SIZES.XX_SMALL}
+          size={THEME_CONSTANTS.TYPOGRAPHY.PRESET_SIZES.XXX_SMALL}
         >
           {PANE_TEXT.TITLE}
         </Headline>
         <TextSetsToggle>
-          <Text size={THEME_CONSTANTS.TYPOGRAPHY.PRESET_SIZES.SMALL}>
+          <Text
+            as="label"
+            htmlFor={toggleId}
+            size={THEME_CONSTANTS.TYPOGRAPHY.PRESET_SIZES.SMALL}
+          >
             {PANE_TEXT.SWITCH_LABEL}
           </Text>
           <Toggle
@@ -162,16 +203,16 @@ function TextSetsPane({ paneRef }) {
             name={toggleId}
             checked={showInUse}
             onChange={onChangeShowInUse}
-            label={PANE_TEXT.SWITCH_LABEL}
           />
         </TextSetsToggle>
       </TitleBar>
       <FullWidthWrapper>
-        <PillGroup
+        <ChipGroup
           items={categories}
           selectedItemId={selectedCat}
           selectItem={handleSelectedCategory}
           deselectItem={() => handleSelectedCategory(null)}
+          ariaLabel={__('Select filter for text sets list', 'web-stories')}
         />
       </FullWidthWrapper>
       <TextSetsWrapper>

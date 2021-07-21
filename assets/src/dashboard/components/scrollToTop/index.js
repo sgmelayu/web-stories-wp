@@ -21,12 +21,12 @@ import { useEffect, useState } from 'react';
 import styled, { css } from 'styled-components';
 import { useDebouncedCallback } from 'use-debounce';
 import { __ } from '@web-stories-wp/i18n';
+import { Button, BUTTON_VARIANTS, Icons } from '@web-stories-wp/design-system';
 
 /**
  * Internal dependencies
  */
 import { useLayoutContext } from '../layout';
-import { Button, BUTTON_VARIANTS, Icons } from '../../../design-system';
 
 const StyledButton = styled(Button)(
   ({ isVisible, theme }) => css`
@@ -46,6 +46,10 @@ const StyledButton = styled(Button)(
     box-shadow: 0px 4px 14px rgba(0, 0, 0, 0.25);
     opacity: ${Number(isVisible)};
     transition: opacity 300ms ease-in-out;
+    &:focus {
+      opacity: 1;
+      pointer-events: 'auto';
+    }
   `
 );
 
@@ -60,7 +64,7 @@ const ScrollToTop = () => {
     actions: { scrollToTop },
   } = useLayoutContext();
 
-  const [handleScroll] = useDebouncedCallback(
+  const handleScroll = useDebouncedCallback(
     () => setIsVisible(window.scrollY > 0),
     100
   );
@@ -74,8 +78,8 @@ const ScrollToTop = () => {
 
   return (
     <StyledButton
-      aria-hidden={isVisible}
-      aria-label={__('scroll back to top', 'web-stories')}
+      aria-hidden={!isVisible}
+      aria-label={__('Scroll back to top', 'web-stories')}
       data-testid="scroll-to-top-button"
       isVisible={isVisible}
       onClick={scrollToTop}

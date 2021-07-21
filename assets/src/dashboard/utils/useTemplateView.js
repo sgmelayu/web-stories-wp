@@ -19,27 +19,22 @@
  */
 import { useCallback, useMemo, useState } from 'react';
 import PropTypes from 'prop-types';
-import { useFeature } from 'flagged';
-
 /**
  * Internal dependencies
  */
-import { clamp } from '../../animation';
 import {
   TEMPLATES_GALLERY_SORT_OPTIONS,
   TEMPLATES_GALLERY_STATUS,
   VIEW_STYLE,
 } from '../constants';
 import { PageSizePropType } from '../types';
-import { usePagePreviewSize } from './index';
+import clamp from './clamp';
+import usePagePreviewSize from './usePagePreviewSize';
 
 export default function useTemplateView({ totalPages }) {
-  const enableTemplatePreviews = useFeature('enableTemplatePreviews');
-
   const [searchKeyword, _setSearchKeyword] = useState('');
   const [sort, _setSort] = useState(TEMPLATES_GALLERY_SORT_OPTIONS.POPULAR);
   const [page, setPage] = useState(1);
-  const [activePreview, _setActivePreview] = useState();
 
   const { pageSize } = usePagePreviewSize({
     isGrid: true,
@@ -52,10 +47,10 @@ export default function useTemplateView({ totalPages }) {
     },
     [totalPages]
   );
-  const requestNextPage = useCallback(() => setPageClamped(page + 1), [
-    page,
-    setPageClamped,
-  ]);
+  const requestNextPage = useCallback(
+    () => setPageClamped(page + 1),
+    [page, setPageClamped]
+  );
 
   const setSort = useCallback(
     (newSort) => {
@@ -73,21 +68,8 @@ export default function useTemplateView({ totalPages }) {
     [setPageClamped]
   );
 
-  const setActivePreview = useCallback(
-    (_, template) => {
-      if (enableTemplatePreviews) {
-        _setActivePreview(template);
-      }
-    },
-    [enableTemplatePreviews]
-  );
-
   return useMemo(
     () => ({
-      activePreview: {
-        value: activePreview,
-        set: setActivePreview,
-      },
       view: {
         style: VIEW_STYLE.GRID,
         pageSize,
@@ -111,8 +93,6 @@ export default function useTemplateView({ totalPages }) {
       },
     }),
     [
-      activePreview,
-      setActivePreview,
       pageSize,
       sort,
       setSort,

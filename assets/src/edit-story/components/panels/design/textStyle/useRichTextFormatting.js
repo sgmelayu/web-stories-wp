@@ -18,18 +18,18 @@
  * External dependencies
  */
 import { useMemo, useCallback, useRef, useEffect } from 'react';
+import { isPatternEqual } from '@web-stories-wp/patterns';
+import { useGlobalKeyDownEffect } from '@web-stories-wp/design-system';
 
 /**
  * Internal dependencies
  */
-import isPatternEqual from '../../../../utils/isPatternEqual';
 import useRichText from '../../../richText/useRichText';
 import {
   getHTMLFormatters,
   getHTMLInfo,
 } from '../../../richText/htmlManipulation';
 import { MULTIPLE_VALUE } from '../../../../constants';
-import { useGlobalKeyDownEffect } from '../../../../../design-system';
 import { useCanvas } from '../../../../app';
 
 /**
@@ -140,6 +140,7 @@ function useRichTextFormatting(selectedElements, pushUpdate) {
         handleSelectFontWeight: selectionActions.setFontWeightInSelection,
         handleClickItalic: selectionActions.toggleItalicInSelection,
         handleClickUnderline: selectionActions.toggleUnderlineInSelection,
+        handleClickUppercase: selectionActions.toggleUppercaseInSelection,
         handleSetLetterSpacing: selectionActions.setLetterSpacingInSelection,
         handleSetColor: selectionActions.setColorInSelection,
         // when editing, resetting font weight needs to save before resetting
@@ -159,6 +160,8 @@ function useRichTextFormatting(selectedElements, pushUpdate) {
       handleClickItalic: (flag) => push(htmlFormatters.toggleItalic, flag),
       handleClickUnderline: (flag) =>
         push(htmlFormatters.toggleUnderline, flag),
+      handleClickUppercase: (flag) =>
+        push(htmlFormatters.toggleUppercase, flag),
       handleSetLetterSpacing: (letterSpacing) =>
         push(htmlFormatters.setLetterSpacing, letterSpacing),
       handleSetColor: (color) => push(htmlFormatters.setColor, color),
@@ -167,9 +170,17 @@ function useRichTextFormatting(selectedElements, pushUpdate) {
     };
   }, [hasCurrentEditor, selectionActions, push, clearEditing, queuePush]);
 
+  const hasText = useCallback(() => {
+    const texts = selectedElements.filter(({ type }) => type === 'text');
+    return texts.length > 0;
+  }, [selectedElements]);
+
   useGlobalKeyDownEffect(
     { key: ['mod+b', 'mod+u', 'mod+i'] },
     ({ key }) => {
+      if (!hasText) {
+        return;
+      }
       switch (key) {
         case 'b':
           handlers.handleClickBold();
@@ -184,7 +195,7 @@ function useRichTextFormatting(selectedElements, pushUpdate) {
           break;
       }
     },
-    [handlers]
+    [handlers, hasText]
   );
 
   return {

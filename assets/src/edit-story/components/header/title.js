@@ -20,6 +20,7 @@
 import styled, { css } from 'styled-components';
 import { useCallback } from 'react';
 import { __ } from '@web-stories-wp/i18n';
+import { themeHelpers } from '@web-stories-wp/design-system';
 
 /**
  * Internal dependencies
@@ -31,14 +32,11 @@ import { styles, states, useFocusHighlight } from '../../app/highlights';
 import useHeader from './use';
 
 const Input = styled.input`
-  color: ${({ theme }) =>
-    `${theme.DEPRECATED_THEME.colors.fg.white} !important`};
+  color: ${({ theme }) => `${theme.colors.fg.primary} !important`};
   margin: 0;
-  font-family: ${({ theme }) => theme.DEPRECATED_THEME.fonts.body1.family};
-  font-size: ${({ theme }) => theme.DEPRECATED_THEME.fonts.body1.size};
-  line-height: ${({ theme }) => theme.DEPRECATED_THEME.fonts.body1.lineHeight};
-  letter-spacing: ${({ theme }) =>
-    theme.DEPRECATED_THEME.fonts.body1.letterSpacing};
+  ${themeHelpers.expandTextPreset(
+    ({ paragraph }, { MEDIUM }) => paragraph[MEDIUM]
+  )}
   background: ${({ isHighlighted }) => !isHighlighted && 'none !important'};
   border: none !important;
   text-align: start;

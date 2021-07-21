@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 /**
  * External dependencies
  */
@@ -20,11 +21,14 @@ import {
   createNewStory,
   uploadMedia,
   deleteMedia,
+  withUser,
 } from '@web-stories-wp/e2e-test-utils';
 
 describe('Inserting Media from Dialog', () => {
   // Uses the existence of the element's frame element as an indicator for successful insertion.
-  it('should insert an image by clicking on it', async () => {
+  // TODO https://github.com/google/web-stories-wp/issues/7107
+  // eslint-disable-next-line jest/no-disabled-tests
+  it.skip('should insert an image by clicking on it', async () => {
     await createNewStory();
 
     await expect(page).not.toMatchElement('[data-testid="FrameElement"]');
@@ -35,5 +39,18 @@ describe('Inserting Media from Dialog', () => {
     await expect(page).toMatchElement('[data-testid="imageElement"]');
 
     await deleteMedia(filename);
+  });
+
+  describe('Contributor User', () => {
+    withUser('contributor', 'password');
+
+    it('should display permission error dialog', async () => {
+      await createNewStory();
+      await expect(page).toMatch('Howdy, contributor');
+
+      await expect(page).toClick('button', { text: 'Upload' });
+      await page.waitForSelector('.ReactModal__Content');
+      await expect(page).toMatch('Access Restrictions');
+    });
   });
 });

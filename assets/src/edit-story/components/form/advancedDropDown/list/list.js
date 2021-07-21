@@ -27,20 +27,32 @@ import {
 import PropTypes from 'prop-types';
 import { v4 as uuidv4 } from 'uuid';
 import { __ } from '@web-stories-wp/i18n';
+import styled from 'styled-components';
+import {
+  Text,
+  THEME_CONSTANTS,
+  useFocusOut,
+} from '@web-stories-wp/design-system';
 
 /**
  * Internal dependencies
  */
-import useFocusOut from '../../../../utils/useFocusOut';
 import {
   createOptionFilter,
   isKeywordFilterable,
   getOptions,
-  addUniqueEntry,
+  addUniqueEntries,
   getInset,
 } from '../utils';
 import { List, Group, GroupLabel, NoResult } from './styled';
 import DefaultRenderer from './defaultRenderer';
+
+const StyledLabel = styled(Text).attrs({
+  forwardedAs: 'span',
+  size: THEME_CONSTANTS.TYPOGRAPHY.PRESET_SIZES.X_SMALL,
+})`
+  color: ${({ theme }) => theme.colors.fg.tertiary};
+`;
 
 function OptionList({
   keyword = '',
@@ -63,7 +75,7 @@ function OptionList({
   const listRef = useRef(null);
   const optionsRef = useRef([]);
   const [focusIndex, setFocusIndex] = useState(-1);
-  const [userSeenOptions, setUserSeenOptions] = useState([]);
+  const userSeenOptions = useRef([]);
 
   /*
    * KEYWORD FILTERING
@@ -79,7 +91,7 @@ function OptionList({
         },
       ];
     }
-    // Otherwise return primary options in one group possibly preceeded
+    // Otherwise return primary options in one group possibly preceded
     // by an optional list of priority options if such exist.
     return [
       ...(priorityOptions?.length
@@ -113,11 +125,16 @@ function OptionList({
     () =>
       new window.IntersectionObserver(
         (entries) => {
-          entries.forEach((entry) => {
-            if (entry.isIntersecting) {
-              setUserSeenOptions(addUniqueEntry(entry.target.dataset.option));
-            }
-          });
+          if (onObserve) {
+            const newlySeenOptions = entries
+              .filter((entry) => entry.isIntersecting)
+              .map((entry) => entry.target.dataset.option);
+            userSeenOptions.current = addUniqueEntries(
+              userSeenOptions.current,
+              ...newlySeenOptions
+            );
+            onObserve(userSeenOptions.current);
+          }
         },
         {
           root: listRef.current,
@@ -125,7 +142,7 @@ function OptionList({
           rootMargin: '60px',
         }
       ),
-    []
+    [onObserve]
   );
 
   // Observe rendered font options
@@ -140,27 +157,26 @@ function OptionList({
           (option) => option && observer.unobserve(option)
         );
       }
-      // clear exisiting option references before next update to filteredGroup
+      // clear existing option references before next update to filteredGroup
       optionsRef.current = [];
     };
   }, [observer, onObserve, filteredListGroups]);
 
-  // load all seen fonts from google service
-  useEffect(() => {
-    if (onObserve) {
-      onObserve(userSeenOptions);
-    }
-  }, [onObserve, userSeenOptions]);
-
   /*
    * KEYBOARD ACCESSIBILITY
    */
-  const filteredOptions = useMemo(() => getOptions(filteredListGroups), [
-    filteredListGroups,
-  ]);
+  const filteredOptions = useMemo(
+    () => getOptions(filteredListGroups),
+    [filteredListGroups]
+  );
 
   const handleKeyPress = useCallback(
-    ({ key }) => {
+    (evt) => {
+      evt.stopPropagation();
+      evt.preventDefault();
+
+      const { key } = evt;
+
       if (key === 'Escape') {
         onClose();
       } else if (key === 'Enter') {
@@ -228,13 +244,13 @@ function OptionList({
         return (
           group.options.length > 0 && (
             <Group
-              key={group.label}
+              key={groupLabelId}
               role="group"
               aria-labelledby={groupLabelId}
             >
               {group.label && (
                 <GroupLabel id={groupLabelId} role="presentation">
-                  {group.label}
+                  <StyledLabel>{group.label}</StyledLabel>
                 </GroupLabel>
               )}
               {group.options.map((option, j) => {
@@ -249,9 +265,8 @@ function OptionList({
                     data-option={option.id}
                     onClick={() => onSelect(option)}
                     ref={(el) =>
-                      (optionsRef.current[
-                        getInset(filteredListGroups, i, j)
-                      ] = el)
+                      (optionsRef.current[getInset(filteredListGroups, i, j)] =
+                        el)
                     }
                     option={option}
                     value={value}

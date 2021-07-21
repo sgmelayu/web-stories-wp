@@ -20,13 +20,13 @@ namespace Google\Web_Stories\Tests;
 /**
  * @coversDefaultClass \Google\Web_Stories\Settings
  */
-class Settings extends \WP_UnitTestCase {
+class Settings extends Test_Case {
 	/**
-	 * @covers ::init
+	 * @covers ::register
 	 */
-	public function test_init() {
+	public function test_register() {
 		$settings = new \Google\Web_Stories\Settings();
-		$settings->init();
+		$settings->register();
 
 		$this->assertSame( 10, has_action( 'init', [ $settings, 'register_settings' ] ) );
 	}

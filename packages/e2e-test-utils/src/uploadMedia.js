@@ -16,7 +16,7 @@
 /**
  * Internal dependencies
  */
-import { uploadFile } from './';
+import uploadFile from './uploadFile';
 
 const MODAL = '.media-modal';
 
@@ -25,7 +25,6 @@ const MODAL = '.media-modal';
  *
  * @param {string}file Filename
  * @param {boolean}exit If this helper should exit the dialog.
- *
  * @return {Promise<string>} Return the filename without ext.
  */
 async function uploadMedia(file, exit = true) {

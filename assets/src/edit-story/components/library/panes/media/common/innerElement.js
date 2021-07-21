@@ -17,18 +17,19 @@
  * External dependencies
  */
 import styled, { css } from 'styled-components';
-import { rgba } from 'polished';
 import { useEffect, useRef } from 'react';
 import PropTypes from 'prop-types';
-
+import {
+  getSmallestUrlForWidth,
+  resourceList,
+  ResourcePropTypes,
+} from '@web-stories-wp/media';
+import { Text, THEME_CONSTANTS } from '@web-stories-wp/design-system';
 /**
  * Internal dependencies
  */
-import { getSmallestUrlForWidth } from '../../../../../elements/media/util';
 import useAverageColor from '../../../../../elements/media/useAverageColor';
-import StoryPropTypes from '../../../../../types';
 import LibraryMoveable from '../../shared/libraryMoveable';
-import resourceList from '../../../../../utils/resourceList';
 import { useDropTargets } from '../../../../dropTargets';
 import { ContentType } from '../../../../../app/media';
 
@@ -51,19 +52,21 @@ const Video = styled.video`
   ${({ showWithoutDelay }) => (showWithoutDelay ? 'opacity: 1;' : '')}
 `;
 
-const Duration = styled.div`
+const DurationWrapper = styled.div`
   position: absolute;
   bottom: 8px;
   left: 8px;
-  background: ${({ theme }) => rgba(theme.colors.bg.primary, 0.6)};
-  font-family: ${({ theme }) => theme.DEPRECATED_THEME.fonts.duration.family};
-  font-size: ${({ theme }) => theme.DEPRECATED_THEME.fonts.duration.size};
-  line-height: ${({ theme }) =>
-    theme.DEPRECATED_THEME.fonts.duration.lineHeight};
-  letter-spacing: ${({ theme }) =>
-    theme.DEPRECATED_THEME.fonts.duration.letterSpacing};
+  background: ${({ theme }) => theme.colors.opacity.black64};
+  border-radius: 100px;
+  height: 18px;
   padding: 0 6px;
-  border-radius: 10px;
+`;
+const Duration = styled(Text).attrs({
+  forwardedAs: 'span',
+  size: THEME_CONSTANTS.TYPOGRAPHY.PRESET_SIZES.X_SMALL,
+})`
+  color: ${({ theme }) => theme.colors.fg.primary};
+  display: block;
 `;
 
 const HiddenPosterImage = styled.img`
@@ -126,59 +129,59 @@ function InnerElement({
 
   let media;
   const thumbnailURL = getSmallestUrlForWidth(width, resource);
-  const { lengthFormatted, poster, mimeType, output } = resource;
-  const posterSrc = type === ContentType.GIF ? output.poster : poster;
-  const displayPoster = posterSrc ?? newVideoPosterRef.current;
+  const { lengthFormatted, poster, mimeType } = resource;
+  const displayPoster = poster ?? newVideoPosterRef.current;
 
   const commonProps = {
     width: width,
     height: height,
     alt: alt,
-    'aria-label': alt,
+    crossOrigin: 'anonymous',
   };
-  const cloneProps = {
+
+  const commonImageProps = {
     ...commonProps,
+    onLoad: makeMediaVisible,
     loading: 'lazy',
     draggable: false,
   };
+
+  const cloneProps = {
+    ...commonImageProps,
+    onLoad: undefined,
+  };
+
   const imageProps = {
-    ...cloneProps,
+    ...commonImageProps,
     src: thumbnailURL,
-    onLoad: makeMediaVisible,
+    'aria-label': alt,
   };
   const videoProps = {
     ...commonProps,
+    'aria-label': alt,
     loop: type === ContentType.GIF,
     muted: true,
-    preload: 'none',
+    preload: 'metadata',
     poster: displayPoster,
     showWithoutDelay: Boolean(newVideoPosterRef.current),
   };
 
   if (type === ContentType.IMAGE) {
+    // eslint-disable-next-line styled-components-a11y/alt-text
     media = <Image key={src} {...imageProps} ref={mediaElement} />;
     cloneProps.src = thumbnailURL;
   } else if ([ContentType.VIDEO, ContentType.GIF].includes(type)) {
     media = (
       <>
+        {/* eslint-disable-next-line styled-components-a11y/media-has-caption -- No captions because video is muted. */}
         <Video key={src} {...videoProps} ref={mediaElement}>
           {type === ContentType.GIF ? (
-            <>
+            resource.output.src && (
               <source
-                src={getSmallestUrlForWidth(width, {
-                  ...resource,
-                  sizes: resource.output.sizes.mp4,
-                })}
-                type="video/mp4"
+                src={resource.output.src}
+                type={resource.output.mimeType}
               />
-              <source
-                src={getSmallestUrlForWidth(width, {
-                  ...resource,
-                  sizes: resource.output.sizes.webm,
-                })}
-                type="video/webm"
-              />
-            </>
+            )
           ) : (
             <source
               src={getSmallestUrlForWidth(width, resource)}
@@ -187,16 +190,21 @@ function InnerElement({
           )}
         </Video>
         {!newVideoPosterRef.current && (
+          /* eslint-disable-next-line styled-components-a11y/alt-text -- False positive. */
           <HiddenPosterImage
             ref={hiddenPoster}
-            src={posterSrc}
-            onLoad={makeMediaVisible}
+            src={poster}
+            {...commonImageProps}
           />
         )}
-        {showVideoDetail && <Duration>{lengthFormatted}</Duration>}
+        {type === ContentType.VIDEO && showVideoDetail && lengthFormatted && (
+          <DurationWrapper>
+            <Duration>{lengthFormatted}</Duration>
+          </DurationWrapper>
+        )}
       </>
     );
-    cloneProps.src = posterSrc;
+    cloneProps.src = poster;
   }
   if (!media) {
     throw new Error('Invalid media element type.');
@@ -207,7 +215,7 @@ function InnerElement({
       [ContentType.VIDEO, ContentType.GIF].includes(type) &&
       !mediaElement.current?.paused
     ) {
-      mediaElement.current.pause();
+      mediaElement.current?.pause();
     }
     if (!draggingResource) {
       // Drop-targets handling.
@@ -240,7 +248,7 @@ function InnerElement({
           },
         }}
         onClick={onClick(
-          type === ContentType.IMAGE ? thumbnailURL : posterSrc,
+          type === ContentType.IMAGE ? thumbnailURL : poster,
           mediaBaseColor.current
         )}
         cloneElement={CloneImg}
@@ -253,7 +261,7 @@ function InnerElement({
 InnerElement.propTypes = {
   type: PropTypes.string.isRequired,
   src: PropTypes.string.isRequired,
-  resource: StoryPropTypes.imageResource,
+  resource: ResourcePropTypes.imageResource,
   alt: PropTypes.string,
   width: PropTypes.number,
   height: PropTypes.number,

@@ -20,21 +20,21 @@
 import { useCallback, useState } from 'react';
 import { __ } from '@web-stories-wp/i18n';
 import { trackEvent } from '@web-stories-wp/tracking';
-/**
- * Internal dependencies
- */
-import { useStory, useLocalMedia } from '../../../app';
-import escapeHTML from '../../../utils/escapeHTML';
-import PreviewErrorDialog from '../previewErrorDialog';
 import {
   Button,
   BUTTON_SIZES,
   BUTTON_TYPES,
   BUTTON_VARIANTS,
   Icons,
-  Tooltip,
-  TOOLTIP_PLACEMENT,
-} from '../../../../design-system';
+} from '@web-stories-wp/design-system';
+
+/**
+ * Internal dependencies
+ */
+import { useStory, useLocalMedia } from '../../../app';
+import escapeHTML from '../../../utils/escapeHTML';
+import PreviewErrorDialog from '../previewErrorDialog';
+import Tooltip from '../../tooltip';
 
 const PREVIEW_TARGET = 'story-preview';
 
@@ -52,9 +52,8 @@ function Preview() {
     isUploading: state.state.isUploading,
   }));
 
-  const [previewLinkToOpenViaDialog, setPreviewLinkToOpenViaDialog] = useState(
-    null
-  );
+  const [previewLinkToOpenViaDialog, setPreviewLinkToOpenViaDialog] =
+    useState(null);
   const isDraft = 'draft' === status;
 
   /**
@@ -148,10 +147,10 @@ function Preview() {
   const label = __('Preview', 'web-stories');
   return (
     <>
-      <Tooltip title={label} placement={TOOLTIP_PLACEMENT.BOTTOM} hasTail>
+      <Tooltip title={label} hasTail>
         <Button
           variant={BUTTON_VARIANTS.SQUARE}
-          type={BUTTON_TYPES.TERTIARY}
+          type={BUTTON_TYPES.QUATERNARY}
           size={BUTTON_SIZES.SMALL}
           onClick={openPreviewLink}
           disabled={isSaving || isUploading}
@@ -161,7 +160,7 @@ function Preview() {
         </Button>
       </Tooltip>
       <PreviewErrorDialog
-        open={Boolean(previewLinkToOpenViaDialog)}
+        isOpen={Boolean(previewLinkToOpenViaDialog)}
         onClose={onDialogClose}
         onRetry={openPreviewLinkSync}
       />

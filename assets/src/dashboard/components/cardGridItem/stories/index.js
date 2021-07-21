@@ -25,12 +25,7 @@ import { text } from '@storybook/addon-knobs';
  */
 import { STORY_STATUS } from '../../../constants';
 import { STORYBOOK_PAGE_SIZE } from '../../../storybookUtils';
-import {
-  CardGrid,
-  CardGridItem,
-  CardPreviewContainer,
-  CardTitle,
-} from '../../';
+import { CardGrid, CardGridItem, CardPreviewContainer, CardTitle } from '../..';
 
 export default {
   title: 'Dashboard/Components/CardGridItem',
@@ -72,6 +67,7 @@ export const _default = () => {
           onEditCancel={() => {}}
           onEditComplete={() => {}}
           tabIndex={0}
+          id="8787"
         />
       </CardGridItem>
     </CardGrid>
@@ -105,6 +101,7 @@ export const _publishedStory = () => {
           onEditCancel={() => {}}
           onEditComplete={() => {}}
           tabIndex={0}
+          id="99999"
         />
       </CardGridItem>
     </CardGrid>

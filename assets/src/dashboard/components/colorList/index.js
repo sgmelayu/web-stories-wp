@@ -29,6 +29,9 @@ const borderLookup = (color) => ({
   '#fff': `border: solid 1px ${color}`,
   '#ffffff': `border: solid 1px ${color}`,
   white: `border: solid 1px ${color}`,
+  '#fef9f1': `border: solid 1px ${color}`,
+  '#fff8f2': `border: solid 1px ${color}`,
+  '#f9f9f9': `border: solid 1px ${color}`,
 });
 
 const ColorContainer = styled.div`
@@ -41,7 +44,7 @@ const Color = styled.div`
     height: ${size}px;
     border-radius: 50%;
     background-color: ${color};
-    ${borderLookup(theme.DEPRECATED_THEME.colors.gray50)[color] || ''};
+    ${borderLookup(theme.colors.border.defaultNormal)[color] || ''};
 
     & + & {
       margin-left: ${spacing || 10}px;

@@ -21,10 +21,12 @@ import { useMemo, useRef, useCallback, useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import styled from 'styled-components';
 import { __ } from '@web-stories-wp/i18n';
-
-/**
- * Internal dependencies
- */
+import {
+  PAGE_WIDTH,
+  PAGE_HEIGHT,
+  getBoundRect,
+  calcRotatedObjectPositionAndSize,
+} from '@web-stories-wp/units';
 import {
   useKeyDownEffect,
   Icons,
@@ -32,15 +34,15 @@ import {
   BUTTON_SIZES,
   BUTTON_TYPES,
   BUTTON_VARIANTS,
-  Tooltip,
-  PLACEMENT,
-} from '../../../../../design-system';
+  themeHelpers,
+} from '@web-stories-wp/design-system';
+
+/**
+ * Internal dependencies
+ */
 import { useConfig } from '../../../../app';
-import getBoundRect, {
-  calcRotatedObjectPositionAndSize,
-} from '../../../../utils/getBoundRect';
-import { PAGE_WIDTH, PAGE_HEIGHT } from '../../../../constants';
 import { Panel } from '../../panel';
+import Tooltip from '../../../tooltip';
 import useAlignment from './useAlignment';
 
 const ElementRow = styled.div`
@@ -83,6 +85,9 @@ const AlignmentButton = styled(Button).attrs({
   :focus {
     z-index: 1;
   }
+
+  ${({ theme }) =>
+    themeHelpers.focusableOutlineCSS(theme.colors.border.focus, '#1d1f20')};
 `;
 
 const StyledPanel = styled(Panel)`
@@ -199,14 +204,11 @@ function ElementAlignmentPanel({ selectedElements, pushUpdate }) {
       ariaLabel={__('Alignment', 'web-stories')}
     >
       <ElementRow ref={ref}>
-        <Tooltip
-          title={__('Distribute horizontally', 'web-stories')}
-          placement={PLACEMENT.BOTTOM}
-        >
+        <Tooltip title={__('Distribute horizontally', 'web-stories')}>
           <AlignmentButton
             disabled={!isDistributionEnabled}
             onClick={() => handleHorizontalDistribution(boundRect, pushUpdate)}
-            aria-label={__('Horizontal Distribution', 'web-stories')}
+            aria-label={__('Distribute horizontally', 'web-stories')}
             id={alignmentButtonIds[0]}
             onFocus={() => setCurrentButton(alignmentButtonIds[0])}
           >
@@ -217,7 +219,7 @@ function ElementAlignmentPanel({ selectedElements, pushUpdate }) {
           <AlignmentButton
             disabled={!isDistributionEnabled}
             onClick={() => handleVerticalDistribution(boundRect, pushUpdate)}
-            aria-label={__('Vertical Distribution', 'web-stories')}
+            aria-label={__('Distribute vertically', 'web-stories')}
             id={alignmentButtonIds[1]}
             onFocus={() => setCurrentButton(alignmentButtonIds[1])}
           >
@@ -227,7 +229,7 @@ function ElementAlignmentPanel({ selectedElements, pushUpdate }) {
         <Tooltip title={__('Align left', 'web-stories')} shortcut="mod+{">
           <AlignmentButton
             onClick={() => handleAlign('left', boundRect, pushUpdate)}
-            aria-label={__('Justify Left', 'web-stories')}
+            aria-label={__('Align left', 'web-stories')}
             id={alignmentButtonIds[2]}
             onFocus={() => setCurrentButton(alignmentButtonIds[2])}
           >
@@ -237,7 +239,7 @@ function ElementAlignmentPanel({ selectedElements, pushUpdate }) {
         <Tooltip title={__('Align center', 'web-stories')} shortcut="mod+H">
           <AlignmentButton
             onClick={() => handleAlignCenter(boundRect, pushUpdate)}
-            aria-label={__('Justify Center', 'web-stories')}
+            aria-label={__('Align center', 'web-stories')}
             id={alignmentButtonIds[3]}
             onFocus={() => setCurrentButton(alignmentButtonIds[3])}
           >
@@ -247,7 +249,7 @@ function ElementAlignmentPanel({ selectedElements, pushUpdate }) {
         <Tooltip title={__('Align right', 'web-stories')} shortcut="mod+}">
           <AlignmentButton
             onClick={() => handleAlign('right', boundRect, pushUpdate)}
-            aria-label={__('Justify Right', 'web-stories')}
+            aria-label={__('Align right', 'web-stories')}
             id={alignmentButtonIds[4]}
             onFocus={() => setCurrentButton(alignmentButtonIds[4])}
           >
@@ -257,7 +259,7 @@ function ElementAlignmentPanel({ selectedElements, pushUpdate }) {
         <Tooltip title={__('Align top', 'web-stories')}>
           <AlignmentButton
             onClick={() => handleAlign('top', boundRect, pushUpdate)}
-            aria-label={__('Justify Top', 'web-stories')}
+            aria-label={__('Align top', 'web-stories')}
             id={alignmentButtonIds[5]}
             onFocus={() => setCurrentButton(alignmentButtonIds[5])}
           >
@@ -267,7 +269,7 @@ function ElementAlignmentPanel({ selectedElements, pushUpdate }) {
         <Tooltip title={__('Align vertical center', 'web-stories')}>
           <AlignmentButton
             onClick={() => handleAlignMiddle(boundRect, pushUpdate)}
-            aria-label={__('Justify Middle', 'web-stories')}
+            aria-label={__('Align vertical center', 'web-stories')}
             id={alignmentButtonIds[6]}
             onFocus={() => setCurrentButton(alignmentButtonIds[6])}
           >
@@ -277,7 +279,7 @@ function ElementAlignmentPanel({ selectedElements, pushUpdate }) {
         <Tooltip title={__('Align bottom', 'web-stories')}>
           <AlignmentButton
             onClick={() => handleAlign('bottom', boundRect, pushUpdate)}
-            aria-label={__('Justify Bottom', 'web-stories')}
+            aria-label={__('Align bottom', 'web-stories')}
             id={alignmentButtonIds[7]}
             onFocus={() => setCurrentButton(alignmentButtonIds[7])}
           >

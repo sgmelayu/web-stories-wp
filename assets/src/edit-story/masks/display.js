@@ -18,6 +18,8 @@
  * External dependencies
  */
 import PropTypes from 'prop-types';
+import { useMemo } from 'react';
+import { v4 as uuidv4 } from 'uuid';
 
 /**
  * Internal dependencies
@@ -25,7 +27,8 @@ import PropTypes from 'prop-types';
 import StoryPropTypes from '../types';
 import getTransformFlip from '../elements/shared/getTransformFlip';
 import { shouldDisplayBorder } from '../utils/elementBorder';
-import { getElementMask, MaskTypes } from './';
+import { MaskTypes } from './constants';
+import { getElementMask } from '.';
 
 const FILL_STYLE = {
   position: 'absolute',
@@ -38,22 +41,28 @@ const FILL_STYLE = {
 export default function WithMask({
   element,
   fill,
-  style,
+  style = {},
   children,
   box,
   applyFlip = true,
   previewMode = false,
   ...rest
 }) {
+  // This component is used twice - random id appended to make sure
+  // id is unique for the Mask.
+  const randomId = useMemo(uuidv4, []);
   const mask = getElementMask(element);
   const { flip, isBackground } = element;
 
-  const transformFlip = getTransformFlip(flip);
-  if (transformFlip && applyFlip) {
-    style.transform = style.transform
-      ? `${style.transform} ${transformFlip}`
-      : transformFlip;
-  }
+  const flipTransform = (applyFlip && getTransformFlip(flip)) || '';
+
+  const actualTransform = `${style.transform || ''} ${flipTransform}`.trim();
+
+  const fullStyle = {
+    ...(fill ? FILL_STYLE : {}),
+    ...style,
+    transform: actualTransform,
+  };
 
   // Don't display mask if we have a border, not to cut it off while resizing.
   // Note that border can be applied to a rectangle only anyway.
@@ -63,13 +72,7 @@ export default function WithMask({
     shouldDisplayBorder(element)
   ) {
     return (
-      <div
-        style={{
-          ...(fill ? FILL_STYLE : {}),
-          ...style,
-        }}
-        {...rest}
-      >
+      <div style={fullStyle} {...rest}>
         {children}
       </div>
     );
@@ -80,14 +83,13 @@ export default function WithMask({
 
   const maskId = `mask-${mask.type}-${element.id}-display${
     previewMode ? '-preview' : ''
-  }`;
+  }-${randomId}`;
 
   return (
     <div
       style={{
         pointerEvents: 'initial',
-        ...(fill ? FILL_STYLE : {}),
-        ...style,
+        ...fullStyle,
         ...(!isBackground ? { clipPath: `url(#${maskId})` } : {}),
       }}
       {...rest}

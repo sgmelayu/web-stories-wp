@@ -15,6 +15,11 @@
  */
 
 /**
+ * External dependencies
+ */
+import { waitFor } from '@testing-library/react';
+
+/**
  * Internal dependencies
  */
 import { Fixture } from '../../../../../karma';
@@ -40,6 +45,7 @@ describe('Border Panel', () => {
   describe('CUJ: Creator can Manipulate Shape: Border', () => {
     it('should allow the user to add border for text element', async () => {
       await fixture.events.click(fixture.editor.library.textAdd);
+      await waitFor(() => fixture.editor.canvas.framesLayer.frames[1].node);
       const panel = fixture.editor.inspector.designPanel.border;
 
       await fixture.events.click(panel.width(), { clickCount: 3 });
@@ -77,9 +83,14 @@ describe('Border Panel', () => {
       await fixture.events.keyboard.press('Tab');
 
       const borderColor = panel.borderColor;
+      await fixture.events.focus(borderColor.opacity);
       await fixture.events.click(borderColor.opacity, { clickCount: 3 });
       await fixture.events.keyboard.type('30');
       await fixture.events.keyboard.press('Tab');
+
+      await waitFor(() => {
+        expect(borderColor.opacity.getAttribute('value')).toBe('30%');
+      });
 
       const [element] = await getSelection();
       const {

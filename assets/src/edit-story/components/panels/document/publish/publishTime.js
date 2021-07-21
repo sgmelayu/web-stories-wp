@@ -17,77 +17,44 @@
 /**
  * External dependencies
  */
-import styled from 'styled-components';
-import { rgba } from 'polished';
 import { useCallback, useRef, useState } from 'react';
 import { format, formatTime, is12Hour } from '@web-stories-wp/date';
 import { __ } from '@web-stories-wp/i18n';
+import {
+  DropDownSelect,
+  PLACEMENT,
+  useKeyDownEffect,
+  useFocusOut,
+} from '@web-stories-wp/design-system';
 
 /**
  * Internal dependencies
  */
-import { DateTime, Label, Row } from '../../../form';
+import { DateTime, Row } from '../../../form';
 import Popup from '../../../popup';
 import { useStory } from '../../../../app/story';
-import { useKeyDownEffect, Icons } from '../../../../../design-system';
-import useFocusOut from '../../../../utils/useFocusOut';
+import { focusStyle } from '../../shared';
 
-const StyledButton = styled.button`
-  color: ${({ theme }) => theme.DEPRECATED_THEME.colors.fg.white};
-  font-family: ${({ theme }) => theme.DEPRECATED_THEME.fonts.body2.family};
-  font-size: ${({ theme }) => theme.DEPRECATED_THEME.fonts.body2.size};
-  line-height: ${({ theme }) => theme.DEPRECATED_THEME.fonts.body2.lineHeight};
-  letter-spacing: ${({ theme }) =>
-    theme.DEPRECATED_THEME.fonts.body2.letterSpacing};
-  display: flex;
-  flex-direction: row;
-  background-color: ${({ theme }) =>
-    rgba(theme.DEPRECATED_THEME.colors.fg.white, 0.1)};
-  flex: 1;
-  padding: 2px;
-  border-radius: 4px;
-  border-color: transparent;
-`;
-
-const DateWrapper = styled.div`
-  padding: 5px 0px 5px 2px;
-  width: 100%;
-  text-align: left;
-`;
-
-const FieldLabel = styled(Label)`
-  flex-basis: 64px;
-`;
-
-const Date = styled.span`
-  color: ${({ theme }) => rgba(theme.DEPRECATED_THEME.colors.fg.white, 0.86)};
-`;
-
-const Time = styled.span`
-  color: ${({ theme }) => rgba(theme.DEPRECATED_THEME.colors.fg.white, 0.4)};
-  display: inline-block;
-`;
-
-const StyledToggleIcon = styled(Icons.ChevronDownSmall)`
-  width: 32px;
-  height: auto;
-`;
+// date-fns format without timezone.
+const TIMEZONELESS_FORMAT = 'Y-m-d\\TH:i:s';
 
 function PublishTime() {
-  const { date, updateStory } = useStory(
+  const { date, modified, status, updateStory } = useStory(
     ({
       state: {
-        story: { date },
+        story: { date, modified, status },
       },
       actions: { updateStory },
     }) => ({
       date,
+      modified,
+      status,
       updateStory,
     })
   );
   const use12HourFormat = is12Hour();
 
-  /* translators: Date format, see https://www.php.net/date */
+  /* translators: Date format, see https://www.php.net/manual/en/datetime.format.php */
   const shortDateFormat = __('d/m/Y', 'web-stories');
 
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -110,21 +77,37 @@ function PublishTime() {
       if (close && showDatePicker) {
         setShowDatePicker(false);
       }
-      updateStory({ properties: { date: value } });
+      // Format the date only if the value exists.
+      const newDate = value
+        ? format(new Date(value), TIMEZONELESS_FORMAT)
+        : value;
+      updateStory({
+        properties: { date: newDate },
+      });
     },
     [showDatePicker, updateStory]
   );
 
+  // Floating date means an unset date so that the story publish date will match the time it will get published.
+  const floatingDate =
+    ['draft', 'pending', 'auto-draft'].includes(status) &&
+    (date === modified || date === null);
+  const displayDate = Date.now();
+  const displayLabel = !floatingDate
+    ? format(date || displayDate, shortDateFormat) +
+      ' ' +
+      formatTime(date || displayDate)
+    : __('Immediately', 'web-stories');
   return (
     <>
       <Row>
-        <FieldLabel>{__('Publish', 'web-stories')}</FieldLabel>
-        <StyledButton
+        <DropDownSelect
+          dropDownLabel={__('Publish', 'web-stories')}
           aria-pressed={showDatePicker}
           aria-haspopup
           aria-expanded={showDatePicker}
           aria-label={__('Story publish time', 'web-stories')}
-          onClick={(e) => {
+          onSelectClick={(e) => {
             e.preventDefault();
             if (!showDatePicker) {
               // Handle only opening the datepicker since onFocusOut deals with closing.
@@ -132,21 +115,17 @@ function PublishTime() {
             }
           }}
           ref={dateFieldRef}
-        >
-          <DateWrapper>
-            <Date>{format(date, shortDateFormat)}</Date>{' '}
-            <Time>{formatTime(date)}</Time>
-          </DateWrapper>
-          <StyledToggleIcon />
-        </StyledButton>
+          activeItemLabel={displayLabel}
+          selectButtonStylesOverride={focusStyle}
+        />
       </Row>
       <Popup
         anchor={dateFieldRef}
         isOpen={showDatePicker}
-        placement={'bottom-end'}
+        placement={PLACEMENT.BOTTOM_END}
         renderContents={({ propagateDimensionChange }) => (
           <DateTime
-            value={date}
+            value={floatingDate ? displayDate : date}
             onChange={(value, close = false) => {
               handleDateChange(value, close);
             }}
@@ -154,6 +133,10 @@ function PublishTime() {
             is12Hour={use12HourFormat}
             forwardedRef={dateTimeNode}
             onClose={() => setShowDatePicker(false)}
+            canReset={
+              ['draft', 'pending', 'auto-draft'].includes(status) &&
+              !floatingDate
+            }
           />
         )}
       />

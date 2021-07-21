@@ -23,7 +23,6 @@ import { useState, useEffect } from 'react';
 /**
  * Internal dependencies
  */
-import { addQueryArgs } from '../../../../design-system';
 import { useStory } from '../../../app';
 import CircularProgress from '../../circularProgress';
 import PostPublishDialog from '../postPublishDialog';
@@ -71,29 +70,26 @@ function Loading() {
 }
 
 function Buttons() {
-  const { status, storyId, link, isFreshlyPublished } = useStory(
+  const { status, embedPostLink, link, isFreshlyPublished } = useStory(
     ({
       state: {
-        story: { status, storyId, link },
+        story: { status, embedPostLink, link },
         meta: { isFreshlyPublished },
       },
     }) => ({
       status,
-      storyId,
+      embedPostLink,
       link,
       isFreshlyPublished,
     })
   );
   const [showDialog, setShowDialog] = useState(false);
-  useEffect(() => setShowDialog(Boolean(isFreshlyPublished)), [
-    isFreshlyPublished,
-  ]);
+  useEffect(
+    () => setShowDialog(Boolean(isFreshlyPublished)),
+    [isFreshlyPublished]
+  );
 
   const isDraft = 'draft' === status;
-
-  const confirmURL = addQueryArgs('post-new.php', {
-    ['from-web-story']: storyId,
-  });
 
   return (
     <>
@@ -112,9 +108,9 @@ function Buttons() {
         </List>
       </ButtonList>
       <PostPublishDialog
-        open={showDialog}
+        isOpen={showDialog}
         onClose={() => setShowDialog(false)}
-        confirmURL={confirmURL}
+        confirmURL={embedPostLink}
         storyURL={link}
       />
     </>

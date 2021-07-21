@@ -19,19 +19,20 @@
  */
 import PropTypes from 'prop-types';
 import { __ } from '@web-stories-wp/i18n';
-
+import styled from 'styled-components';
+import { hasOpacity, hasGradient } from '@web-stories-wp/patterns';
+import { Swatch, Icons } from '@web-stories-wp/design-system';
 /**
  * Internal dependencies
  */
-import {
-  Swatch,
-  Tooltip,
-  Icons,
-  hasOpacity,
-  hasGradient,
-} from '../../../../../../design-system';
 import { useStory } from '../../../../../app/story';
 import { areAllType } from '../utils';
+import Tooltip from '../../../../tooltip';
+import { focusStyle } from '../../../shared';
+
+const StyledSwatch = styled(Swatch)`
+  ${focusStyle};
+`;
 
 function Color({ color, i, activeIndex, handleOnClick, isEditMode, isLocal }) {
   const { currentPage, selectedElements } = useStory(
@@ -68,7 +69,7 @@ function Color({ color, i, activeIndex, handleOnClick, isEditMode, isLocal }) {
 
   return (
     <Tooltip title={tooltip}>
-      <Swatch
+      <StyledSwatch
         aria-label={isEditMode ? deleteLabel : applyLabel}
         isDisabled={isDisabled}
         tabIndex={activeIndex === i ? 0 : -1}
@@ -76,7 +77,7 @@ function Color({ color, i, activeIndex, handleOnClick, isEditMode, isLocal }) {
         pattern={color}
       >
         {isEditMode && <Icons.Cross />}
-      </Swatch>
+      </StyledSwatch>
     </Tooltip>
   );
 }

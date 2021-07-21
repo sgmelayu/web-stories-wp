@@ -18,7 +18,6 @@
  * External dependencies
  */
 import PropTypes from 'prop-types';
-import styled from 'styled-components';
 
 /**
  * WordPress dependencies
@@ -38,7 +37,6 @@ import { useEffect, useRef } from '@wordpress/element';
 /**
  * Internal dependencies
  */
-import { useConfig } from '../config';
 import {
   CIRCLES_VIEW_TYPE,
   GRID_VIEW_TYPE,
@@ -46,23 +44,10 @@ import {
 } from '../constants';
 import AuthorSelection from './authorSelection';
 
-const StyledTextArea = styled(TextControl)`
-  width: 80%;
-  margin-left: auto;
-`;
-
-const StyledToggle = styled(ToggleControl)`
-  .components-base-control__help {
-    width: 80%;
-    margin-left: auto;
-  }
-`;
-
 /**
  * StoriesInspectorControls props.
  *
  * @typedef StoriesInspectorControlsProps
- *
  * @property {string} viewType String indicator of active view type.
  * @property {number} numOfStories Number indicator of maximum number of stories to show.
  * @property {number} numOfColumns Number indicator of number of columns in grid view type.
@@ -78,11 +63,14 @@ const StyledToggle = styled(ToggleControl)`
  * @property {Function} setAttributes Callable function for saving attribute values.
  */
 
+const {
+  config: { fieldStates, archiveURL },
+} = window.webStoriesBlockSettings;
+
 /**
  * LatestStoriesBlockControls component. Used for rendering block controls of the block.
  *
  * @param {StoriesInspectorControlsProps} props Component props.
- *
  * @return {*} JSX markup.
  */
 const StoriesInspectorControls = (props) => {
@@ -103,7 +91,6 @@ const StoriesInspectorControls = (props) => {
     showFilters = true,
   } = props;
 
-  const { fieldStates, archiveURL } = useConfig();
   const firstUpdate = useRef(true);
 
   useEffect(() => {
@@ -116,6 +103,11 @@ const StoriesInspectorControls = (props) => {
         defaultState[`show_${field}`] = show;
       }
     });
+
+    // Prevent unnecessary changes if `defaultState` is empty.
+    if (!Object.keys(defaultState).length) {
+      return;
+    }
 
     setAttributes({
       fieldState: {
@@ -132,23 +124,24 @@ const StoriesInspectorControls = (props) => {
       return;
     }
 
-    // Set default field state on load.
-    const defaultViewState = {};
+    const defaultState = {};
     Object.entries(fieldStates[viewType]).map(([field, fieldObj]) => {
       const { show } = fieldObj;
-      defaultViewState[`show_${field}`] = show;
+      defaultState[`show_${field}`] = show;
     });
 
     setAttributes({
-      fieldState: defaultViewState,
+      fieldState: defaultState,
     });
   }, [viewType]); // eslint-disable-line react-hooks/exhaustive-deps -- We only want to set the values on viewType change.
 
-  const ArchiveLink = () => (
-    <a target="__blank" href={archiveURL}>
-      {__('View archive page', 'web-stories')}
-    </a>
-  );
+  const ArchiveLink = () => {
+    return archiveURL ? (
+      <a target="__blank" href={archiveURL}>
+        {__('View archive page', 'web-stories')}
+      </a>
+    ) : null;
+  };
 
   const handleToggleControl = (field) => {
     setAttributes({
@@ -176,10 +169,10 @@ const StoriesInspectorControls = (props) => {
               'image_alignment' !== field
             ) {
               return (
-                <StyledToggle
+                <ToggleControl
                   key={`${field}__control`}
                   label={label}
-                  checked={fieldState[`show_${field}`]}
+                  checked={fieldState[`show_${field}`] || false}
                   onChange={() => handleToggleControl(field)}
                   help={
                     'archive_link' === field &&
@@ -192,13 +185,14 @@ const StoriesInspectorControls = (props) => {
             return false;
           })}
         {fieldState['show_archive_link'] && (
-          <StyledTextArea
+          <TextControl
             label={__('Archive Link Label', 'web-stories')}
             value={archiveLinkLabel}
             placeholder={__('View All Stories', 'web-stories')}
             onChange={(newLabel) =>
               setAttributes({ archiveLinkLabel: newLabel })
             }
+            className="web-stories-settings-archive-link"
           />
         )}
       </PanelBody>

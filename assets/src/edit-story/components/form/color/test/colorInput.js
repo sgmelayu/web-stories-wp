@@ -17,31 +17,40 @@
 /**
  * External dependencies
  */
-import { fireEvent } from '@testing-library/react';
+import { fireEvent, screen } from '@testing-library/react';
+import {
+  createSolid,
+  getPreviewText as getPreviewTextMock,
+} from '@web-stories-wp/patterns';
 
 /**
  * Internal dependencies
  */
-import createSolid from '../../../../utils/createSolid';
 import { MULTIPLE_VALUE, MULTIPLE_DISPLAY_VALUE } from '../../../../constants';
 import { renderWithTheme } from '../../../../testUtils';
 import ColorInput from '../colorInput';
 import getPreviewStyleMock from '../getPreviewStyle';
-import getPreviewTextMock from '../../../../../design-system/components/hex/getPreviewText';
+
+jest.mock('@web-stories-wp/design-system', () => ({
+  ...jest.requireActual('@web-stories-wp/design-system'),
+  Popup: ({ children, isOpen }) => (isOpen ? children : null),
+}));
 
 jest.mock('../getPreviewStyle', () => jest.fn());
-jest.mock('../../../../../design-system/components/hex/getPreviewText', () =>
-  jest.fn()
-);
+jest.mock('@web-stories-wp/patterns', () => {
+  return {
+    ...jest.requireActual('@web-stories-wp/patterns'),
+    getPreviewText: jest.fn(),
+  };
+});
 
 function arrange(children = null) {
-  const { getByRole, queryByLabelText } = renderWithTheme(children);
-  const button = getByRole('button', { name: 'Color' });
-  const input = queryByLabelText('Color', { selector: 'input' });
+  renderWithTheme(children);
+  const button = screen.getByRole('button', { name: 'Color' });
+  const input = screen.queryByLabelText('Color', { selector: 'input' });
   return {
     button,
     input,
-    queryByLabelText,
   };
 }
 
@@ -83,7 +92,16 @@ describe('<ColorInput />', () => {
         onChange={() => {}}
         value={{
           type: 'radial',
-          stops: [createSolid(255, 0, 0), createSolid(0, 255, 0)],
+          stops: [
+            {
+              ...createSolid(255, 0, 0),
+              position: 0,
+            },
+            {
+              ...createSolid(0, 255, 0),
+              position: 100,
+            },
+          ],
         }}
         label="Color"
       />
@@ -112,7 +130,7 @@ describe('<ColorInput />', () => {
     const onChange = jest.fn();
     const onClose = jest.fn();
     const value = { color: { r: 0, g: 0, b: 0, a: 1 } };
-    const { button, queryByLabelText } = arrange(
+    const { button } = arrange(
       <ColorInput
         onChange={onChange}
         value={value}
@@ -125,14 +143,14 @@ describe('<ColorInput />', () => {
 
     fireEvent.click(button);
 
-    const previewButton = queryByLabelText(/solid pattern/i);
+    const previewButton = screen.queryByLabelText(/solid pattern/i);
     expect(previewButton).toBeInTheDocument();
   });
 
   it('should open the color picker when clicked if multiple', () => {
     const onChange = jest.fn();
     const onClose = jest.fn();
-    const { button, queryByLabelText } = arrange(
+    const { button } = arrange(
       <ColorInput
         onChange={onChange}
         value={MULTIPLE_VALUE}
@@ -144,7 +162,7 @@ describe('<ColorInput />', () => {
 
     fireEvent.click(button);
 
-    const previewButton = queryByLabelText(/solid pattern/i);
+    const previewButton = screen.queryByLabelText(/solid pattern/i);
     expect(previewButton).toBeInTheDocument();
   });
 

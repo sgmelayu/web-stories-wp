@@ -21,12 +21,15 @@ import { useRef } from 'react';
 import PropTypes from 'prop-types';
 import styled from 'styled-components';
 import { __, sprintf } from '@web-stories-wp/i18n';
+import {
+  ColorStopPropType,
+  generatePatternStyles,
+} from '@web-stories-wp/patterns';
+import { themeHelpers } from '@web-stories-wp/design-system';
 
 /**
  * Internal dependencies
  */
-import generatePatternStyles from '../../utils/generatePatternStyles';
-import { ColorStopPropType } from '../../types';
 import Pointer from './pointer';
 import GradientStop from './gradientStop';
 import useKeyMoveStop from './useKeyMoveStop';
@@ -38,18 +41,11 @@ import usePointerMoveStop from './usePointerMoveStop';
 import { LINE_LENGTH, LINE_WIDTH } from './constants';
 
 const Line = styled.div`
+  ${themeHelpers.transparentBg}
   width: ${LINE_LENGTH}px;
   height: ${LINE_WIDTH}px;
   border-radius: 2px;
   position: relative;
-
-  background: conic-gradient(
-    #fff 0.25turn,
-    #d3d4d4 0turn 0.5turn,
-    #fff 0turn 0.75turn,
-    #d3d4d4 0turn 1turn
-  );
-  background-size: 14px 14px;
 
   &:focus {
     /* The line will only have temporary focus while deleting stops */
@@ -129,11 +125,14 @@ function GradientLine({
       ))}
       {tempPointerPosition && (
         <TempPointer
-          aria-label={sprintf(
-            /* translators: %d: stop percentage */
-            __('Temporary gradient stop at %1$d%%', 'web-stories'),
-            Math.round(100 * (tempPointerPosition / LINE_LENGTH))
-          )}
+          aria-label={
+            /* eslint-disable-next-line @wordpress/valid-sprintf -- False positive. */
+            sprintf(
+              /* translators: %d: stop percentage */
+              __('Temporary gradient stop at %d%%', 'web-stories'),
+              Math.round(100 * (tempPointerPosition / LINE_LENGTH))
+            )
+          }
           x={tempPointerPosition}
         />
       )}

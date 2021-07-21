@@ -19,22 +19,19 @@
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { trackEvent } from '@web-stories-wp/tracking';
+import { useSnackbar } from '@web-stories-wp/design-system';
 /**
  * Internal dependencies
  */
-import { clamp } from '../../../../animation';
 import { TransformProvider } from '../../../../edit-story/components/transform';
 import { Layout } from '../../../components';
-import { ALERT_SEVERITY } from '../../../constants';
-import { useTemplateView, usePagePreviewSize } from '../../../utils/';
+import { usePagePreviewSize, clamp } from '../../../utils';
 import useApi from '../../api/useApi';
 import { useConfig } from '../../config';
-import { useSnackbarContext } from '../../snackbar';
 import FontProvider from '../../font/fontProvider';
 import { resolveRelatedTemplateRoute } from '../../router';
 import useRouteHistory from '../../router/useRouteHistory';
 import { ERRORS } from '../../textContent';
-import { DashboardSnackbar, PreviewStoryView } from '..';
 import Header from './header';
 import Content from './content';
 
@@ -49,17 +46,12 @@ function TemplateDetails() {
     actions,
   } = useRouteHistory();
 
-  const { addSnackbarMessage } = useSnackbarContext(
-    ({ actions: { addSnackbarMessage } }) => ({
-      addSnackbarMessage,
-    })
-  );
+  const { showSnackbar } = useSnackbar();
 
   const {
     isLoading,
     templates,
     templatesOrderById,
-    totalPages,
     createStoryFromTemplate,
     fetchMyTemplateById,
     fetchExternalTemplates,
@@ -92,7 +84,6 @@ function TemplateDetails() {
     })
   );
   const { isRTL } = useConfig();
-  const { activePreview } = useTemplateView({ totalPages });
   const { pageSize } = usePagePreviewSize({ isGrid: true });
 
   useEffect(() => {
@@ -118,10 +109,9 @@ function TemplateDetails() {
     templateFetchFn(id)
       .then(setTemplate)
       .catch(() => {
-        addSnackbarMessage({
+        showSnackbar({
           message: ERRORS.LOAD_TEMPLATES.DEFAULT_MESSAGE,
-          severity: ALERT_SEVERITY.ERROR,
-          id: Date.now(),
+          dismissable: true,
         });
       });
   }, [
@@ -132,7 +122,7 @@ function TemplateDetails() {
     isLocal,
     templateId,
     templates,
-    addSnackbarMessage,
+    showSnackbar,
   ]);
 
   const templatedId = template?.id;
@@ -189,22 +179,6 @@ function TemplateDetails() {
     createStoryFromTemplate(template);
   }, [createStoryFromTemplate, template]);
 
-  const handlePreviewTemplate = useCallback(
-    (e, previewTemplate) => {
-      activePreview.set(e, previewTemplate);
-    },
-    [activePreview]
-  );
-
-  if (activePreview.value) {
-    return (
-      <PreviewStoryView
-        story={activePreview.value}
-        handleClose={handlePreviewTemplate}
-      />
-    );
-  }
-
   return (
     <FontProvider>
       <TransformProvider>
@@ -223,12 +197,8 @@ function TemplateDetails() {
             relatedTemplates={relatedTemplates}
             templateActions={{
               createStoryFromTemplate,
-              handlePreviewTemplate,
             }}
           />
-          <Layout.Fixed>
-            <DashboardSnackbar />
-          </Layout.Fixed>
         </Layout.Provider>
       </TransformProvider>
     </FontProvider>

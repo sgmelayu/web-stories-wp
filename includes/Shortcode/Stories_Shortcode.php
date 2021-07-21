@@ -27,13 +27,14 @@
 namespace Google\Web_Stories\Shortcode;
 
 use Google\Web_Stories\Story_Query as Stories;
+use Google\Web_Stories\Service_Base;
 
 /**
  * Class Stories_Shortcode
  *
  * @package Google\Web_Stories\Shortcode
  */
-class Stories_Shortcode {
+class Stories_Shortcode extends Service_Base {
 
 	/**
 	 * Shortcode name.
@@ -49,7 +50,7 @@ class Stories_Shortcode {
 	 *
 	 * @return void
 	 */
-	public function init() {
+	public function register() {
 		add_shortcode( self::SHORTCODE_NAME, [ $this, 'render_stories' ] );
 	}
 
@@ -65,7 +66,7 @@ class Stories_Shortcode {
 	 *
 	 * @return string Story markup.
 	 */
-	public function render_stories( array $attrs ) {
+	public function render_stories( array $attrs ): string {
 		$attributes = shortcode_atts(
 			[
 				'view'               => 'circles',
@@ -102,7 +103,7 @@ class Stories_Shortcode {
 	 *
 	 * @return array Attributes to pass to Story_Query class.
 	 */
-	private function prepare_story_attrs( array $attributes ) {
+	private function prepare_story_attrs( array $attributes ): array {
 		return [
 			'view_type'          => (string) $attributes['view'],
 			'number_of_columns'  => (int) $attributes['number_of_columns'],
@@ -128,10 +129,10 @@ class Stories_Shortcode {
 	 *
 	 * @return array Array of story arguments to pass to Story_Query.
 	 */
-	private function prepare_story_args( array $attributes ) {
+	private function prepare_story_args( array $attributes ): array {
 		return [
 			// Show 100 stories at most to avoid 500 errors.
-			'posts_per_page' => min( (int) $attributes['number_of_stories'], 100 ),
+			'posts_per_page' => min( (int) $attributes['number_of_stories'], 100 ), // phpcs:ignore WordPress.WP.PostsPerPage.posts_per_page_posts_per_page
 			'order'          => 'ASC' === $attributes['order'] ? 'ASC' : 'DESC',
 			'orderby'        => $attributes['orderby'],
 		];

@@ -100,6 +100,7 @@ const sharedConfig = {
             options: {
               titleProp: true,
               svgo: true,
+              memo: true,
               svgoConfig: {
                 plugins: [
                   {
@@ -125,6 +126,7 @@ const sharedConfig = {
             options: {
               titleProp: true,
               svgo: true,
+              memo: true,
               svgoConfig: {
                 plugins: [
                   {
@@ -151,10 +153,10 @@ const sharedConfig = {
     ].filter(Boolean),
   },
   plugins: [
-    process.env.BUNDLE_ANALYZER && new BundleAnalyzerPlugin(),
-    new DependencyExtractionWebpackPlugin({
-      requestToExternal,
-    }),
+    process.env.BUNDLE_ANALYZER &&
+      new BundleAnalyzerPlugin({
+        analyzerPort: 'auto',
+      }),
     new MiniCssExtractPlugin({
       filename: '../css/[name].css',
     }),
@@ -164,10 +166,15 @@ const sharedConfig = {
     new webpack.EnvironmentPlugin({
       DISABLE_PREVENT: false,
       DISABLE_ERROR_BOUNDARIES: false,
+      DISABLE_QUICK_TIPS: false,
     }),
+    new DependencyExtractionWebpackPlugin(),
   ].filter(Boolean),
   optimization: {
     sideEffects: true,
+    splitChunks: {
+      automaticNameDelimiter: '-',
+    },
     minimizer: [
       new TerserPlugin({
         parallel: true,
@@ -225,7 +232,12 @@ const editorAndDashboard = {
     'stories-dashboard': './assets/src/dashboard/index.js',
   },
   plugins: [
-    ...sharedConfig.plugins,
+    ...sharedConfig.plugins.filter(
+      (plugin) => !(plugin instanceof DependencyExtractionWebpackPlugin)
+    ),
+    new DependencyExtractionWebpackPlugin({
+      requestToExternal,
+    }),
     new WebpackBar({
       name: 'Editor & Dashboard',
     }),
@@ -247,6 +259,7 @@ const editorAndDashboard = {
   optimization: {
     ...sharedConfig.optimization,
     splitChunks: {
+      ...sharedConfig.optimization.splitChunks,
       chunks: 'all',
     },
   },
@@ -259,16 +272,7 @@ const webStoriesScripts = {
     'carousel-view': './packages/stories-carousel/src/index.js',
   },
   plugins: [
-    process.env.BUNDLE_ANALYZER && new BundleAnalyzerPlugin(),
-    new DependencyExtractionWebpackPlugin({
-      injectPolyfill: true,
-    }),
-    new MiniCssExtractPlugin({
-      filename: '../css/[name].css',
-    }),
-    new RtlCssPlugin({
-      filename: `../css/[name]-rtl.css`,
-    }),
+    ...sharedConfig.plugins,
     new WebpackBar({
       name: 'WP Frontend Scripts',
       color: '#EEE070',
@@ -304,17 +308,12 @@ const webStoriesBlock = {
   },
   plugins: [
     ...sharedConfig.plugins,
-    new DependencyExtractionWebpackPlugin({
-      injectPolyfill: true,
-    }),
+
     new WebpackBar({
       name: 'Web Stories Block',
       color: '#357BB5',
     }),
   ].filter(Boolean),
-  optimization: {
-    ...sharedConfig.optimization,
-  },
 };
 
 const activationNotice = {
@@ -325,24 +324,14 @@ const activationNotice = {
   },
   plugins: [
     ...sharedConfig.plugins,
+    new DependencyExtractionWebpackPlugin({
+      requestToExternal,
+    }),
     new WebpackBar({
       name: 'Activation Notice',
       color: '#fcd8ba',
     }),
-  ],
-  optimization: {
-    ...sharedConfig.optimization,
-    splitChunks: {
-      cacheGroups: {
-        stories: {
-          name: 'activation-notice',
-          test: /\.css$/,
-          chunks: 'all',
-          enforce: true,
-        },
-      },
-    },
-  },
+  ].filter(Boolean),
 };
 
 const widgetScript = {
@@ -351,15 +340,12 @@ const widgetScript = {
     'web-stories-widget': './packages/widget/src/index.js',
   },
   plugins: [
-    new DependencyExtractionWebpackPlugin({}),
-    new MiniCssExtractPlugin({
-      filename: '../css/[name].css',
-    }),
+    ...sharedConfig.plugins,
     new WebpackBar({
       name: 'WP Widget Script',
       color: '#F757A5',
     }),
-  ],
+  ].filter(Boolean),
 };
 
 const storiesMCEButton = {
@@ -368,15 +354,12 @@ const storiesMCEButton = {
     'tinymce-button': './packages/tinymce-button/src/index.js',
   },
   plugins: [
-    new DependencyExtractionWebpackPlugin({}),
-    new MiniCssExtractPlugin({
-      filename: '../css/[name].css',
-    }),
+    ...sharedConfig.plugins,
     new WebpackBar({
       name: 'WP TinyMCE Button',
       color: '#4deaa2',
     }),
-  ],
+  ].filter(Boolean),
 };
 
 module.exports = [

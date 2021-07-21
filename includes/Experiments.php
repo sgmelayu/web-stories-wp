@@ -31,7 +31,7 @@ namespace Google\Web_Stories;
  *
  * Allows turning flags on/off via the admin UI.
  */
-class Experiments {
+class Experiments extends Service_Base {
 	/**
 	 * Settings page name.
 	 *
@@ -51,11 +51,22 @@ class Experiments {
 	 *
 	 * @return void
 	 */
-	public function init() {
+	public function register() {
 		if ( WEBSTORIES_DEV_MODE ) {
 			add_action( 'admin_menu', [ $this, 'add_menu_page' ], 25 );
 			add_action( 'admin_init', [ $this, 'initialize_settings' ] );
 		}
+	}
+
+	/**
+	 * Get the action priority to use for registering the service.
+	 *
+	 * @since 1.6.0
+	 *
+	 * @return int Registration action priority to use.
+	 */
+	public static function get_registration_action_priority(): int {
+		return 7;
 	}
 
 	/**
@@ -146,7 +157,7 @@ class Experiments {
 	 *
 	 * @return void
 	 */
-	public function display_experiment_field( $args ) {
+	public function display_experiment_field( array $args ) {
 		$is_enabled_by_default = ! empty( $args['default'] );
 		$checked               = $is_enabled_by_default || $this->is_experiment_enabled( $args['id'] );
 		$disabled              = $is_enabled_by_default ? 'disabled' : '';
@@ -189,7 +200,7 @@ class Experiments {
 	 *
 	 * @return array List of experiment groups
 	 */
-	public function get_experiment_groups() {
+	public function get_experiment_groups(): array {
 		return [
 			'general'   => __( 'General', 'web-stories' ),
 			'dashboard' => __( 'Dashboard', 'web-stories' ),
@@ -206,8 +217,42 @@ class Experiments {
 	 *
 	 * @return array List of experiments by group.
 	 */
-	public function get_experiments() {
+	public function get_experiments(): array {
 		return [
+			/**
+			 * Author: @littlemilkstudio
+			 * Issue: 7965
+			 * Creation date: 2021-06-18
+			 */
+			[
+				'name'        => 'enableChecklistCompanion',
+				'label'       => __( 'Checklist companion', 'web-stories' ),
+				'description' => __( 'Enable the new version of the pre-publish checklist as a popup in the editor', 'web-stories' ),
+				'group'       => 'editor',
+				'default'     => true,
+			],
+			/**
+			 * Author: @samwhale
+			 * Issue: 6153
+			 * Creation date: 2021-06-07
+			 */
+			[
+				'name'        => 'enableRightClickMenus',
+				'label'       => __( 'Right click menus', 'web-stories' ),
+				'description' => __( 'Enable a contextual shortcut menu when right clicking in the editor', 'web-stories' ),
+				'group'       => 'editor',
+			],
+			/**
+			 * Author: @littlemilkstudio
+			 * Issue: 6708
+			 * Creation date: 2021-03-23
+			 */
+			[
+				'name'        => 'enableStickers',
+				'label'       => __( 'Stickers', 'web-stories' ),
+				'description' => __( 'Append sticker buttons to the bottom of the shapes panel in library', 'web-stories' ),
+				'group'       => 'editor',
+			],
 			/**
 			 * Author: @littlemilkstudio
 			 * Issue: 6379
@@ -215,21 +260,9 @@ class Experiments {
 			 */
 			[
 				'name'        => 'enableExperimentalAnimationEffects',
-				'label'       => __( 'Experimental Animation Effects', 'web-stories' ),
-				'description' => __( 'Enables any animation effects that are currently experimental', 'web-stories' ),
+				'label'       => __( 'Experimental animations', 'web-stories' ),
+				'description' => __( 'Enable any animation effects that are currently experimental', 'web-stories' ),
 				'group'       => 'editor',
-			],
-			/**
-			 * Author: @littlemilkstudio
-			 * Issue: 5880
-			 * Creation date: 2021-01-19
-			 */
-			[
-				'name'        => 'enableQuickTips',
-				'label'       => __( 'Quick Tips', 'web-stories' ),
-				'description' => __( 'Enable quick tips for first time user experience (FTUE)', 'web-stories' ),
-				'group'       => 'editor',
-				'default'     => true,
 			],
 			/**
 			 * Author: @carlos-kelly
@@ -260,7 +293,7 @@ class Experiments {
 			 */
 			[
 				'name'        => 'enableInProgressTemplateActions',
-				'label'       => __( 'Template Actions', 'web-stories' ),
+				'label'       => __( 'Template actions', 'web-stories' ),
 				'description' => __( 'Enable in-progress template actions', 'web-stories' ),
 				'group'       => 'dashboard',
 			],
@@ -276,35 +309,13 @@ class Experiments {
 				'group'       => 'dashboard',
 			],
 			/**
-			 * Author: @brittanyirl
-			 * Issue: 3390
-			 * Creation date: 2020-07-08
-			 */
-			[
-				'name'        => 'enableTemplatePreviews',
-				'label'       => __( 'Template Previews', 'web-stories' ),
-				'description' => __( 'Enable template preview functionality', 'web-stories' ),
-				'group'       => 'dashboard',
-			],
-			/**
-			 * Author: @brittanyirl
-			 * Issue: 3391
-			 * Creation date: 2020-08-06
-			 */
-			[
-				'name'        => 'enableStoryPreviews',
-				'label'       => __( 'Story Previews', 'web-stories' ),
-				'description' => __( 'Enable story preview functionality', 'web-stories' ),
-				'group'       => 'dashboard',
-			],
-			/**
 			 * Author: @dmmulroy
 			 * Issue: #2098
 			 * Creation date: 2020-06-04
 			 */
 			[
 				'name'        => 'showTextAndShapesSearchInput',
-				'label'       => __( 'Library Search', 'web-stories' ),
+				'label'       => __( 'Library search', 'web-stories' ),
 				'description' => __( 'Enable search input on text and shapes tabs', 'web-stories' ),
 				'group'       => 'editor',
 			],
@@ -327,7 +338,7 @@ class Experiments {
 			[
 				'name'        => 'incrementalSearchDebounceMedia',
 				'label'       => __( 'Incremental Search', 'web-stories' ),
-				'description' => __( 'Enable incremental search in the Upload and Third-party media tabs.', 'web-stories' ),
+				'description' => __( 'Enable incremental search in the Upload and Third-party media tabs', 'web-stories' ),
 				'group'       => 'editor',
 			],
 			/**
@@ -342,37 +353,59 @@ class Experiments {
 				'group'       => 'general',
 			],
 			/**
-			 * Author: @swissspidy
-			 * Issue: #3134
-			 * Creation date: 2020-10-28
+			 * Author: @spacedmonkey
+			 * Issue: #7232
+			 * Creation date: 2021-07-14
 			 */
 			[
-				'name'        => 'customMetaBoxes',
-				'label'       => __( 'Custom Meta Boxes', 'web-stories' ),
-				'description' => __( 'Enable support for custom meta boxes', 'web-stories' ),
+				'name'        => 'enableGifOptimization',
+				'label'       => __( 'GIF optimization', 'web-stories' ),
+				'description' => __( 'Enable the conversion of animated GIFs to videos', 'web-stories' ),
 				'group'       => 'editor',
 				'default'     => true,
 			],
 			/**
-			 * Author: @swissspidy
-			 * Issue: #4081
-			 * Creation date: 2020-10-28
+			 * Author: @spacedmonkey
+			 * Issue: #3126
+			 * Creation date: 2021-02-02
 			 */
 			[
-				'name'        => 'eyeDropper',
+				'name'        => 'enablePostLocking',
+				'label'       => __( 'Story locking', 'web-stories' ),
+				'description' => __( 'Lock in-progress stories from being edited by other authors', 'web-stories' ),
+				'group'       => 'general',
+			],
+			/**
+			 * Author: @miina
+			 * Issue #7986
+			 * Creation date: 2021-08-08
+			 */
+			[
+				'name'        => 'enableSmartTextColor',
+				'label'       => __( 'Smart text color', 'web-stories' ),
+				'description' => __( 'Enable text insertion with smart color ensuring good contrast with the background', 'web-stories' ),
+				'group'       => 'editor',
+			],
+			/**
+			 * Author: @merapi
+			 * Issue: #262
+			 * Creation date: 2021-07-08
+			 */
+			[
+				'name'        => 'enableEyedropper',
 				'label'       => __( 'Eyedropper', 'web-stories' ),
-				'description' => __( 'Enable eyedropper in color picker', 'web-stories' ),
+				'description' => __( 'Enable choosing color using an eyedropper', 'web-stories' ),
 				'group'       => 'editor',
 			],
 			/**
 			 * Author: @swissspidy
-			 * Issue: #5669
-			 * Creation date: 2021-01-21
+			 * Issue: #8310
+			 * Creation date: 2021-07-13
 			 */
 			[
-				'name'        => 'videoOptimization',
-				'label'       => __( 'Video optimization', 'web-stories' ),
-				'description' => __( 'Transcode and optimize videos before upload', 'web-stories' ),
+				'name'        => 'videoCache',
+				'label'       => __( 'Video Cache', 'web-stories' ),
+				'description' => __( 'Reduce hosting costs and improve user experience by serving videos from the Google cache.', 'web-stories' ),
 				'group'       => 'general',
 			],
 		];
@@ -387,7 +420,7 @@ class Experiments {
 	 *
 	 * @return array Experiment statuses with name as key and status as value.
 	 */
-	public function get_experiment_statuses( $group ) {
+	public function get_experiment_statuses( string $group ): array {
 		$experiments = wp_list_filter( $this->get_experiments(), [ 'group' => $group ] );
 
 		if ( empty( $experiments ) ) {
@@ -411,7 +444,7 @@ class Experiments {
 	 * @param string $name Experiment name.
 	 * @return array|null Experiment if found, null otherwise.
 	 */
-	protected function get_experiment( $name ) {
+	protected function get_experiment( string $name ) {
 		$experiment = wp_list_filter( $this->get_experiments(), [ 'name' => $name ] );
 		return ! empty( $experiment ) ? array_shift( $experiment ) : null;
 	}
@@ -425,7 +458,7 @@ class Experiments {
 	 *
 	 * @return bool Whether the experiment is enabled.
 	 */
-	public function is_experiment_enabled( $name ) {
+	public function is_experiment_enabled( string $name ): bool {
 		$experiment = $this->get_experiment( $name );
 
 		if ( ! $experiment ) {

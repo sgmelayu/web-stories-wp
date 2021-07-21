@@ -21,14 +21,13 @@ import { useCallback } from 'react';
 import styled from 'styled-components';
 import PropTypes from 'prop-types';
 import { __, _x } from '@web-stories-wp/i18n';
-
+import { NumericInput } from '@web-stories-wp/design-system';
 /**
  * Internal dependencies
  */
-import { NumericInput } from '../../../../../design-system';
 import { Row } from '../../../form';
 import { SimplePanel } from '../../panel';
-import { getCommonValue } from '../../shared';
+import { getCommonValue, inputContainerStyleOverride } from '../../shared';
 import { MULTIPLE_DISPLAY_VALUE, MULTIPLE_VALUE } from '../../../../constants';
 
 const MIN_MAX = {
@@ -67,6 +66,7 @@ function LayerStylePanel({ selectedElements, pushUpdate }) {
           aria-label={__('Opacity in percent', 'web-stories')}
           placeholder={opacity === MULTIPLE_VALUE ? MULTIPLE_DISPLAY_VALUE : ''}
           isIndeterminate={opacity === MULTIPLE_VALUE}
+          containerStyleOverride={inputContainerStyleOverride}
         />
       </ShortRow>
     </SimplePanel>

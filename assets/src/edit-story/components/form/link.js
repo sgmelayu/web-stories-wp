@@ -18,15 +18,16 @@
  * External dependencies
  */
 import PropTypes from 'prop-types';
+import { forwardRef } from 'react';
 import { __ } from '@web-stories-wp/i18n';
+import { Input } from '@web-stories-wp/design-system';
 
 /**
  * Internal dependencies
  */
 import { isValidUrl, withProtocol } from '../../utils/url';
-import { Input } from '../../../design-system';
+import { inputContainerStyleOverride } from '../panels/shared';
 import Row from './row';
-import HelperText from './helperText';
 
 const MIN_MAX = {
   URL: {
@@ -35,58 +36,50 @@ const MIN_MAX = {
   },
 };
 
-function LinkInput({
-  onChange,
-  onBlur,
-  onFocus,
-  value,
-  description,
-  hint,
-  hasError,
-  ...rest
-}) {
+const LinkInput = forwardRef(function LinkInput(
+  { onChange, onBlur, onFocus, value = '', hint, hasError, ...rest },
+  ref
+) {
   const trimmedValue = (value || '').trim();
   const isValid = isValidUrl(withProtocol(trimmedValue));
   const isNotValid = trimmedValue.length > 0 && !isValid;
   return (
-    <>
-      {description && <HelperText>{description}</HelperText>}
-      <Row>
-        <Input
-          placeholder={__('Web address', 'web-stories')}
-          onChange={(evt) => onChange(evt.target.value)}
-          onBlur={() => {
-            if (trimmedValue?.length) {
-              const urlWithProtocol = withProtocol(trimmedValue);
-              if (urlWithProtocol !== trimmedValue) {
-                onChange(urlWithProtocol);
-              }
+    <Row>
+      <Input
+        ref={ref}
+        placeholder={__('Web address', 'web-stories')}
+        onChange={(evt) => onChange(evt.target.value)}
+        onBlur={() => {
+          if (trimmedValue?.length) {
+            const urlWithProtocol = withProtocol(trimmedValue);
+            if (urlWithProtocol !== trimmedValue) {
+              onChange(urlWithProtocol);
             }
-            if (onBlur) {
-              onBlur();
-            }
-          }}
-          onFocus={onFocus}
-          value={value || ''}
-          minLength={MIN_MAX.URL.MIN}
-          maxLength={MIN_MAX.URL.MAX}
-          hasError={isNotValid || hasError}
-          hint={isNotValid ? __('Invalid web address.', 'web-stories') : hint}
-          {...rest}
-        />
-      </Row>
-    </>
+          }
+          if (onBlur) {
+            onBlur();
+          }
+        }}
+        onFocus={onFocus}
+        value={value || ''}
+        minLength={MIN_MAX.URL.MIN}
+        maxLength={MIN_MAX.URL.MAX}
+        hasError={isNotValid || hasError}
+        hint={isNotValid ? __('Invalid web address.', 'web-stories') : hint}
+        containerStyleOverride={inputContainerStyleOverride}
+        {...rest}
+      />
+    </Row>
   );
-}
+});
 
 LinkInput.propTypes = {
-  value: PropTypes.string.isRequired,
+  value: PropTypes.string,
   onChange: PropTypes.func.isRequired,
   onFocus: PropTypes.func,
   onBlur: PropTypes.func,
-  description: PropTypes.string,
   hint: PropTypes.string,
-  hasError: PropTypes.boolean,
+  hasError: PropTypes.bool,
 };
 
 export default LinkInput;

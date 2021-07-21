@@ -16,39 +16,36 @@
 /**
  * External dependencies
  */
-import { useRef, useEffect } from 'react';
-import { useFeatures } from 'flagged';
+import { __ } from '@web-stories-wp/i18n';
+import { useRef, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
+import { ThemeGlobals } from '@web-stories-wp/design-system';
 
 /**
  * Internal dependencies
  */
-import { ThemeGlobals } from '../../../design-system';
+import { useStoryTriggerListener, STORY_EVENTS } from '../../app/story';
 import { Z_INDEX } from '../canvas/layout';
 import DirectionAware from '../directionAware';
-import { Navigator } from './navigator';
-import { Companion } from './companion';
-import { POPUP_ID } from './constants';
+import { useHelpCenter } from '../../app/helpCenter';
+import Navigator from './navigator';
+import Companion from './companion';
+import { POPUP_ID, KEYS } from './constants';
 import { Toggle } from './toggle';
-import { useHelpCenter } from './useHelpCenter';
 import { Popup } from './popup';
 import { forceFocusCompanion } from './utils';
 
 const Wrapper = styled.div`
-  position: absolute;
-  bottom: 16px;
-  left: 8px;
   /**
    * sibling inherits parent z-index of Z_INDEX.EDIT
    * so this needs to be placed above that while still
-   * retaining its postion in the DOM for focus purposes
+   * retaining its position in the DOM for focus purposes
    */
   z-index: ${Z_INDEX.EDIT + 1};
 `;
 
 export const HelpCenter = () => {
   const ref = useRef(null);
-  const { enableQuickTips } = useFeatures();
   const { state, actions } = useHelpCenter();
 
   // Set Focus on the expanded companion
@@ -59,13 +56,32 @@ export const HelpCenter = () => {
     }
   }, [state.isOpen]);
 
-  return enableQuickTips ? (
+  useStoryTriggerListener(
+    STORY_EVENTS.onReplaceBackgroundMedia,
+    useCallback(() => {
+      actions.openToUnreadTip(KEYS.ADD_BACKGROUND_MEDIA);
+    }, [actions])
+  );
+
+  useStoryTriggerListener(
+    STORY_EVENTS.onReplaceForegroundMedia,
+    useCallback(() => {
+      actions.openToUnreadTip(KEYS.CROP_SELECTED_ELEMENTS);
+    }, [actions])
+  );
+
+  return (
     <DirectionAware>
       <>
-        <ThemeGlobals.OverrideFocusOutline />
+        <ThemeGlobals.Styles />
         <Wrapper ref={ref}>
-          <Popup popupId={POPUP_ID} isOpen={state.isOpen}>
+          <Popup
+            popupId={POPUP_ID}
+            isOpen={state.isOpen}
+            ariaLabel={__('Help Center', 'web-stories')}
+          >
             <Navigator
+              isOpen={state.isOpen}
               onNext={actions.goToNext}
               onPrev={actions.goToPrev}
               onAllTips={actions.goToMenu}
@@ -91,5 +107,5 @@ export const HelpCenter = () => {
         </Wrapper>
       </>
     </DirectionAware>
-  ) : null;
+  );
 };

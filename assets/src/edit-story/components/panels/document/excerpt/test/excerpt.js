@@ -17,7 +17,7 @@
 /**
  * External dependencies
  */
-import { fireEvent, waitFor } from '@testing-library/react';
+import { screen } from '@testing-library/react';
 
 /**
  * Internal dependencies
@@ -26,7 +26,7 @@ import StoryContext from '../../../../../app/story/context';
 import { renderWithTheme } from '../../../../../testUtils';
 import ExcerptPanel, { EXCERPT_MAX_LENGTH } from '../excerpt';
 
-function setupPanel() {
+function arrange() {
   const updateStory = jest.fn();
 
   const storyContextValue = {
@@ -38,16 +38,11 @@ function setupPanel() {
     actions: { updateStory },
   };
 
-  const { getByRole } = renderWithTheme(
+  return renderWithTheme(
     <StoryContext.Provider value={storyContextValue}>
       <ExcerptPanel />
     </StoryContext.Provider>
   );
-
-  return {
-    getByRole,
-    updateStory,
-  };
 }
 
 describe('ExcerptPanel', () => {
@@ -63,45 +58,21 @@ describe('ExcerptPanel', () => {
   });
 
   it('should render Excerpt Panel', () => {
-    const { getByRole } = setupPanel();
-    const element = getByRole('button', { name: 'Story Description' });
+    arrange();
+    const element = screen.getByRole('button', { name: 'Story Description' });
     expect(element).toBeInTheDocument();
   });
 
   it('should display textbox', () => {
-    const { getByRole } = setupPanel();
-    const input = getByRole('textbox', { name: 'Story Description' });
+    arrange();
+    const input = screen.getByRole('textbox', { name: 'Story Description' });
     expect(input).toBeInTheDocument();
   });
 
-  it('should respect excerpt character limit', async () => {
-    const { getByRole, updateStory } = setupPanel();
-    const input = getByRole('textbox', { name: 'Story Description' });
+  it('should respect excerpt character limit', () => {
+    arrange();
+    const input = screen.getByRole('textbox', { name: 'Story Description' });
 
-    const bigExcerpt = ''.padStart(EXCERPT_MAX_LENGTH + 10, '1');
-
-    fireEvent.change(input, {
-      target: { value: bigExcerpt },
-    });
-
-    await waitFor(() =>
-      expect(updateStory).toHaveBeenCalledWith({
-        properties: {
-          excerpt: bigExcerpt.slice(0, EXCERPT_MAX_LENGTH),
-        },
-      })
-    );
-
-    fireEvent.change(input, {
-      target: { value: 'This is the excerpt.' },
-    });
-
-    await waitFor(() =>
-      expect(updateStory).toHaveBeenCalledWith({
-        properties: {
-          excerpt: 'This is the excerpt.',
-        },
-      })
-    );
+    expect(input.maxLength).toBe(EXCERPT_MAX_LENGTH);
   });
 });

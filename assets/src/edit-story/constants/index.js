@@ -14,7 +14,9 @@
  * limitations under the License.
  */
 
-export { MULTIPLE_VALUE, MULTIPLE_DISPLAY_VALUE } from './multipleValue';
+export * from './fonts';
+export * from './media';
+export * from './multipleValue';
 
 export const ADMIN_TOOLBAR_HEIGHT = 32;
 export const HEADER_HEIGHT = 64;
@@ -27,13 +29,13 @@ export const PAGE_NAV_PADDING = 60;
 export const PAGE_NAV_BUTTON_SIZE = 40;
 export const PAGE_NAV_WIDTH = PAGE_NAV_PADDING + PAGE_NAV_BUTTON_SIZE;
 
-export const PAGE_RATIO = 2 / 3;
-export const PAGE_WIDTH = 412;
-export const PAGE_HEIGHT = 618;
+export const ZOOM_SETTING = {
+  FILL: 'FILL',
+  FIT: 'FIT',
+  FIXED: 'FIXED',
+};
 
-export const ALLOWED_EDITOR_PAGE_WIDTHS = [412, 268, 223];
-
-export const FULLBLEED_RATIO = 9 / 16;
+export const PAGE_WIDTH_FACTOR = 12;
 
 export const DESIGN_SPACE_MARGIN = 48;
 
@@ -41,12 +43,6 @@ export const COLOR_PRESETS_PER_ROW = 6;
 export const STYLE_PRESETS_PER_ROW = 2;
 
 export const TEXT_SET_SIZE = 150;
-
-// Default device pixel ratio.
-export const DEFAULT_DPR = 0.5;
-
-// Default 1em value for font size.
-export const DEFAULT_EM = PAGE_HEIGHT * 0.02186;
 
 export const DEFAULT_ATTRIBUTES_FOR_MEDIA = {
   scale: 100,
@@ -86,4 +82,11 @@ export const HIDDEN_PADDING = {
 export const SAVED_COLOR_SIZE = 32;
 export const SAVED_STYLE_HEIGHT = 64;
 
-export * from './media';
+export const FOCUSABLE_SELECTORS = [
+  'button',
+  '[href]',
+  'input',
+  'select',
+  'textarea',
+  '[tabindex]:not([tabindex="-1"])',
+];

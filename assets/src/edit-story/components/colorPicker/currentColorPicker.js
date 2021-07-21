@@ -22,18 +22,24 @@ import PropTypes from 'prop-types';
 import styled, { css } from 'styled-components';
 import { CustomPicker } from 'react-color';
 import { Saturation, Hue, Alpha } from 'react-color/lib/components/common';
-import { useFeatures } from 'flagged';
 import { __ } from '@web-stories-wp/i18n';
+import { useFeature } from 'flagged';
 
 /**
  * Internal dependencies
  */
-import { Eyedropper } from '../button';
+import {
+  Icons,
+  Button,
+  BUTTON_SIZES,
+  BUTTON_VARIANTS,
+  BUTTON_TYPES,
+} from '@web-stories-wp/design-system';
 import Pointer from './pointer';
 import EditablePreview from './editablePreview';
+import useEyedropper from './eyedropper';
 
 const CONTAINER_PADDING = 16;
-const EYEDROPPER_ICON_SIZE = 15;
 const HEADER_FOOTER_HEIGHT = 36;
 const BODY_HEIGHT = 156;
 const CONTROLS_HEIGHT = 28;
@@ -70,8 +76,16 @@ const HueWrapper = styled.div`
 `;
 
 const AlphaWrapper = styled.div`
-  background: #fff;
   ${wrapperCSS}
+  div:first-child div:first-child div:first-child {
+    background-image: conic-gradient(
+      ${({ theme }) => theme.colors.fg.tertiary} 0.25turn,
+      transparent 0turn 0.5turn,
+      ${({ theme }) => theme.colors.fg.tertiary} 0turn 0.75turn,
+      transparent 0turn 1turn
+    ) !important;
+    background-size: 8px 8px !important;
+  }
 `;
 
 const Footer = styled.div`
@@ -85,17 +99,21 @@ const Footer = styled.div`
   margin-bottom: 16px;
 `;
 
+const EyedropperButton = styled(Button)`
+  border: none;
+`;
+
+const Eyedropper = styled.div`
+  grid-area: eyedropper;
+  display: flex;
+`;
+
 const HexValue = styled.div`
   grid-area: hex;
   display: flex;
   align-items: center;
   justify-content: center;
   width: ${HEX_WIDTH}px;
-`;
-
-const EyedropperButton = styled(Eyedropper)`
-  line-height: ${EYEDROPPER_ICON_SIZE}px;
-  grid-area: eyedropper;
 `;
 
 const Opacity = styled.div`
@@ -124,7 +142,11 @@ function CurrentColorPicker({ rgb, hsl, hsv, hex, onChange, showOpacity }) {
     [rgb, onChange]
   );
 
-  const { eyeDropper } = useFeatures();
+  const enableEyedropper = useFeature('enableEyedropper');
+
+  const { initEyedropper } = useEyedropper({
+    onChange,
+  });
 
   return (
     <Container>
@@ -174,13 +196,19 @@ function CurrentColorPicker({ rgb, hsl, hsv, hex, onChange, showOpacity }) {
         )}
       </Body>
       <Footer>
-        {eyeDropper && (
-          <EyedropperButton
-            width={EYEDROPPER_ICON_SIZE}
-            height={EYEDROPPER_ICON_SIZE}
-            aria-label={__('Select color', 'web-stories')}
-            isDisabled
-          />
+        {enableEyedropper && (
+          <Eyedropper>
+            <EyedropperButton
+              variant={BUTTON_VARIANTS.SQUARE}
+              type={BUTTON_TYPES.QUATERNARY}
+              size={BUTTON_SIZES.SMALL}
+              aria-label={__('Pick a color from canvas', 'web-stories')}
+              onClick={initEyedropper()}
+              onPointerEnter={initEyedropper(false)}
+            >
+              <Icons.Pipette />
+            </EyedropperButton>
+          </Eyedropper>
         )}
         <HexValue>
           <EditablePreview

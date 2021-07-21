@@ -18,25 +18,23 @@
  * External dependencies
  */
 import PropTypes from 'prop-types';
-import { useCallback, useState, useRef, useEffect } from 'react';
-import { useDebouncedCallback } from 'use-debounce/lib';
+import { useCallback, useState, useRef, useEffect, useMemo } from 'react';
 import { __ } from '@web-stories-wp/i18n';
+import { trackEvent } from '@web-stories-wp/tracking';
+import { useResizeEffect } from '@web-stories-wp/design-system';
 
 /**
  * Internal dependencies
  */
-import { Icons, useResizeEffect } from '../../../design-system';
 import { useAPI } from '../../app/api';
 import { useStory } from '../../app/story';
-
-import { PRE_PUBLISH_MESSAGE_TYPES } from '../../app/prepublish';
 import { useHighlights } from '../../app/highlights';
-import { DOCUMENT, DESIGN, PREPUBLISH } from './constants';
-import PrepublishInspector, { usePrepublishChecklist } from './prepublish';
+import { DOCUMENT, DESIGN } from './constants';
 import Context from './context';
 import DesignInspector from './design';
 import DocumentInspector from './document';
 
+const INSPECTOR_TAB_IDS = new Set([DOCUMENT, DESIGN]);
 function InspectorProvider({ children }) {
   const {
     actions: { getAuthors },
@@ -46,38 +44,35 @@ function InspectorProvider({ children }) {
     currentPage: state.currentPage,
   }));
 
-  const { checklist, refreshChecklist } = usePrepublishChecklist();
-  const [refreshChecklistDebounced] = useDebouncedCallback(
-    refreshChecklist,
-    500
-  );
-
   const { tab: highlightedTab } = useHighlights(({ tab }) => ({ tab }));
 
   useEffect(() => {
-    if (highlightedTab) {
+    if (INSPECTOR_TAB_IDS.has(highlightedTab)) {
       setTab(highlightedTab);
+      trackEvent('quick_action_tab_change', {
+        name: highlightedTab,
+      });
     }
   }, [highlightedTab]);
 
-  const prepublishAlert = useCallback(
-    () =>
-      checklist.some(({ type }) => type === PRE_PUBLISH_MESSAGE_TYPES.ERROR) ? (
-        <Icons.ExclamationOutline className="alert error" />
-      ) : (
-        <Icons.ExclamationOutline className="alert warning" />
-      ),
-    [checklist]
-  );
-
   const inspectorRef = useRef(null);
 
-  const initialTab = DESIGN;
-  const [tab, setTab] = useState(initialTab);
+  const [tab, setTab] = useState(DESIGN);
   const [users, setUsers] = useState([]);
   const [inspectorContentHeight, setInspectorContentHeight] = useState(null);
   const inspectorContentRef = useRef();
   const tabRef = useRef(tab);
+
+  const designPaneRef = useRef(null);
+  const documentPaneRef = useRef(null);
+
+  const tabRefs = useMemo(
+    () => ({
+      [DESIGN]: designPaneRef,
+      [DOCUMENT]: documentPaneRef,
+    }),
+    []
+  );
 
   const [isUsersLoading, setIsUsersLoading] = useState(false);
 
@@ -90,13 +85,6 @@ function InspectorProvider({ children }) {
     ({ height }) => setInspectorContentHeight(height),
     []
   );
-
-  useEffect(() => {
-    tabRef.current = tab;
-    if (tab === PREPUBLISH) {
-      refreshChecklistDebounced();
-    }
-  }, [tab, refreshChecklistDebounced, refreshChecklist]);
 
   useEffect(() => {
     if (selectedElementIds.length > 0 && tabRef.current === DOCUMENT) {
@@ -130,7 +118,7 @@ function InspectorProvider({ children }) {
   const state = {
     state: {
       tab,
-      initialTab,
+      tabRefs,
       users,
       inspectorContentHeight,
       isUsersLoading,
@@ -154,13 +142,6 @@ function InspectorProvider({ children }) {
           id: DOCUMENT,
           title: __('Document', 'web-stories'),
           Pane: DocumentInspector,
-        },
-
-        {
-          icon: checklist.length > 0 ? prepublishAlert : undefined,
-          id: PREPUBLISH,
-          title: __('Checklist', 'web-stories'),
-          Pane: PrepublishInspector,
         },
       ],
     },

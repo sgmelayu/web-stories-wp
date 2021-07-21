@@ -84,6 +84,7 @@ return [
 				[
 					'vendor/ampproject/amp-wp/includes/sanitizers/class-amp-allowed-tags-generated.php',
 					'vendor/ampproject/amp-wp/includes/sanitizers/class-amp-base-sanitizer.php',
+					'vendor/ampproject/amp-wp/includes/sanitizers/class-amp-dev-mode-sanitizer.php',
 					'vendor/ampproject/amp-wp/includes/sanitizers/class-amp-layout-sanitizer.php',
 					'vendor/ampproject/amp-wp/includes/sanitizers/class-amp-meta-sanitizer.php',
 					'vendor/ampproject/amp-wp/includes/sanitizers/class-amp-rule-spec.php',
@@ -97,14 +98,15 @@ return [
 				->append( [ 'vendor/ampproject/amp-wp/composer.json' ] ),
 
 		// AMP PHP Toolbox (Common + Optimizer).
+		// Not just including /src folder because we also need the /resources folder.
 		Finder::create()
 			->files()
 			->ignoreVCS( true )
 			->ignoreDotFiles( true )
-			->notName( '/LICENSE|.*\\.md|.*\\.svg|.*\\.xml|.*\\.dist|composer\\.json|composer\\.lock/' )
 			->in(
 				[
 					'vendor/ampproject/amp-toolbox/src',
+					'vendor/ampproject/amp-toolbox/resources',
 				]
 			)
 			->append( [ 'vendor/ampproject/amp-toolbox/composer.json' ] ),

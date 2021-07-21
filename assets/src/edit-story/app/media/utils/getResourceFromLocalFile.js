@@ -15,65 +15,35 @@
  */
 
 /**
- * Internal dependencies
+ * External dependencies
  */
-import { PAGE_HEIGHT, PAGE_WIDTH } from '../../../constants';
-import { createBlob } from '../../../utils/blobs';
-import getTypeFromMime from './getTypeFromMime';
-import getFirstFrameOfVideo from './getFirstFrameOfVideo';
-import createResource from './createResource';
-import getFileName from './getFileName';
+import {
+  createBlob,
+  getTypeFromMime,
+  formatDuration,
+  getResourceSize,
+  getFirstFrameOfVideo,
+  createResource,
+  getFileName,
+  getImageDimensions,
+  createFileReader,
+} from '@web-stories-wp/media';
 
 /**
  * Create a local resource object.
  *
  * @param {Object} properties The resource properties.
- * @return {import('./createResource').Resource} The local resource object.
+ * @return {import('@web-stories-wp/media').Resource} The local resource object.
  */
 const createLocalResource = (properties) => {
   return createResource({ ...properties, local: true });
 };
 
 /**
- * Creates the File Reader object.
- *
- * @param {File} file The File object from the DataTransfer API.
- * @return {Promise<FileReader>} The promise of the FileReader object.
- */
-const createFileReader = (file) => {
-  const reader = new window.FileReader();
-  return new Promise((resolve, reject) => {
-    reader.onload = () => resolve(reader);
-    reader.onerror = reject;
-    reader.readAsArrayBuffer(file);
-  });
-};
-
-/**
- * Get image dimensions from an image.
- *
- * @param {string} src Image source.
- * @return {Promise} Image dimensions object.
- */
-const getImageDimensions = (src) => {
-  return new Promise((resolve, reject) => {
-    const img = new window.Image();
-    img.onload = () => {
-      resolve({
-        width: img.naturalWidth,
-        height: img.naturalHeight,
-      });
-    };
-    img.onerror = reject;
-    img.src = src;
-  });
-};
-
-/**
  * Generates a image resource object from a local File object.
  *
  * @param {File} file File object.
- * @return {Promise<import('./createResource').Resource>} Local image resource object.
+ * @return {Promise<import('@web-stories-wp/media').Resource>} Local image resource object.
  */
 const getImageResource = async (file) => {
   const fileName = getFileName(file);
@@ -88,8 +58,7 @@ const getImageResource = async (file) => {
     type: 'image',
     mimeType,
     src,
-    width,
-    height,
+    ...getResourceSize({ width, height }),
     alt: fileName,
     title: fileName,
   });
@@ -99,11 +68,14 @@ const getImageResource = async (file) => {
  * Generates a video resource object from a local File object.
  *
  * @param {File} file File object.
- * @return {Promise<import('./createResource').Resource>} Local video resource object.
+ * @return {Promise<import('@web-stories-wp/media').Resource>} Local video resource object.
  */
 const getVideoResource = async (file) => {
   const fileName = getFileName(file);
   const mimeType = file.type;
+
+  let length = 0;
+  let lengthFormatted = '';
 
   const reader = await createFileReader(file);
 
@@ -111,22 +83,39 @@ const getVideoResource = async (file) => {
 
   const videoEl = document.createElement('video');
   const canPlayVideo = '' !== videoEl.canPlayType(mimeType);
+  if (canPlayVideo) {
+    videoEl.src = src;
+    videoEl.addEventListener('loadedmetadata', () => {
+      length = Math.round(videoEl.duration);
+      const seconds = formatDuration(length % 60);
+      let minutes = Math.floor(length / 60);
+      const hours = Math.floor(minutes / 60);
 
-  const frame = await getFirstFrameOfVideo(src);
-
-  const poster = createBlob(frame);
+      if (hours) {
+        minutes = formatDuration(minutes % 60);
+        lengthFormatted = `${hours}:${minutes}:${seconds}`;
+      } else {
+        lengthFormatted = `${minutes}:${seconds}`;
+      }
+    });
+  }
+  const posterFile = await getFirstFrameOfVideo(src);
+  const poster = createBlob(posterFile);
   const { width, height } = await getImageDimensions(poster);
 
-  return createLocalResource({
+  const resource = createLocalResource({
     type: 'video',
     mimeType,
     src: canPlayVideo ? src : '',
-    width,
-    height,
+    ...getResourceSize({ width, height }),
     poster,
+    length,
+    lengthFormatted,
     alt: fileName,
     title: fileName,
   });
+
+  return { resource, posterFile };
 };
 
 const createPlaceholderResource = (properties) => {
@@ -143,8 +132,7 @@ const getPlaceholderResource = (file) => {
     type: type || 'image',
     mimeType: mimeType,
     src: '',
-    width: PAGE_WIDTH,
-    height: PAGE_HEIGHT,
+    ...getResourceSize({}),
     alt: fileName,
     title: fileName,
   });
@@ -154,12 +142,13 @@ const getPlaceholderResource = (file) => {
  * Generates a resource object from a local File object.
  *
  * @param {File} file File object.
- * @return {Promise<import('./createResource').Resource>} Resource object.
+ * @return {Promise<Object<{resource: import('@web-stories-wp/media').Resource, posterFile: File}>>} Object containing resource object and poster file.
  */
 const getResourceFromLocalFile = async (file) => {
   const type = getTypeFromMime(file.type);
 
   let resource = getPlaceholderResource(file);
+  let posterFile = null;
 
   try {
     if ('image' === type) {
@@ -167,13 +156,15 @@ const getResourceFromLocalFile = async (file) => {
     }
 
     if ('video' === type) {
-      resource = await getVideoResource(file);
+      const results = await getVideoResource(file);
+      resource = results.resource;
+      posterFile = results.posterFile;
     }
   } catch {
     // Not interested in the error here.
   }
 
-  return resource;
+  return { resource, posterFile };
 };
 
 export default getResourceFromLocalFile;

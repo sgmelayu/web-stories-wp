@@ -18,42 +18,89 @@
  * External dependencies
  */
 import PropTypes from 'prop-types';
-import { useCallback } from 'react';
+import { useCallback, useRef } from 'react';
 import { DATA_VERSION } from '@web-stories-wp/migration';
+import getAllTemplates from '@web-stories-wp/templates';
 
 /**
  * WordPress dependencies
  */
 import apiFetch from '@wordpress/api-fetch';
-
+import { addQueryArgs } from '@web-stories-wp/design-system';
 /**
  * Internal dependencies
  */
-import { addQueryArgs } from '../../../design-system';
 import base64Encode from '../../utils/base64Encode';
 import { useConfig } from '../config';
 import Context from './context';
-import getAllPageLayouts from './getAllPageLayouts';
+import removeImagesFromPageTemplates from './removeImagesFromPageTemplates';
 
 function APIProvider({ children }) {
   const {
-    api: { stories, media, link, users, statusCheck, metaBoxes, currentUser },
+    api: {
+      stories,
+      media,
+      link,
+      users,
+      statusCheck,
+      metaBoxes,
+      currentUser,
+      storyLocking,
+      pageTemplates: customPageTemplates,
+    },
     encodeMarkup,
     cdnURL,
     assetsURL,
   } = useConfig();
 
+  const pageTemplates = useRef({
+    base: [],
+    withoutImages: [],
+  });
+
   const getStoryById = useCallback(
     (storyId) => {
       const path = addQueryArgs(`${stories}${storyId}/`, {
         context: 'edit',
-        _embed: 'wp:featuredmedia,author',
+        _embed: 'wp:featuredmedia,wp:lockuser,author',
         web_stories_demo: false,
       });
 
       return apiFetch({ path });
     },
     [stories]
+  );
+
+  const getStoryLockById = useCallback(
+    (storyId) => {
+      const path = addQueryArgs(`${stories}${storyId}/lock`, {
+        _embed: 'author',
+      });
+
+      return apiFetch({ path });
+    },
+    [stories]
+  );
+
+  const setStoryLockById = useCallback(
+    (storyId) => {
+      const path = `${stories}${storyId}/lock`;
+
+      return apiFetch({ path, method: 'POST' });
+    },
+    [stories]
+  );
+
+  const deleteStoryLockById = useCallback(
+    (storyId, nonce) => {
+      const data = new window.FormData();
+      data.append('_wpnonce', nonce);
+
+      const url = addQueryArgs(storyLocking, { _method: 'DELETE' });
+
+      window.navigator.sendBeacon?.(url, data);
+    },
+    [storyLocking]
   );
 
   const getDemoStoryById = useCallback(
@@ -177,7 +224,6 @@ function APIProvider({ children }) {
    *
    * @param {File}    file           Media File to Save.
    * @param {?Object} additionalData Additional data to include in the request.
-   *
    * @return {Promise} Media Object Promise.
    */
   const uploadMedia = useCallback(
@@ -323,15 +369,85 @@ function APIProvider({ children }) {
     [statusCheck, encodeMarkup]
   );
 
-  const getPageLayouts = useCallback(() => {
-    return getAllPageLayouts({ cdnURL, assetsURL });
-  }, [cdnURL, assetsURL]);
+  const getPageTemplates = useCallback(
+    async ({ showImages = false } = {}) => {
+      // check if pageTemplates have been loaded yet
+      if (pageTemplates.current.base.length === 0) {
+        pageTemplates.current.base = await getAllTemplates({ cdnURL });
+        pageTemplates.current.withoutImages = removeImagesFromPageTemplates({
+          templates: pageTemplates.current.base,
+          assetsURL,
+        });
+      }
+
+      return pageTemplates.current[showImages ? 'base' : 'withoutImages'];
+    },
+    [cdnURL, assetsURL]
+  );
+
+  const getCustomPageTemplates = useCallback(
+    (page = 1) => {
+      let apiPath = customPageTemplates;
+      const perPage = 100;
+      apiPath = addQueryArgs(apiPath, {
+        context: 'edit',
+        per_page: perPage,
+        page,
+        _web_stories_envelope: true,
+      });
+      return apiFetch({ path: apiPath }).then(({ headers, body }) => {
+        const totalPages = parseInt(headers['X-WP-TotalPages']);
+        const templates = body.map((template) => {
+          return { ...template['story_data'], templateId: template.id };
+        });
+        return {
+          templates,
+          hasMore: totalPages > page,
+        };
+      });
+    },
+    [customPageTemplates]
+  );
+
+  const addPageTemplate = useCallback(
+    (page) => {
+      return apiFetch({
+        path: `${customPageTemplates}/`,
+        data: {
+          story_data: page,
+          status: 'publish',
+        },
+        method: 'POST',
+      }).then((response) => {
+        return { ...response['story_data'], templateId: response.id };
+      });
+    },
+    [customPageTemplates]
+  );
+
+  const deletePageTemplate = useCallback(
+    (id) => {
+      // `?_method=DELETE` is an alternative solution to override the request method.
+      // See https://developer.wordpress.org/rest-api/using-the-rest-api/global-parameters/#_method-or-x-http-method-override-header
+      return apiFetch({
+        path: addQueryArgs(`${customPageTemplates}${id}/`, {
+          _method: 'DELETE',
+        }),
+        data: { force: true },
+        method: 'POST',
+      });
+    },
+    [customPageTemplates]
+  );
 
   const state = {
     actions: {
       autoSaveById,
       getStoryById,
       getDemoStoryById,
+      getStoryLockById,
+      setStoryLockById,
+      deleteStoryLockById,
       getMedia,
       getLinkMetadata,
       saveStoryById,
@@ -341,7 +457,10 @@ function APIProvider({ children }) {
       deleteMedia,
       saveMetaBoxes,
       getStatusCheck,
-      getPageLayouts,
+      addPageTemplate,
+      getCustomPageTemplates,
+      deletePageTemplate,
+      getPageTemplates,
       getCurrentUser,
       updateCurrentUser,
     },

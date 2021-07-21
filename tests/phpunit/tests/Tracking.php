@@ -23,7 +23,7 @@ use WP_REST_Request;
 /**
  * @coversDefaultClass \Google\Web_Stories\Tracking
  */
-class Tracking extends \WP_UnitTestCase {
+class Tracking extends Test_Case {
 	protected static $user_id;
 
 	public static function wpSetUpBeforeClass( $factory ) {
@@ -39,7 +39,7 @@ class Tracking extends \WP_UnitTestCase {
 	}
 
 	/**
-	 * @covers ::init
+	 * @covers ::register
 	 */
 	public function test_register_tracking_script() {
 		$site_kit = $this->createMock( \Google\Web_Stories\Integrations\Site_Kit::class );
@@ -55,9 +55,9 @@ class Tracking extends \WP_UnitTestCase {
 		$experiments = $this->createMock( \Google\Web_Stories\Experiments::class );
 		$experiments->method( 'get_enabled_experiments' )
 					->willReturn( [ 'enableFoo', 'enableBar' ] );
-
-		$tracking = new \Google\Web_Stories\Tracking( $experiments, $site_kit );
-		$tracking->init();
+		$assets   = new \Google\Web_Stories\Assets();
+		$tracking = new \Google\Web_Stories\Tracking( $experiments, $site_kit, $assets );
+		$tracking->register();
 		$this->assertTrue( wp_script_is( \Google\Web_Stories\Tracking::SCRIPT_HANDLE, 'registered' ) );
 		$this->assertFalse( wp_scripts()->registered[ \Google\Web_Stories\Tracking::SCRIPT_HANDLE ]->src );
 		$after = wp_scripts()->get_data( \Google\Web_Stories\Tracking::SCRIPT_HANDLE, 'after' );
@@ -83,8 +83,8 @@ class Tracking extends \WP_UnitTestCase {
 		$experiments = $this->createMock( \Google\Web_Stories\Experiments::class );
 		$experiments->method( 'get_enabled_experiments' )
 					->willReturn( [ 'enableFoo', 'enableBar' ] );
-
-		$settings = ( new \Google\Web_Stories\Tracking( $experiments, $site_kit ) )->get_settings();
+		$assets   = new \Google\Web_Stories\Assets();
+		$settings = ( new \Google\Web_Stories\Tracking( $experiments, $site_kit, $assets ) )->get_settings();
 
 		$this->assertArrayHasKey( 'trackingAllowed', $settings );
 		$this->assertArrayHasKey( 'trackingId', $settings );
@@ -125,7 +125,7 @@ class Tracking extends \WP_UnitTestCase {
 	 */
 	public function test_get_settings_with_optin() {
 		wp_set_current_user( self::$user_id );
-		add_user_meta( get_current_user_id(), \Google\Web_Stories\User_Preferences::OPTIN_META_KEY, true );
+		add_user_meta( get_current_user_id(), \Google\Web_Stories\User\Preferences::OPTIN_META_KEY, true );
 
 		$site_kit = $this->createMock( \Google\Web_Stories\Integrations\Site_Kit::class );
 		$site_kit->method( 'get_plugin_status' )->willReturn(
@@ -140,11 +140,11 @@ class Tracking extends \WP_UnitTestCase {
 		$experiments = $this->createMock( \Google\Web_Stories\Experiments::class );
 		$experiments->method( 'get_enabled_experiments' )
 					->willReturn( [ 'enableFoo', 'enableBar' ] );
-
-		$settings         = ( new \Google\Web_Stories\Tracking( $experiments, $site_kit ) )->get_settings();
+		$assets           = new \Google\Web_Stories\Assets();
+		$settings         = ( new \Google\Web_Stories\Tracking( $experiments, $site_kit, $assets ) )->get_settings();
 		$tracking_allowed = $settings['trackingAllowed'];
 
-		delete_user_meta( get_current_user_id(), \Google\Web_Stories\User_Preferences::OPTIN_META_KEY );
+		delete_user_meta( get_current_user_id(), \Google\Web_Stories\User\Preferences::OPTIN_META_KEY );
 
 		$this->assertTrue( $tracking_allowed );
 	}

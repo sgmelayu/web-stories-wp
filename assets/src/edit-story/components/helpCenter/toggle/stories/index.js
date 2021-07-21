@@ -19,11 +19,12 @@
 import { useState } from 'react';
 import { number } from '@storybook/addon-knobs';
 import styled, { ThemeProvider } from 'styled-components';
+import { theme as dsTheme, ThemeGlobals } from '@web-stories-wp/design-system';
+
 /**
  * Internal dependencies
  */
 import { Toggle as HelpCenterToggle } from '..';
-import { theme as dsTheme, ThemeGlobals } from '../../../../../design-system';
 
 export default {
   title: 'Stories Editor/Components/Help Center',
@@ -42,7 +43,7 @@ export const Toggle = () => {
   const [isOpen, setIsOpen] = useState(false);
   return (
     <ThemeProvider theme={dsTheme}>
-      <ThemeGlobals.OverrideFocusOutline />
+      <ThemeGlobals.Styles />
       <Bg>
         <HelpCenterToggle
           isOpen={isOpen}

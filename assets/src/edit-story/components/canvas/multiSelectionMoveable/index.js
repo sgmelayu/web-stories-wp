@@ -19,18 +19,18 @@
  */
 import PropTypes from 'prop-types';
 import { useRef, useEffect, useState } from 'react';
-
+import { useUnits } from '@web-stories-wp/units';
 /**
  * Internal dependencies
  */
 import Moveable from '../../moveable';
-import { useStory, useCanvas } from '../../../app';
+import { useStory, useCanvas, useLayout } from '../../../app';
 import objectWithout from '../../../utils/objectWithout';
 import { useTransform } from '../../transform';
-import { useUnits } from '../../../units';
 import { getDefinitionForType } from '../../../elements';
 import isTargetOutOfContainer from '../../../utils/isTargetOutOfContainer';
 import useSnapping from '../utils/useSnapping';
+import useUpdateSelectionRectangle from '../utils/useUpdateSelectionRectangle';
 import useWindowResizeHandler from '../useWindowResizeHandler';
 import useDrag from './useDrag';
 import useResize from './useResize';
@@ -41,15 +41,12 @@ const CORNER_HANDLES = ['nw', 'ne', 'sw', 'se'];
 function MultiSelectionMoveable({ selectedElements }) {
   const moveable = useRef();
 
-  const {
-    updateElementsById,
-    deleteElementsById,
-    backgroundElement,
-  } = useStory((state) => ({
-    updateElementsById: state.actions.updateElementsById,
-    deleteElementsById: state.actions.deleteElementsById,
-    backgroundElement: state.state.currentPage.elements[0] ?? {},
-  }));
+  const { updateElementsById, deleteElementsById, backgroundElement } =
+    useStory((state) => ({
+      updateElementsById: state.actions.updateElementsById,
+      deleteElementsById: state.actions.deleteElementsById,
+      backgroundElement: state.state.currentPage.elements[0] ?? {},
+    }));
   const { nodesById, fullbleedContainer } = useCanvas(
     ({ state: { nodesById, fullbleedContainer } }) => ({
       fullbleedContainer,
@@ -60,6 +57,13 @@ function MultiSelectionMoveable({ selectedElements }) {
     editorToDataX: state.actions.editorToDataX,
     editorToDataY: state.actions.editorToDataY,
   }));
+  const { zoomSetting, scrollLeft, scrollTop } = useLayout(
+    ({ state: { zoomSetting, scrollLeft, scrollTop } }) => ({
+      zoomSetting,
+      scrollLeft,
+      scrollTop,
+    })
+  );
 
   const {
     actions: { pushTransform },
@@ -73,7 +77,10 @@ function MultiSelectionMoveable({ selectedElements }) {
     if (moveable.current) {
       moveable.current.updateRect();
     }
-  }, [selectedElements, moveable, nodesById]);
+  }, [selectedElements, moveable, nodesById, scrollLeft, scrollTop]);
+
+  // If zoom ever updates, update selection rect
+  useUpdateSelectionRectangle(moveable, [zoomSetting]);
 
   // Create targets list including nodes and also necessary attributes.
   const targetList = selectedElements.map((element) => ({
@@ -191,10 +198,9 @@ function MultiSelectionMoveable({ selectedElements }) {
       ...selectedElements.map((element) => element.id),
       backgroundElement.id,
     ])
-  ).filter(({ isBackground }) => !isBackground);
+  );
 
   const snapProps = useSnapping({
-    isDragging,
     canSnap: true,
     otherNodes,
   });

@@ -20,17 +20,19 @@
 import PropTypes from 'prop-types';
 import styled from 'styled-components';
 import { __ } from '@web-stories-wp/i18n';
+import { ColorStopPropType } from '@web-stories-wp/patterns';
+import {
+  Button,
+  BUTTON_SIZES,
+  BUTTON_TYPES,
+  BUTTON_VARIANTS,
+  Icons,
+} from '@web-stories-wp/design-system';
 
 /**
  * Internal dependencies
  */
-import { ColorStopPropType } from '../../types';
-import {
-  BUTTON_SIZES,
-  BUTTON_TYPES,
-  BUTTON_VARIANTS,
-} from '../../../design-system/components/button';
-import { Button, Icons, Tooltip } from '../../../design-system';
+import Tooltip from '../tooltip';
 import GradientLine from './gradientLine';
 
 const Wrapper = styled.div`

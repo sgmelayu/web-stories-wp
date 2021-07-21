@@ -17,50 +17,26 @@
 /**
  * External dependencies
  */
-import styled, { css } from 'styled-components';
-import { rgba } from 'polished';
 import PropTypes from 'prop-types';
 import { __ } from '@web-stories-wp/i18n';
+import styled from 'styled-components';
+import {
+  Button,
+  BUTTON_SIZES,
+  BUTTON_TYPES,
+  BUTTON_VARIANTS,
+  Icons,
+} from '@web-stories-wp/design-system';
 
 /**
  * Internal dependencies
  */
-import { Icons } from '../../../../../design-system';
 import { PanelTitle } from '../../panel';
+import { focusStyle } from '../../shared';
+import { PRESET_TYPES } from './constants';
 
-const buttonCSS = css`
-  border: none;
-  background: transparent;
-  width: 32px;
-  height: 32px;
-  color: ${({ theme }) => rgba(theme.DEPRECATED_THEME.colors.fg.white, 0.84)};
-  cursor: pointer;
-  padding: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  svg {
-    width: 32px;
-    height: 32px;
-  }
-`;
-
-const AddPresetButton = styled.button`
-  ${buttonCSS}
-`;
-
-const EditMode = styled.button`
-  ${buttonCSS}
-
-  ${({ isEditMode }) =>
-    isEditMode &&
-    css`
-      color: ${({ theme }) => theme.DEPRECATED_THEME.colors.fg.white};
-      font-size: 12px;
-      line-height: 14px;
-      padding: 7px;
-      height: initial;
-    `}
+const StyledButton = styled(Button)`
+  ${focusStyle};
 `;
 
 function PresetsHeader({
@@ -72,34 +48,46 @@ function PresetsHeader({
   canCollapse,
   presetType,
 }) {
-  const isColor = 'color' === presetType;
+  const isColor = PRESET_TYPES.COLOR === presetType;
   const editLabel = isColor
     ? __('Edit colors', 'web-stories')
     : __('Edit styles', 'web-stories');
   const getActions = () => {
+    const buttonProps = {
+      type: BUTTON_TYPES.TERTIARY,
+      size: BUTTON_SIZES.SMALL,
+      variant: BUTTON_VARIANTS.SQUARE,
+      onClick: (evt) => {
+        evt.stopPropagation();
+        setIsEditMode(!isEditMode);
+      },
+      isEditMode,
+    };
     return (
       <>
-        {hasPresets && (
-          <EditMode
-            onClick={(evt) => {
-              evt.stopPropagation();
-              setIsEditMode(!isEditMode);
-            }}
-            aria-label={
-              isEditMode ? __('Exit edit mode', 'web-stories') : editLabel
-            }
-            isEditMode={isEditMode}
+        {hasPresets && isEditMode && (
+          <StyledButton
+            {...buttonProps}
+            aria-label={__('Exit edit mode', 'web-stories')}
           >
-            {isEditMode ? __('Done', 'web-stories') : <Icons.Pencil />}
-          </EditMode>
+            {__('Done', 'web-stories')}
+          </StyledButton>
+        )}
+        {hasPresets && !isEditMode && (
+          <StyledButton {...buttonProps} aria-label={editLabel}>
+            <Icons.Pencil />
+          </StyledButton>
         )}
         {!isEditMode && !isColor && (
-          <AddPresetButton
+          <StyledButton
+            type={BUTTON_TYPES.TERTIARY}
+            size={BUTTON_SIZES.SMALL}
+            variant={BUTTON_VARIANTS.SQUARE}
             onClick={handleAddPreset}
             aria-label={__('Add style', 'web-stories')}
           >
             <Icons.Plus />
-          </AddPresetButton>
+          </StyledButton>
         )}
       </>
     );

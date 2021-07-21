@@ -19,11 +19,14 @@
  */
 import PropTypes from 'prop-types';
 import { useRef, useState } from 'react';
-import styled from 'styled-components';
+import styled, { css } from 'styled-components';
+import { generatePatternStyles } from '@web-stories-wp/patterns';
+import { useUnits } from '@web-stories-wp/units';
+import { StoryAnimation } from '@web-stories-wp/animation';
+
 /**
  * Internal dependencies
  */
-import { StoryAnimation } from '../../../animation';
 import { getDefinitionForType } from '../../elements';
 import {
   elementWithPosition,
@@ -32,8 +35,6 @@ import {
 } from '../../elements/shared';
 import WithMask from '../../masks/display';
 import StoryPropTypes from '../../types';
-import { useUnits } from '../../units';
-import generatePatternStyles from '../../utils/generatePatternStyles';
 import { useTransformHandler } from '../transform';
 import useColorTransformHandler from '../../elements/shared/useColorTransformHandler';
 import {
@@ -41,14 +42,34 @@ import {
   getResponsiveBorder,
   shouldDisplayBorder,
 } from '../../utils/elementBorder';
-import getTransformFlip from '../../elements/shared/getTransformFlip';
 
-const Wrapper = styled.div`
-  ${elementWithPosition}
-  ${elementWithSize}
-  ${elementWithRotation}
+// Using attributes to avoid creation of hundreds of classes by styled components for previewMode.
+const Wrapper = styled.div.attrs(
+  ({ previewMode, x, y, width, height, rotationAngle }) => {
+    const style = {
+      position: 'absolute',
+      zIndex: 1,
+      left: `${x}px`,
+      top: `${y}px`,
+      width: `${width}px`,
+      height: `${height}px`,
+      transform: `rotate(${rotationAngle}deg)`,
+    };
+    return previewMode ? { style } : {};
+  }
+)`
+  ${({ previewMode }) => !previewMode && elementWithPosition}
+  ${({ previewMode }) => !previewMode && elementWithSize}
+  ${({ previewMode }) => !previewMode && elementWithRotation}
   contain: layout;
   transition: opacity 0.15s cubic-bezier(0, 0, 0.54, 1);
+
+  ${({ isBackground, theme }) =>
+    isBackground &&
+    css`
+      border-radius: ${theme.borders.radius.small};
+      overflow: hidden;
+    `}
 `;
 
 const BackgroundOverlay = styled.div`
@@ -63,7 +84,6 @@ const ReplacementContainer = styled.div`
   transition: opacity 0.25s cubic-bezier(0, 0, 0.54, 1);
   pointer-events: none;
   opacity: ${({ hasReplacement }) => (hasReplacement ? 1 : 0)};
-  transform: ${({ flip }) => (flip ? getTransformFlip(flip) : null)};
   height: 100%;
 `;
 
@@ -92,6 +112,16 @@ function DisplayElement({ element, previewMode, isAnimatable = false }) {
 
   const hasReplacement = Boolean(replacement);
 
+  const {
+    id,
+    opacity,
+    type,
+    isBackground,
+    overlay,
+    border = {},
+    flip,
+  } = element;
+
   const replacementElement = hasReplacement
     ? {
         ...element,
@@ -100,19 +130,16 @@ function DisplayElement({ element, previewMode, isAnimatable = false }) {
         scale: replacement.scale,
         focalX: replacement.focalX,
         focalY: replacement.focalY,
-        flip: replacement.flip,
+        // Okay, this is a bit weird, but... the flip and overlay properties are taken from the dragged image
+        // if the drop-target is the background element, but from the original drop-target image
+        // itself if the drop-target is a regular element.
+        //
+        // @see compare with similar logic in `combineElements`
+        flip: isBackground ? replacement.flip : flip,
+        overlay: isBackground ? replacement.overlay : overlay,
       }
     : null;
 
-  const {
-    id,
-    opacity,
-    type,
-    isBackground,
-    backgroundOverlay,
-    border = {},
-    flip,
-  } = element;
   const { Display } = getDefinitionForType(type);
   const { Display: Replacement } =
     getDefinitionForType(replacement?.resource.type) || {};
@@ -151,7 +178,13 @@ function DisplayElement({ element, previewMode, isAnimatable = false }) {
   });
 
   return (
-    <Wrapper ref={wrapperRef} data-element-id={id} {...box}>
+    <Wrapper
+      ref={wrapperRef}
+      data-element-id={id}
+      isBackground={element.isBackground}
+      previewMode={previewMode}
+      {...box}
+    >
       <AnimationWrapper id={id} isAnimatable={isAnimatable}>
         <WithMask
           element={element}
@@ -172,10 +205,7 @@ function DisplayElement({ element, previewMode, isAnimatable = false }) {
           <Display element={element} previewMode={previewMode} box={box} />
         </WithMask>
         {!previewMode && (
-          <ReplacementContainer
-            flip={flip}
-            hasReplacement={Boolean(replacementElement)}
-          >
+          <ReplacementContainer hasReplacement={hasReplacement}>
             {replacementElement && (
               <WithMask
                 element={replacementElement}
@@ -191,10 +221,10 @@ function DisplayElement({ element, previewMode, isAnimatable = false }) {
             )}
           </ReplacementContainer>
         )}
-        {isBackground && backgroundOverlay && !hasReplacement && (
+        {isBackground && overlay && !hasReplacement && (
           <BackgroundOverlay
             ref={bgOverlayRef}
-            style={generatePatternStyles(backgroundOverlay)}
+            style={generatePatternStyles(overlay)}
           />
         )}
       </AnimationWrapper>

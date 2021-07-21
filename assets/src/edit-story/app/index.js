@@ -24,10 +24,19 @@ import { useAPI } from './api';
 import { useConfig } from './config';
 import { useFont } from './font';
 import { useLocalMedia, useMedia } from './media';
-import { useStory } from './story';
-import { useSnackbar } from './snackbar';
+import {
+  useStory,
+  useStoryTriggers,
+  useStoryTriggerListener,
+  useStoryTriggersDispatch,
+  STORY_EVENTS,
+} from './story';
+
 import { useCanvas } from './canvas';
+import { useLayout } from './layout';
 import { useCurrentUser } from './currentUser';
+import { useHelpCenter } from './helpCenter';
+import { useUserOnboarding } from './userOnboarding';
 
 export {
   useHistory,
@@ -35,11 +44,17 @@ export {
   useDropTargets,
   useTransform,
   useStory,
+  useStoryTriggers,
+  useStoryTriggerListener,
+  useStoryTriggersDispatch,
+  STORY_EVENTS,
   useConfig,
   useFont,
   useLocalMedia,
   useMedia,
-  useSnackbar,
   useCanvas,
+  useLayout,
   useCurrentUser,
+  useHelpCenter,
+  useUserOnboarding,
 };

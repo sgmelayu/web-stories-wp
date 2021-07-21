@@ -14,5 +14,7 @@
  * limitations under the License.
  */
 
+export { default as translateToExclusiveList } from './translateToExclusiveList';
+export { default as translateToInclusiveList } from './translateToInclusiveList';
 export { default as TranslateWithMarkup } from './translateWithMarkup';
-export { __, _x, _n, _nx, sprintf } from '@wordpress/i18n';
+export * from '@wordpress/i18n';

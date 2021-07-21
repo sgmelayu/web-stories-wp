@@ -17,21 +17,19 @@
 /**
  * External dependencies
  */
-import { fireEvent } from '@testing-library/react';
+import { UnitsProvider, getBox, PAGE_RATIO } from '@web-stories-wp/units';
 
 /**
  * Internal dependencies
  */
 import LibraryContext from '../../../../context';
-import { getBox } from '../../../../../../units/dimensions';
 import TransformContext from '../../../../../transform/context';
 import FontContext from '../../../../../../app/font/context';
 import APIContext from '../../../../../../app/api/context';
 import ConfigContext from '../../../../../../app/config/context';
 import TextSet from '../textSet';
 import { renderWithTheme } from '../../../../../../testUtils';
-import { PAGE_RATIO, TEXT_SET_SIZE } from '../../../../../../constants';
-import { UnitsProvider } from '../../../../../../units';
+import { TEXT_SET_SIZE } from '../../../../../../constants';
 import StoryContext from '../../../../../../app/story/context';
 import { LayoutProvider } from '../../../../../../app/layout';
 import CanvasContext from '../../../../../../app/canvas/context';
@@ -95,6 +93,8 @@ const SET = [
     previewOffsetY: 0,
     textSetWidth: 333,
     textSetHeight: 304,
+    normalizedOffsetX: 0,
+    normalizedOffsetY: 0,
   },
   {
     opacity: 100,
@@ -174,6 +174,8 @@ const SET = [
     previewOffsetY: 30,
     textSetWidth: 333,
     textSetHeight: 304,
+    normalizedOffsetX: 0,
+    normalizedOffsetY: 0,
   },
 ];
 
@@ -221,7 +223,7 @@ function setup(elements) {
     },
   };
 
-  const { queryAllByRole, getByRole, container } = renderWithTheme(
+  return renderWithTheme(
     <TransformContext.Provider value={transformValue}>
       <ConfigContext.Provider value={configValue}>
         <APIContext.Provider value={apiValue}>
@@ -248,8 +250,9 @@ function setup(elements) {
       </ConfigContext.Provider>
     </TransformContext.Provider>
   );
-  return { getByRole, queryAllByRole, container };
 }
+
+/* eslint-disable testing-library/no-container */
 
 describe('TextSets', () => {
   beforeEach(() => {
@@ -271,23 +274,6 @@ describe('TextSets', () => {
       'The possibilities for innovation are not, by any means, exhausted. Technological development is always offering new opportunities for innovative design. But innovative design always develops in tandem with innovative technology, and can never be an end in itself.'
     );
   });
-
-  it('should allow inserting a text set', () => {
-    insertTextSet.mockImplementation((elements) => elements);
-    const { getByRole } = setup(SET);
-    // There has to be exactly one set, thus we're using getByRole.
-    const set = getByRole('listitem');
-    expect(set).toBeInTheDocument();
-    // Last child is always the moveable targetBox.
-    fireEvent.click(set.lastChild);
-
-    expect(insertTextSet).toHaveBeenCalledTimes(1);
-
-    const element1 = insertTextSet.mock.calls[0][0][0];
-    expect(element1.content).toContain('Good design is aesthetic');
-    const element2 = insertTextSet.mock.calls[0][0][1];
-    expect(element2.content).toContain(
-      'The possibilities for innovation are not'
-    );
-  });
 });
+
+/* eslint-enable testing-library/no-container */

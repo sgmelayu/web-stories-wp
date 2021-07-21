@@ -23,7 +23,8 @@ import { migrate } from '@web-stories-wp/migration';
 /**
  * Internal dependencies
  */
-import { useAPI, useHistory } from '../../';
+import { useAPI } from '../../api';
+import { useHistory } from '../../history';
 import { createPage } from '../../../elements';
 import getUniquePresets from '../../../utils/getUniquePresets';
 
@@ -55,6 +56,8 @@ function useLoadStory({ storyId, shouldLoad, restore, isDemo }) {
           style_presets: globalStoryStyles,
           password,
           preview_link: previewLink,
+          edit_link: editLink,
+          embed_post_link: embedPostLink,
           _embedded: embedded = {},
         } = post;
 
@@ -76,6 +79,16 @@ function useLoadStory({ storyId, shouldLoad, restore, isDemo }) {
           width: 0,
           url: '',
         };
+
+        let lockUser = null;
+
+        if ('wp:lockuser' in embedded) {
+          lockUser = {
+            id: embedded['wp:lockuser'][0].id,
+            name: embedded['wp:lockuser'][0].name,
+            avatar: embedded['wp:lockuser'][0].avatar_urls?.['48'],
+          };
+        }
 
         if ('wp:featuredmedia' in embedded) {
           featuredMedia = {
@@ -134,11 +147,14 @@ function useLoadStory({ storyId, shouldLoad, restore, isDemo }) {
           excerpt,
           slug,
           link,
+          lockUser,
           featuredMedia,
           permalinkConfig,
           publisherLogoUrl,
           password,
           previewLink,
+          editLink,
+          embedPostLink,
           currentStoryStyles: {
             colors: storyData?.currentStoryStyles?.colors
               ? getUniquePresets(storyData.currentStoryStyles.colors)

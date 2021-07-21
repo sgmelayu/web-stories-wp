@@ -22,13 +22,12 @@ import { renderHook, act } from '@testing-library/react-hooks';
 /**
  * Internal dependencies
  */
-import useMediaUploadQueue from '../';
-import useTranscodeVideo from '../../useTranscodeVideo';
+import useMediaUploadQueue from '..';
+import useFFmpeg from '../../useFFmpeg';
 
-jest.mock('../../useTranscodeVideo', () => ({
+jest.mock('../../useFFmpeg', () => ({
   __esModule: true,
   default: jest.fn(() => ({
-    isFeatureEnabled: true,
     isTranscodingEnabled: true,
     canTranscodeFile: jest.fn(),
     isFileTooLarge: jest.fn(),
@@ -45,6 +44,7 @@ const mockAttachment = {
     width: 1080,
     height: 720,
   },
+  source_url: 'http://localhost:9876/__static__/asteroid.ogg',
   title: {
     raw: 'Title',
   },
@@ -71,7 +71,7 @@ jest.mock('../../../../uploader', () => ({
 
 describe('useMediaUploadQueue', () => {
   afterEach(() => {
-    useTranscodeVideo.mockClear();
+    useFFmpeg.mockClear();
   });
 
   it('sets initial state for upload queue', async () => {
@@ -106,7 +106,15 @@ describe('useMediaUploadQueue', () => {
 
     await waitForNextUpdate();
 
+    expect(result.current.state.isUploading).toBeTrue();
+    expect(result.current.state.processed).toHaveLength(1);
+
+    const { id } = result.current.state.processed[0];
+
+    act(() => result.current.actions.removeItem({ id }));
+
     expect(result.current.state.isUploading).toBeFalse();
+    expect(result.current.state.processed).toHaveLength(0);
   });
 
   it('allows removing items from the queue', async () => {
@@ -122,6 +130,7 @@ describe('useMediaUploadQueue', () => {
 
     await waitForNextUpdate();
 
+    expect(result.current.state.failures).toHaveLength(0);
     expect(result.current.state.processed).toHaveLength(1);
 
     act(() =>

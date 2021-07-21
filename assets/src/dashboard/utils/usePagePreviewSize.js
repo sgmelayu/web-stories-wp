@@ -18,16 +18,15 @@
  */
 import { useEffect, useMemo, useState, useRef } from 'react';
 import { useDebouncedCallback } from 'use-debounce';
+import { FULLBLEED_RATIO, PAGE_RATIO } from '@web-stories-wp/units';
+import { useResizeEffect } from '@web-stories-wp/design-system';
 
 /**
  * Internal dependencies
  */
-import { useResizeEffect } from '../../design-system';
 import {
   DASHBOARD_LEFT_NAV_WIDTH,
-  FULLBLEED_RATIO,
   MIN_DASHBOARD_WIDTH,
-  PAGE_RATIO,
   WPBODY_ID,
   VIEWPORT_BREAKPOINT,
   STORY_PREVIEW_WIDTH,
@@ -36,15 +35,16 @@ import {
 } from '../constants';
 
 /**
- * Here we need to calculate two heights for every pagePreview in use.
- * 1. The height that is 9:16 aspect ratio, this is the default FULLBLEED_RATIO
+ * Here we need to calculate three heights for every pagePreview in use.
+ * 1. fullbleedHeight - The height that is 9:16 aspect ratio, this is the default FULLBLEED_RATIO
  * This height is used anywhere we need the height of the container holding a pagePreview.
  * It is the true boundary for overflow.
  * It is the 'fullBleedHeight'
- * 2. The height for the actual story, used in our shared components with edit-story
+ * 2. storyHeight - The height for the actual story (in the dashboard the only actual stories rendered are the templates), used in our shared components with edit-story
  * This means things like the unitsProvider and displayElements that we import to the Dashboard from the editor
  * It's maintaining a 2:3 aspect ratio.
- * When fullbleed is visible (as it is for our reqs) we use the 2:3 aspect ratio w/ overflow to allow the fullBleed height to be visible
+ * When fullbleed is visible (as it is for templates) we use the 2:3 aspect ratio w/ overflow to allow the fullBleed height to be visible
+ * 3. posterHeight - This is a height based on 3:4 ratio which is what poster images need, this is used on 'my stories' view.
  *
  * @param {number} width  width of page to base ratios on
  * @return {Object}       heights to use in pagePreviews { fullBleedHeight: Number, storyHeight: Number}
@@ -52,8 +52,8 @@ import {
 export const getPagePreviewHeights = (width) => {
   const fullBleedHeight = Math.round((width / FULLBLEED_RATIO) * 100) / 100;
   const storyHeight = Math.round((width / PAGE_RATIO) * 100) / 100;
-
-  return { fullBleedHeight, storyHeight };
+  const posterHeight = Math.round(((width / (3 / 4)) * 100) / 100);
+  return { fullBleedHeight, storyHeight, posterHeight };
 };
 
 const getCurrentBp = (availableContainerSpace) =>
@@ -75,8 +75,14 @@ const sizeFromWidth = (
   { bp, respectSetWidth, availableContainerSpace }
 ) => {
   if (respectSetWidth) {
-    const { fullBleedHeight, storyHeight } = getPagePreviewHeights(width);
-    return { width, height: storyHeight, containerHeight: fullBleedHeight };
+    const { fullBleedHeight, storyHeight, posterHeight } =
+      getPagePreviewHeights(width);
+    return {
+      width,
+      height: storyHeight,
+      containerHeight: fullBleedHeight,
+      posterHeight,
+    };
   }
 
   if (bp === VIEWPORT_BREAKPOINT.DESKTOP) {
@@ -91,17 +97,24 @@ const sizeFromWidth = (
   const addToWidthValue = remainingSpace / itemsInRow;
 
   const trueWidth = width + addToWidthValue;
-  const { fullBleedHeight, storyHeight } = getPagePreviewHeights(trueWidth);
+  const { fullBleedHeight, storyHeight, posterHeight } =
+    getPagePreviewHeights(trueWidth);
 
   return {
     width: trueWidth,
     height: storyHeight,
     containerHeight: fullBleedHeight,
+    posterHeight,
   };
 };
 
 const getContainerWidth = (windowWidth) => {
-  return windowWidth > MIN_DASHBOARD_WIDTH ? windowWidth : MIN_DASHBOARD_WIDTH;
+  // Because the dashboard has a min width (MIN_DASHBOARD_WIDTH) check to see if that min should be used or the actual space of the dashboard
+  const isWindowSmallerThanMinDashboardWidth =
+    window.innerWidth < MIN_DASHBOARD_WIDTH;
+  return isWindowSmallerThanMinDashboardWidth
+    ? MIN_DASHBOARD_WIDTH
+    : windowWidth;
 };
 
 export default function usePagePreviewSize(options = {}) {
@@ -109,6 +122,7 @@ export default function usePagePreviewSize(options = {}) {
   // When the dashboard is pulled out of wordpress this id will need to be updated.
   // For now, we need to grab wordpress instead because of how the app's rendered
   const dashboardContainerRef = useRef(document.getElementById(WPBODY_ID));
+
   // BP is contingent on the actual window size
   const [viewportWidth, setViewportWidth] = useState(window.innerWidth);
 
@@ -120,7 +134,7 @@ export default function usePagePreviewSize(options = {}) {
     )
   );
 
-  const [debounceSetViewportWidth] = useDebouncedCallback((width) => {
+  const debounceSetViewportWidth = useDebouncedCallback((width) => {
     setViewportWidth(width);
   }, 500);
 

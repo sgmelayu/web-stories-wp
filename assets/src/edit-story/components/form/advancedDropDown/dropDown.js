@@ -17,23 +17,17 @@
 /**
  * External dependencies
  */
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, forwardRef } from 'react';
 import { useDebouncedCallback } from 'use-debounce';
-import styled, { css } from 'styled-components';
+import styled from 'styled-components';
 import PropTypes from 'prop-types';
-import { rgba } from 'polished';
-import { __ } from '@web-stories-wp/i18n';
+import { DropDownSelect } from '@web-stories-wp/design-system';
 
 /**
  * Internal dependencies
  */
-import {
-  Icons,
-  themeHelpers,
-  Text,
-  THEME_CONSTANTS,
-} from '../../../../design-system';
 import Popup from '../../popup';
+import { focusStyle } from '../../panels/shared';
 import OptionsContainer from './container';
 import List from './list';
 
@@ -43,69 +37,17 @@ const Container = styled.div`
   display: flex;
   flex-direction: column;
   flex-grow: 1;
-  color: ${({ theme }) => theme.DEPRECATED_THEME.colors.fg.black};
-  font-family: ${({ theme }) => theme.DEPRECATED_THEME.fonts.body1.font};
-`;
-
-const DropDownSelect = styled.button`
-  display: flex;
-  flex-direction: row;
-  justify-content: space-between;
-  align-items: center;
-  flex-grow: 1;
-  background-color: ${({ theme, lightMode }) =>
-    lightMode
-      ? rgba(theme.DEPRECATED_THEME.colors.fg.white, 0.1)
-      : 'transparent'};
-  border: 0;
-  border-radius: 4px;
-  ${({ theme, lightMode }) =>
-    !lightMode &&
-    `
-    border: 1px solid ${theme.colors.border.defaultNormal};
-  `}
-  padding: 2px 0 2px 12px;
-  cursor: pointer;
-
-  ${themeHelpers.focusableOutlineCSS};
-
-  ${({ disabled }) =>
-    disabled &&
-    css`
-      pointer-events: none;
-      opacity: 0.3;
-    `}
-
-  &:hover {
-    border-color: ${({ theme }) => theme.colors.border.defaultHover};
-  }
-
-  svg {
-    width: 32px;
-    height: auto;
-    color: ${({ theme, lightMode }) =>
-      lightMode
-        ? theme.DEPRECATED_THEME.colors.fg.white
-        : theme.colors.fg.secondary};
-  }
-`;
-
-const DropDownTitle = styled(Text)`
-  user-select: none;
-  color: ${({ theme }) => theme.colors.fg.primary};
 `;
 
 /**
  * @param {Object} props All props.
  * @param {Function} props.onChange Triggered when user clicks on the option in the list.
- * @param {boolean} props.lightMode Lightmode.
- * @param {string} props.placeholder Displayed in the input when the dropdown is not open.
  * @param {boolean} props.disabled Disables opening the dropdown if set.
  * @param {number} props.selectedId The selected option ID.
  * @param {Array} props.options All options, used for search.
  * @param {boolean} props.hasSearch If to enable search feature in the dropdown.
  * @param {Function} props.getOptionsByQuery Function to query options in case options are not set.
- * @param {Function} props.onObserve When this is present, observer will detect new options coming into view and trigger the funcion for these entries.
+ * @param {Function} props.onObserve When this is present, observer will detect new options coming into view and trigger the function for these entries.
  * @param {Array} props.primaryOptions Array of options to display by default when not searching
  * @param {string} props.primaryLabel Label to display above the primary options.
  * @param {Array} props.priorityOptions Options to display in front of all the other options in a separate group (will not remove these from the `options`).
@@ -113,27 +55,31 @@ const DropDownTitle = styled(Text)`
  * @param {string} props.searchResultsLabel Label to display in front of matching options when searching.
  * @param {Function} props.renderer Option renderer in case a custom renderer is required.
  * @param {boolean} props.isInline If to display the selection list inline instead of as a separate popup modal.
+ * @param {string} props.dropDownLabel The visible label of the dropdown select.
  * @return {*} Render.
  */
-function DropDown({
-  onChange,
-  lightMode = false,
-  placeholder = __('Select an Option', 'web-stories'),
-  disabled = false,
-  selectedId,
-  options,
-  hasSearch = false,
-  getOptionsByQuery,
-  onObserve,
-  primaryOptions,
-  primaryLabel,
-  priorityOptions,
-  priorityLabel,
-  searchResultsLabel,
-  renderer,
-  isInline = false,
-  ...rest
-}) {
+const DropDown = forwardRef(function DropDown(
+  {
+    onChange,
+    disabled = false,
+    selectedId,
+    options,
+    hasSearch = false,
+    getOptionsByQuery,
+    onObserve,
+    primaryOptions,
+    primaryLabel,
+    priorityOptions,
+    priorityLabel,
+    searchResultsLabel,
+    renderer,
+    isInline = false,
+    dropDownLabel = '',
+    highlightStylesOverride,
+    ...rest
+  },
+  ref
+) {
   if (!options && !getOptionsByQuery) {
     throw new Error(
       'Dropdown initiated with invalid params: options or getOptionsByQuery has to be set'
@@ -143,42 +89,31 @@ function DropDown({
   if (!hasSearch) {
     primaryOptions = options;
   }
-  const ref = useRef();
+  const localRef = useRef();
+  const dropdownRef = ref || localRef;
 
   const [isOpen, setIsOpen] = useState(false);
 
   const closeDropDown = useCallback(() => {
     setIsOpen(false);
     // Restore focus
-    if (ref.current) {
-      ref.current.focus();
+    if (dropdownRef.current) {
+      dropdownRef.current.focus();
     }
-  }, []);
+  }, [dropdownRef]);
+
   const toggleDropDown = useCallback(() => setIsOpen((val) => !val), []);
   // Must be debounced to account for clicking the select box again
   // (closing in useFocusOut and then opening again in onClick)
-  const [debouncedCloseDropDown] = useDebouncedCallback(closeDropDown, 100);
+  const debouncedCloseDropDown = useDebouncedCallback(closeDropDown, 100);
 
   const handleSelect = useCallback(
     (option) => {
       onChange(option);
       setIsOpen(false);
-      ref.current.focus();
+      dropdownRef.current.focus();
     },
-    [onChange]
-  );
-
-  const handleKeyPress = useCallback(
-    ({ key }) => {
-      if (
-        !isOpen &&
-        key === 'ArrowDown' &&
-        document.activeElement === ref.current
-      ) {
-        setIsOpen(true);
-      }
-    },
-    [isOpen]
+    [onChange, dropdownRef]
   );
 
   const list = (
@@ -219,43 +154,37 @@ function DropDown({
   const selectedOption = primaryOptions.find(({ id }) => id === selectedId);
   // In case of isInline, the list is displayed with 'absolute' positioning instead of using a separate popup.
   return (
-    <Container onKeyDown={handleKeyPress}>
+    <Container>
       <DropDownSelect
-        onClick={toggleDropDown}
         aria-pressed={isOpen}
         aria-haspopup
         aria-expanded={isOpen}
-        ref={ref}
-        lightMode={lightMode}
+        ref={dropdownRef}
+        activeItemLabel={selectedOption?.name}
+        dropDownLabel={dropDownLabel}
+        onSelectClick={toggleDropDown}
+        selectButtonStylesOverride={highlightStylesOverride || focusStyle}
         {...rest}
-      >
-        <DropDownTitle
-          as="span"
-          size={THEME_CONSTANTS.TYPOGRAPHY.PRESET_SIZES.SMALL}
-        >
-          {selectedOption?.name || placeholder}
-        </DropDownTitle>
-        <Icons.ChevronDownSmall />
-      </DropDownSelect>
+      />
       {isOpen && !disabled && isInline && list}
       {!disabled && !isInline && (
-        <Popup anchor={ref} isOpen={isOpen} fillWidth={DEFAULT_WIDTH}>
+        <Popup anchor={dropdownRef} isOpen={isOpen} fillWidth={DEFAULT_WIDTH}>
           {list}
         </Popup>
       )}
     </Container>
   );
-}
+});
 
 DropDown.propTypes = {
   selectedId: PropTypes.any,
   onChange: PropTypes.func.isRequired,
-  lightMode: PropTypes.bool,
   placeholder: PropTypes.string,
   disabled: PropTypes.bool,
   options: PropTypes.array,
   hasSearch: PropTypes.bool,
   getOptionsByQuery: PropTypes.func,
+  highlightStylesOverride: PropTypes.array,
   onObserve: PropTypes.func,
   primaryOptions: PropTypes.array,
   primaryLabel: PropTypes.string,
@@ -263,6 +192,7 @@ DropDown.propTypes = {
   priorityLabel: PropTypes.string,
   searchResultsLabel: PropTypes.string,
   renderer: PropTypes.oneOfType([PropTypes.func, PropTypes.object]),
+  dropDownLabel: PropTypes.string,
   isInline: PropTypes.bool,
 };
 

@@ -19,16 +19,17 @@
 import PropTypes from 'prop-types';
 import styled from 'styled-components';
 import { TranslateWithMarkup } from '@web-stories-wp/i18n';
-
-/**
- * Internal dependencies
- */
 import {
+  Link,
   themeHelpers,
   Text,
   THEME_CONSTANTS,
   VisuallyHidden,
-} from '../../../../design-system';
+} from '@web-stories-wp/design-system';
+
+/**
+ * Internal dependencies
+ */
 import { NAVIGATION_HEIGHT } from '../navigator/constants';
 import { GUTTER_WIDTH } from '../constants';
 import { useConfig } from '../../../app';
@@ -38,6 +39,10 @@ import { ReactComponent as DoneCheckmark } from './doneCheckmark.svg';
 const Panel = styled.div`
   width: 100%;
   padding-bottom: ${NAVIGATION_HEIGHT}px;
+
+  * {
+    user-select: text;
+  }
 `;
 
 const Overflow = styled.div`
@@ -54,6 +59,7 @@ const Overflow = styled.div`
 const Video = styled.video`
   height: 180px;
   margin-bottom: ${GUTTER_WIDTH}px;
+  max-width: 100%;
 `;
 
 const Title = styled.h1`
@@ -73,8 +79,14 @@ const DoneContainer = styled.div`
   ${themeHelpers.centerContent}
   height: 180px;
   margin-bottom: ${GUTTER_WIDTH}px;
+  color: #f4f2ef;
+
   svg {
     display: block;
+
+    path {
+      color: #4285f4;
+    }
   }
 `;
 
@@ -83,6 +95,9 @@ export function QuickTip({
   description,
   isLeftToRightTransition = true,
   figureSrc,
+  figureSrcImg,
+  figureAlt,
+  href,
   isDone = false,
   ...transitionProps
 }) {
@@ -102,10 +117,21 @@ export function QuickTip({
               muted
               noControls
               preload="true"
+              crossOrigin="anonymous"
             >
               <source src={`${cdnURL}${figureSrc}.webm`} type="video/webm" />
               <source src={`${cdnURL}${figureSrc}.mp4`} type="video/mp4" />
             </Video>
+          )}
+          {/* `figureSrcImg` is temporary until we get an animation for the embed quick tip.
+          Once we have the animation then the .png image won't be necessary */}
+          {figureSrcImg && (
+            <Video
+              as="img"
+              alt={figureAlt}
+              src={`${cdnURL}${figureSrcImg}.png`}
+              crossOrigin="anonymous"
+            />
           )}
           {isDone && (
             <DoneContainer>
@@ -121,6 +147,14 @@ export function QuickTip({
             >
               <TranslateWithMarkup
                 mapping={{
+                  a: (
+                    <Link
+                      size={THEME_CONSTANTS.TYPOGRAPHY.PRESET_SIZES.SMALL}
+                      rel="noreferrer noopener"
+                      target="_blank"
+                      href={href}
+                    />
+                  ),
                   screenreader: <VisuallyHidden />,
                 }}
               >
@@ -135,7 +169,12 @@ export function QuickTip({
 }
 
 QuickTip.propTypes = {
+  /* Temporary props: `figureAlt`, `figureSrc`.
+  See assets/src/edit-story/components/helpCenter/constants.js. */
+  figureAlt: PropTypes.string,
   figureSrc: PropTypes.string,
+  figureSrcImg: PropTypes.string,
+  href: PropTypes.string,
   isDone: PropTypes.bool,
   title: PropTypes.string.isRequired,
   description: PropTypes.arrayOf(PropTypes.string).isRequired,

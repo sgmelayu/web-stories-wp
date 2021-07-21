@@ -18,8 +18,8 @@
  * External dependencies
  */
 import PropTypes from 'prop-types';
-import { act, fireEvent } from '@testing-library/react';
-
+import { act, fireEvent, screen } from '@testing-library/react';
+import { createSolid } from '@web-stories-wp/patterns';
 /**
  * Internal dependencies
  */
@@ -28,9 +28,6 @@ import FontContext from '../../../../../app/font/context';
 import RichTextContext from '../../../../richText/context';
 import { calculateTextHeight } from '../../../../../utils/textMeasurements';
 import calcRotatedResizeOffset from '../../../../../utils/calcRotatedResizeOffset';
-import AdvancedDropDown from '../../../../form/advancedDropDown';
-import ColorInput from '../../../../form/color/color';
-import createSolid from '../../../../../utils/createSolid';
 import CanvasContext from '../../../../../app/canvas/context';
 import {
   MULTIPLE_VALUE,
@@ -38,9 +35,42 @@ import {
 } from '../../../../../constants';
 import { renderPanel } from '../../../shared/test/_utils';
 
+let mockControls;
 jest.mock('../../../../../utils/textMeasurements');
-jest.mock('../../../../form/advancedDropDown');
-jest.mock('../../../../form/color/color');
+jest.mock('../../../../form/advancedDropDown', () => {
+  // eslint-disable-next-line no-undef
+  const React = require('react');
+  // eslint-disable-next-line no-undef
+  const _PropTypes = require('prop-types');
+  const FakeControl = React.forwardRef(function FakeControl(props, ref) {
+    mockControls[props['data-testid']] = props;
+    return <div ref={ref} />;
+  });
+  FakeControl.propTypes = {
+    'data-testid': _PropTypes.string,
+  };
+  return {
+    __esModule: true,
+    default: FakeControl,
+  };
+});
+jest.mock('../../../../form/color/color', () => {
+  // eslint-disable-next-line no-undef
+  const React = require('react');
+  // eslint-disable-next-line no-undef
+  const _PropTypes = require('prop-types');
+  const FakeControl = React.forwardRef(function FakeControl(props, ref) {
+    mockControls[props['data-testid']] = props;
+    return <div ref={ref} />;
+  });
+  FakeControl.propTypes = {
+    'data-testid': _PropTypes.string,
+  };
+  return {
+    __esModule: true,
+    default: FakeControl,
+  };
+});
 
 const DEFAULT_PADDING = {
   horizontal: 0,
@@ -126,7 +156,6 @@ Wrapper.propTypes = {
 
 describe('Panels/TextStyle', () => {
   let textElement;
-  let controls;
 
   beforeEach(() => {
     global.fetch.resetMocks();
@@ -147,32 +176,21 @@ describe('Panels/TextStyle', () => {
       padding: DEFAULT_PADDING,
     };
 
-    controls = {};
-    AdvancedDropDown.mockImplementation(FakeControl);
-    ColorInput.mockImplementation(FakeControl);
+    mockControls = {};
   });
 
-  function FakeControl(props) {
-    controls[props['data-testid']] = props;
-    return <div />;
-  }
-
-  FakeControl.propTypes = {
-    'data-testid': PropTypes.string,
-  };
-
-  function renderTextStyle(selectedElements, ...args) {
+  function arrange(selectedElements, ...args) {
     return renderPanel(TextStyle, selectedElements, Wrapper, ...args);
   }
 
   it('should render <TextStyle /> panel', () => {
-    const { getByRole } = renderTextStyle([textElement]);
-    const element = getByRole('button', { name: 'Text' });
+    arrange([textElement]);
+    const element = screen.getByRole('button', { name: 'Text' });
     expect(element).toBeInTheDocument();
   });
 
   it('should recalculate height and offset', () => {
-    const { submit } = renderTextStyle([textElement]);
+    const { submit } = arrange([textElement]);
     calculateTextHeight.mockImplementation(() => 171);
 
     const [dx, dy] = calcRotatedResizeOffset(0, 0, 0, 0, 171 - 100);
@@ -188,8 +206,8 @@ describe('Panels/TextStyle', () => {
 
   describe('FontControls', () => {
     it('should select font', async () => {
-      const { pushUpdate } = renderTextStyle([textElement]);
-      await act(() => controls.font.onChange({ id: 'Neu Font' }));
+      const { pushUpdate } = arrange([textElement]);
+      await act(() => mockControls.font.onChange({ id: 'Neu Font' }));
       expect(pushUpdate).toHaveBeenCalledWith(
         {
           font: {
@@ -211,8 +229,8 @@ describe('Panels/TextStyle', () => {
     // Disable reason: Can't figure out a good way to test this easily
     // eslint-disable-next-line jest/no-disabled-tests
     it.skip('should select font weight', () => {
-      const { pushUpdate, getByRole } = renderTextStyle([textElement]);
-      fireEvent.click(getByRole('button', { name: 'Font weight' }));
+      const { pushUpdate } = arrange([textElement]);
+      fireEvent.click(screen.getByRole('button', { name: 'Font weight' }));
       const updatingFunction = pushUpdate.mock.calls[0][0];
       const resultOfUpdating = updatingFunction({ content: 'Hello world' });
       expect(resultOfUpdating).toStrictEqual(
@@ -224,8 +242,8 @@ describe('Panels/TextStyle', () => {
     });
 
     it('should select font size', () => {
-      const { getByRole, pushUpdate } = renderTextStyle([textElement]);
-      const input = getByRole('textbox', { name: 'Font size' });
+      const { pushUpdate } = arrange([textElement]);
+      const input = screen.getByRole('textbox', { name: 'Font size' });
 
       fireEvent.change(input, { target: { value: '32' } });
       fireEvent.keyDown(input, { key: 'Enter', which: 13 });
@@ -233,15 +251,15 @@ describe('Panels/TextStyle', () => {
     });
 
     it('should not update font size if empty string is submitted', () => {
-      const { getByRole, pushUpdate } = renderTextStyle([textElement]);
-      const input = getByRole('textbox', { name: 'Font size' });
+      const { pushUpdate } = arrange([textElement]);
+      const input = screen.getByRole('textbox', { name: 'Font size' });
       fireEvent.change(input, { target: { value: '' } });
       fireEvent.keyDown(input, { key: 'Enter', which: 13 });
       expect(pushUpdate).not.toHaveBeenCalled();
     });
 
     it('should set the text bold when the key command is pressed', () => {
-      const { pushUpdate, container } = renderTextStyle([textElement]);
+      const { pushUpdate, container } = arrange([textElement]);
 
       fireEvent.keyDown(container, {
         key: 'b',
@@ -260,7 +278,7 @@ describe('Panels/TextStyle', () => {
     });
 
     it('should set the text underline when the key command is pressed', () => {
-      const { pushUpdate, container } = renderTextStyle([textElement]);
+      const { pushUpdate, container } = arrange([textElement]);
 
       fireEvent.keyDown(container, {
         key: 'u',
@@ -280,7 +298,7 @@ describe('Panels/TextStyle', () => {
     });
 
     it('should set the text italics when the key command is pressed', () => {
-      const { pushUpdate, container } = renderTextStyle([textElement]);
+      const { pushUpdate, container } = arrange([textElement]);
 
       fireEvent.keyDown(container, {
         key: 'i',
@@ -301,24 +319,24 @@ describe('Panels/TextStyle', () => {
 
   describe('TextStyleControls', () => {
     it('should set lineHeight', () => {
-      const { getByRole, pushUpdate } = renderTextStyle([textElement]);
-      const input = getByRole('textbox', { name: 'Line-height' });
+      const { pushUpdate } = arrange([textElement]);
+      const input = screen.getByRole('textbox', { name: 'Line-height' });
       fireEvent.change(input, { target: { value: '1.5' } });
       fireEvent.keyDown(input, { key: 'Enter', which: 13 });
       expect(pushUpdate).toHaveBeenCalledWith({ lineHeight: 1.5 }, true);
     });
 
     it('should clear line height if set to empty', () => {
-      const { getByRole, pushUpdate } = renderTextStyle([textElement]);
-      const input = getByRole('textbox', { name: 'Line-height' });
+      const { pushUpdate } = arrange([textElement]);
+      const input = screen.getByRole('textbox', { name: 'Line-height' });
       fireEvent.change(input, { target: { value: '' } });
       fireEvent.keyDown(input, { key: 'Enter', which: 13 });
       expect(pushUpdate).toHaveBeenCalledWith({ lineHeight: '' }, true);
     });
 
     it('should set letterSpacing', () => {
-      const { getByRole, pushUpdate } = renderTextStyle([textElement]);
-      const input = getByRole('textbox', { name: 'Letter-spacing' });
+      const { pushUpdate } = arrange([textElement]);
+      const input = screen.getByRole('textbox', { name: 'Letter-spacing' });
       fireEvent.change(input, { target: { value: '150' } });
       fireEvent.keyDown(input, { key: 'Enter', which: 13 });
       const updatingFunction = pushUpdate.mock.calls[0][0];
@@ -332,8 +350,8 @@ describe('Panels/TextStyle', () => {
     });
 
     it('should clear letterSpacing if set to empty', () => {
-      const { getByRole, pushUpdate } = renderTextStyle([textElement]);
-      const input = getByRole('textbox', { name: 'Letter-spacing' });
+      const { pushUpdate } = arrange([textElement]);
+      const input = screen.getByRole('textbox', { name: 'Letter-spacing' });
       fireEvent.change(input, { target: { value: '' } });
       fireEvent.keyDown(input, { key: 'Enter', which: 13 });
       const updatingFunction = pushUpdate.mock.calls[0][0];
@@ -351,8 +369,10 @@ describe('Panels/TextStyle', () => {
 
   describe('ColorControls', () => {
     it('should render default black color', () => {
-      renderTextStyle([textElement]);
-      expect(controls['text.color'].value).toStrictEqual(createSolid(0, 0, 0));
+      arrange([textElement]);
+      expect(mockControls['text.color'].value).toStrictEqual(
+        createSolid(0, 0, 0)
+      );
     });
 
     it('should render a color', () => {
@@ -360,15 +380,15 @@ describe('Panels/TextStyle', () => {
         ...textElement,
         content: '<span style="color: rgb(255, 0, 0)">Hello world</span>',
       };
-      renderTextStyle([textWithColor]);
-      expect(controls['text.color'].value).toStrictEqual(
+      arrange([textWithColor]);
+      expect(mockControls['text.color'].value).toStrictEqual(
         createSolid(255, 0, 0)
       );
     });
 
     it('should set color', () => {
-      const { pushUpdate } = renderTextStyle([textElement]);
-      act(() => controls['text.color'].onChange(createSolid(0, 255, 0)));
+      const { pushUpdate } = arrange([textElement]);
+      act(() => mockControls['text.color'].onChange(createSolid(0, 255, 0)));
       const updatingFunction = pushUpdate.mock.calls[0][0];
       const resultOfUpdating = updatingFunction({
         content: 'Hello world',
@@ -390,8 +410,8 @@ describe('Panels/TextStyle', () => {
         ...textElement,
         content: '<span style="color: rgb(0, 0, 255)">Hello world</span>',
       };
-      renderTextStyle([textWithColor1, textWithColor2]);
-      expect(controls['text.color'].value).toStrictEqual(
+      arrange([textWithColor1, textWithColor2]);
+      expect(mockControls['text.color'].value).toStrictEqual(
         createSolid(0, 0, 255)
       );
     });
@@ -405,8 +425,8 @@ describe('Panels/TextStyle', () => {
         ...textElement,
         content: '<span style="color: rgb(0, 255, 255)">Hello world</span>',
       };
-      renderTextStyle([textWithColor1, textWithColor2]);
-      expect(controls['text.color'].value).toStrictEqual(MULTIPLE_VALUE);
+      arrange([textWithColor1, textWithColor2]);
+      expect(mockControls['text.color'].value).toStrictEqual(MULTIPLE_VALUE);
     });
   });
 
@@ -447,20 +467,24 @@ describe('Panels/TextStyle', () => {
           '<span style="font-weight: 700; letter-spacing: 0.2em">Hello world</span>',
       };
 
-      const { getByRole } = renderTextStyle([textElement1, textElement2]);
+      arrange([textElement1, textElement2]);
 
-      const letterSpacing = getByRole('textbox', { name: 'Letter-spacing' });
+      const letterSpacing = screen.getByRole('textbox', {
+        name: 'Letter-spacing',
+      });
       expect(letterSpacing.placeholder).toStrictEqual(MULTIPLE_DISPLAY_VALUE);
 
-      const lineHeight = getByRole('textbox', { name: 'Line-height' });
+      const lineHeight = screen.getByRole('textbox', { name: 'Line-height' });
       expect(lineHeight.placeholder).toStrictEqual(MULTIPLE_DISPLAY_VALUE);
 
-      const fontSize = getByRole('textbox', { name: 'Font size' });
+      const fontSize = screen.getByRole('textbox', { name: 'Font size' });
       expect(fontSize.placeholder).toStrictEqual(MULTIPLE_DISPLAY_VALUE);
 
-      expect(controls.font.placeholder).toStrictEqual(MULTIPLE_DISPLAY_VALUE);
+      expect(mockControls.font.placeholder).toStrictEqual(
+        MULTIPLE_DISPLAY_VALUE
+      );
 
-      const fontWeight = getByRole('button', { name: 'Font weight' });
+      const fontWeight = screen.getByRole('button', { name: 'Font weight' });
       expect(fontWeight).toHaveTextContent(MULTIPLE_DISPLAY_VALUE);
     });
   });

@@ -15,14 +15,19 @@
  */
 
 /**
+ * External dependencies
+ */
+import { waitFor } from '@testing-library/react';
+import { createSolid } from '@web-stories-wp/patterns';
+/**
  * Internal dependencies
  */
 import { Fixture } from '../../../../../karma/fixture';
 import { useInsertElement } from '../../../../canvas';
-import createSolid from '../../../../../utils/createSolid';
 import { BACKGROUND_TEXT_MODE } from '../../../../../constants';
 import { useStory } from '../../../../../app/story';
 import { DEFAULT_PRESET } from '../../../../library/panes/text/textPresets';
+import { PRESET_TYPES } from '../constants';
 
 describe('Panel: Style Presets', () => {
   let fixture;
@@ -38,7 +43,7 @@ describe('Panel: Style Presets', () => {
     fixture = new Fixture();
     await fixture.render();
     localStorage.setItem(
-      'web_stories_ui_panel_settings:stylepreset-style',
+      `web_stories_ui_panel_settings:stylepreset-${PRESET_TYPES.STYLE}`,
       JSON.stringify({ isCollapsed: false, height: 200 })
     );
   });
@@ -51,6 +56,7 @@ describe('Panel: Style Presets', () => {
   describe('CUJ: Creator can Apply or Save Text Style from/to Their Preset Library: Display Panel', () => {
     it('should display text styles panel for a text element', async () => {
       await fixture.events.click(fixture.editor.library.textAdd);
+      await waitFor(() => fixture.editor.canvas.framesLayer.frames[1].node);
       const addButton =
         fixture.editor.inspector.designPanel.textStylePreset.add;
       expect(addButton).toBeTruthy();
@@ -58,6 +64,7 @@ describe('Panel: Style Presets', () => {
 
     it('should not display text styles panel in case of mixed multi-selection', async () => {
       await fixture.events.click(fixture.editor.library.textAdd);
+      await waitFor(() => fixture.editor.canvas.framesLayer.frames[1].node);
       // Add a shape element.
       const insertElement = await fixture.renderHook(() => useInsertElement());
       const element = await fixture.act(() =>
@@ -82,6 +89,7 @@ describe('Panel: Style Presets', () => {
   describe('CUJ: Creator can Apply or Save Text Style from/to Their Preset Library: Save Text Style', () => {
     it('should allow adding new text style from a text element', async () => {
       await fixture.events.click(fixture.editor.library.textAdd);
+      await waitFor(() => fixture.editor.canvas.framesLayer.frames[1].node);
       await fixture.events.click(
         fixture.editor.inspector.designPanel.textStylePreset.add
       );
@@ -98,9 +106,7 @@ describe('Panel: Style Presets', () => {
         fixture.editor.library.text.preset('Paragraph')
       );
       // Add a heading.
-      await fixture.events.click(
-        fixture.editor.library.text.preset('Heading 1')
-      );
+      await fixture.events.click(fixture.editor.library.text.preset('Title 1'));
       // Select the paragraph as well.
       await selectTarget(fixture.editor.canvas.framesLayer.frames[1].node);
 
@@ -119,6 +125,7 @@ describe('Panel: Style Presets', () => {
     it('should allow deleting a text style preset', async () => {
       // Add text element and style preset.
       await fixture.events.click(fixture.editor.library.textAdd);
+      await waitFor(() => fixture.editor.canvas.framesLayer.frames[1].node);
       await fixture.events.click(
         fixture.editor.inspector.designPanel.textStylePreset.add
       );
@@ -138,6 +145,14 @@ describe('Panel: Style Presets', () => {
       expect(deletePresetButton).toBeTruthy();
       await fixture.events.click(deletePresetButton);
 
+      // Confirm in the dialog since it's a global preset.
+      await waitFor(() => {
+        expect(fixture.screen.getByRole('dialog')).toBeTruthy();
+      });
+      await fixture.events.click(
+        fixture.screen.getByRole('button', { name: 'Delete' })
+      );
+
       // Verify the edit mode was exited (due to removing all elements).
       expect(
         () => fixture.editor.inspector.designPanel.textStylePreset.exit
@@ -152,6 +167,7 @@ describe('Panel: Style Presets', () => {
     it('should allow deleting a text style preset when color presets are present', async () => {
       // Add text element and style preset.
       await fixture.events.click(fixture.editor.library.textAdd);
+      await waitFor(() => fixture.editor.canvas.framesLayer.frames[1].node);
       await fixture.events.click(
         fixture.editor.inspector.designPanel.textStylePreset.add
       );
@@ -190,6 +206,7 @@ describe('Panel: Style Presets', () => {
   describe('CUJ: Creator can Apply or Save Text Style from/to Their Preset Library: Apply Text Style Presets', () => {
     it('should apply text style to a single text element', async () => {
       await fixture.events.click(fixture.editor.library.textAdd);
+      await waitFor(() => fixture.editor.canvas.framesLayer.frames[1].node);
 
       // Add a preset
       await fixture.events.click(
@@ -198,9 +215,7 @@ describe('Panel: Style Presets', () => {
 
       // Add a heading.
       await fixture.editor.library.textTab.click();
-      await fixture.events.click(
-        fixture.editor.library.text.preset('Heading 1')
-      );
+      await fixture.events.click(fixture.editor.library.text.preset('Title 1'));
 
       await fixture.events.click(
         fixture.editor.inspector.designPanel.textStylePreset.apply
@@ -219,9 +234,7 @@ describe('Panel: Style Presets', () => {
         fixture.editor.library.text.preset('Paragraph')
       );
       // Add a heading.
-      await fixture.events.click(
-        fixture.editor.library.text.preset('Heading 1')
-      );
+      await fixture.events.click(fixture.editor.library.text.preset('Title 1'));
       await fixture.events.click(
         fixture.editor.inspector.designPanel.textStylePreset.add
       );

@@ -20,20 +20,19 @@
 import { action } from '@storybook/addon-actions';
 import styled from 'styled-components';
 import { FlagsProvider } from 'flagged';
-
+import { SnackbarProvider } from '@web-stories-wp/design-system';
 /**
  * Internal dependencies
  */
 import { Layout } from '../../../../../components';
 import { VIEW_STYLE } from '../../../../../constants';
-import { SnackbarProvider } from '../../../../snackbar';
 import {
   formattedStoriesArray,
   formattedTemplatesArray,
   STORYBOOK_PAGE_SIZE,
 } from '../../../../../storybookUtils';
 import { usePagePreviewSize } from '../../../../../utils';
-import Content from '../';
+import Content from '..';
 
 export default {
   title: 'Dashboard/Views/SavedTemplates/Content',

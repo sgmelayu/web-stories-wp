@@ -15,38 +15,71 @@
  */
 
 /**
+ * External dependencies
+ */
+import { screen } from '@testing-library/react';
+
+/**
  * Internal dependencies
  */
-import RelatedGrid from '../';
+import RelatedGrid from '..';
 import { renderWithProviders } from '../../../../../../testUtils';
 import LayoutProvider from '../../../../../../components/layout/provider';
 import { formattedTemplatesArray } from '../../../../../../storybookUtils';
+import { TransformProvider } from '../../../../../../../edit-story/components/transform';
+import FontContext from '../../../../../../../edit-story/app/font/context';
+
+function render(ui, providerValues = {}, renderOptions = {}) {
+  const fontContextValue = {
+    state: {
+      fonts: [],
+    },
+    actions: {
+      maybeEnqueueFontStyle: jest.fn(),
+    },
+  };
+
+  return renderWithProviders(
+    ui,
+    providerValues,
+    renderOptions,
+    ({ children }) => (
+      <TransformProvider>
+        <FontContext.Provider value={fontContextValue}>
+          {children}
+        </FontContext.Provider>
+      </TransformProvider>
+    )
+  );
+}
 
 describe('Template Details <RelatedGrid />', () => {
   it('should render a grid of related templates', () => {
-    const { queryAllByRole } = renderWithProviders(
+    render(
       <LayoutProvider>
         <RelatedGrid
-          pageSize={{ width: 200, height: 350 }}
+          pageSize={{ width: 200, height: 350, containerHeight: 350 }}
           relatedTemplates={formattedTemplatesArray.slice(0, 3)}
           templateActions={{
             createStoryFromTemplate: jest.fn(),
             handlePreviewTemplate: jest.fn(),
           }}
         />
-      </LayoutProvider>
+      </LayoutProvider>,
+      {},
+      {}
     );
 
-    const gridItems = queryAllByRole('listitem');
+    const gridItems = screen.queryAllByRole('listitem');
 
     expect(gridItems).toHaveLength(3);
   });
 
   it('should not render a grid of related templates when there are no related templates', () => {
-    const { queryByRole } = renderWithProviders(
+    render(
       <LayoutProvider>
         <RelatedGrid
-          pageSize={{ width: 200, height: 350 }}
+          pageSize={{ width: 200, height: 350, containerHeight: 350 }}
           relatedTemplates={[]}
           templateActions={{
             createStoryFromTemplate: jest.fn(),
@@ -56,7 +89,7 @@ describe('Template Details <RelatedGrid />', () => {
       </LayoutProvider>
     );
 
-    const gridItems = queryByRole('listitem');
+    const gridItems = screen.queryByRole('listitem');
 
     expect(gridItems).not.toBeInTheDocument();
   });

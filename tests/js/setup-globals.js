@@ -16,6 +16,11 @@
 
 global.webStoriesEditorSettings = {};
 global.webStoriesDashboardSettings = {};
+global.webStoriesBlockSettings = {
+  config: {
+    api: {},
+  },
+};
 
 global.wp = {};
 // eslint-disable-next-line jest/prefer-spy-on
@@ -48,6 +53,12 @@ global.IntersectionObserver = class IntersectionObserver {
   disconnect() {}
 };
 
+global.ResizeObserver = class ResizeObserver {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+};
+
 // eslint-disable-next-line jest/prefer-spy-on
 global.matchMedia = jest.fn().mockImplementation((query) => ({
   matches: false,
@@ -59,3 +70,15 @@ global.matchMedia = jest.fn().mockImplementation((query) => ({
   removeEventListener: jest.fn(),
   dispatchEvent: jest.fn(),
 }));
+
+// jsdom doesn't support these, so we stub them to make tests work as expected.
+window.HTMLMediaElement.prototype.load = () => undefined;
+window.HTMLMediaElement.prototype.play = () => Promise.resolve();
+window.HTMLMediaElement.prototype.pause = () => undefined;
+
+// Prevent React warnings when setting the `muted` attribute on `<video>` elements.
+// See https://github.com/testing-library/react-testing-library/issues/470
+// See https://github.com/facebook/react/issues/10389
+Object.defineProperty(HTMLMediaElement.prototype, 'muted', {
+  set: () => {},
+});

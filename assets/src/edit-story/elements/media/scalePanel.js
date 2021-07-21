@@ -20,12 +20,11 @@
 import PropTypes from 'prop-types';
 import styled from 'styled-components';
 import { _x } from '@web-stories-wp/i18n';
-
+import { Slider } from '@web-stories-wp/design-system';
+import { BG_MIN_SCALE, BG_MAX_SCALE } from '@web-stories-wp/animation';
 /**
  * Internal dependencies
  */
-import { Slider } from '../../../design-system';
-import { BG_MIN_SCALE, BG_MAX_SCALE } from '../../../animation';
 import InOverlay from '../../components/overlay';
 import { Z_INDEX_CANVAS } from '../../constants';
 
@@ -41,7 +40,7 @@ const Container = styled.div`
   top: ${({ y, height }) => `${y + height + OFFSET_Y}px`};
   width: ${({ width }) => `${Math.max(width, MIN_WIDTH)}px`};
   height: ${HEIGHT}px;
-  background: ${({ theme }) => theme.DEPRECATED_THEME.colors.t.bg};
+  background: ${({ theme }) => theme.colors.bg.primary};
   border-radius: 8px;
   padding: 3px ${HORIZONTAL_PADDING}px;
   margin-top: 8px;

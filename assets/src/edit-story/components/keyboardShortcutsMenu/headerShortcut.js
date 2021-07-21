@@ -18,11 +18,11 @@
  * External dependencies
  */
 import styled from 'styled-components';
+import { Headline, THEME_CONSTANTS } from '@web-stories-wp/design-system';
 
 /**
  * Internal dependencies
  */
-import { Headline, THEME_CONSTANTS } from '../../../design-system';
 import { header } from './keyboardShortcutList';
 import ShortcutLabel from './shortcutLabel';
 
@@ -43,7 +43,7 @@ function HeaderShortcut(props) {
     <List role="group">
       <Item role="listitem">
         <Headline
-          as="h1"
+          as="h2"
           size={THEME_CONSTANTS.TYPOGRAPHY.PRESET_SIZES.X_SMALL}
           {...props}
         >

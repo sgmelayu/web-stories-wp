@@ -17,21 +17,25 @@
 /**
  * External dependencies
  */
+import styled from 'styled-components';
 import { memo, useCallback, useEffect, useMemo } from 'react';
-import { __ } from '@web-stories-wp/i18n';
-
-/**
- * Internal dependencies
- */
+import { _x } from '@web-stories-wp/i18n';
 import {
   StoryAnimation,
   STORY_ANIMATION_STATE,
   useStoryAnimationContext,
-} from '../../../animation';
+} from '@web-stories-wp/animation';
+/**
+ * Internal dependencies
+ */
 import { useStory, useCanvas } from '../../app';
 import DisplayElement from './displayElement';
 import { Layer, PageArea } from './layout';
 import PageAttachment from './pageAttachment';
+
+const DisplayPageArea = styled(PageArea)`
+  position: absolute;
+`;
 
 function DisplayPage({
   page,
@@ -109,11 +113,8 @@ function DisplayLayer() {
       updateAnimationState: actions.updateAnimationState,
     };
   });
-  const {
-    editingElement,
-    setPageContainer,
-    setFullbleedContainer,
-  } = useCanvas(
+
+  const { editingElement, setPageContainer, setFullbleedContainer } = useCanvas(
     ({
       state: { editingElement },
       actions: { setPageContainer, setFullbleedContainer },
@@ -127,9 +128,10 @@ function DisplayLayer() {
     updateAnimationState({ animationState: STORY_ANIMATION_STATE.RESET });
   }, [updateAnimationState]);
 
-  const animatedElements = useMemo(() => selectedElements.map((el) => el.id), [
-    selectedElements,
-  ]);
+  const animatedElements = useMemo(
+    () => selectedElements.map((el) => el.id),
+    [selectedElements]
+  );
 
   return (
     <StoryAnimation.Provider
@@ -145,9 +147,9 @@ function DisplayLayer() {
       <Layer
         data-testid="DisplayLayer"
         pointerEvents="none"
-        aria-label={__('Display layer', 'web-stories')}
+        aria-label={_x('Display layer', 'compound noun', 'web-stories')}
       >
-        <PageArea
+        <DisplayPageArea
           ref={setPageContainer}
           fullbleedRef={setFullbleedContainer}
           background={currentPage?.backgroundColor}
@@ -157,6 +159,7 @@ function DisplayLayer() {
               <PageAttachment pageAttachment={currentPage.pageAttachment} />
             )
           }
+          isControlled
         >
           <DisplayPage
             page={currentPage}
@@ -164,7 +167,7 @@ function DisplayLayer() {
             animationState={animationState}
             resetAnimationState={resetAnimationState}
           />
-        </PageArea>
+        </DisplayPageArea>
       </Layer>
     </StoryAnimation.Provider>
   );

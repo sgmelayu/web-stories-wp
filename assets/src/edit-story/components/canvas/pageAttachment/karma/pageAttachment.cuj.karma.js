@@ -15,9 +15,12 @@
  */
 
 /**
+ * External dependencies
+ */
+import { createSolidFromString } from '@web-stories-wp/patterns';
+/**
  * Internal dependencies
  */
-import createSolidFromString from '../../../../utils/createSolidFromString';
 import useInsertElement from '../../useInsertElement';
 import { useStory } from '../../../../app/story';
 import { Fixture } from '../../../../karma';
@@ -85,14 +88,14 @@ describe('Page Attachment', () => {
     } else {
       await fixture.events.keyboard.type(link);
     }
-    await input.dispatchEvent(new window.Event('blur'));
+    await fixture.events.keyboard.press('tab');
   };
 
   const setCtaText = async (text) => {
     const input = fixture.screen.getByLabelText('Page Attachment CTA text');
     await fixture.events.click(input, { clickCount: 3 });
     await fixture.events.keyboard.type(text);
-    await input.dispatchEvent(new window.Event('blur'));
+    await fixture.events.keyboard.press('tab');
   };
 
   describe('CUJ: Creator can Add a Page Attachment: Add Page Attachment', () => {
@@ -144,7 +147,7 @@ describe('Page Attachment', () => {
       expect(warning).toBeDefined();
 
       await fixture.events.keyboard.type('example.com');
-      await input.dispatchEvent(new window.Event('blur'));
+      await fixture.events.keyboard.press('tab');
 
       // Verify the link is still null after typing.
       const {

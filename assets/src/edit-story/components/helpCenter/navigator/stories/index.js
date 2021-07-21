@@ -18,11 +18,11 @@
  */
 import { useState } from 'react';
 import styled, { ThemeProvider } from 'styled-components';
+import { theme as dsTheme, ThemeGlobals } from '@web-stories-wp/design-system';
 /**
  * Internal dependencies
  */
-import { Navigator as HelpCenterNavigator } from '..';
-import { theme as dsTheme, ThemeGlobals } from '../../../../../design-system';
+import HelpCenterNavigator from '..';
 
 export default {
   title: 'Stories Editor/Components/Help Center/Navigator',
@@ -47,7 +47,7 @@ export const Navigator = () => {
   const [visible, setVisible] = useState(false);
   return (
     <ThemeProvider theme={dsTheme}>
-      <ThemeGlobals.OverrideFocusOutline />
+      <ThemeGlobals.Styles />
       <Bg>
         <Wrapper>
           <HelpCenterNavigator

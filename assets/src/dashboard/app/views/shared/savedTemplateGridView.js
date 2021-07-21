@@ -22,6 +22,7 @@ import { useRef, useEffect, useState, useCallback } from 'react';
 import { getRelativeDisplayDate } from '@web-stories-wp/date';
 import { __, sprintf } from '@web-stories-wp/i18n';
 import { trackEvent } from '@web-stories-wp/tracking';
+import { useGridViewKeys, useFocusOut } from '@web-stories-wp/design-system';
 
 /**
  * Internal dependencies
@@ -42,7 +43,6 @@ import {
   TemplateActionsPropType,
 } from '../../../types';
 import { PAGE_WRAPPER, STORY_STATUS } from '../../../constants';
-import { useGridViewKeys, useFocusOut } from '../../../../design-system';
 import { useConfig } from '../../config';
 import { generateStoryMenu } from '../../../components/popoverMenu/story-menu-generator';
 
@@ -63,13 +63,12 @@ const SavedTemplateGridView = ({
   pageSize,
   templateMenu,
   actions,
-  initialFocusId = null,
 }) => {
   const { isRTL } = useConfig();
   const containerRef = useRef();
   const gridRef = useRef();
   const itemRefs = useRef({});
-  const [activeGridItemId, setActiveGridItemId] = useState(initialFocusId);
+  const [activeGridItemId, setActiveGridItemId] = useState();
 
   // eslint-disable-next-line no-unused-vars
   const bottomTargetAction = useCallback(
@@ -131,15 +130,15 @@ const SavedTemplateGridView = ({
                 isSelected={isActive}
                 tabIndex={tabIndex}
                 title={sprintf(
-                  /* translators: %s: saved template title.*/
+                  /* translators: %s: story title.*/
                   __('Press Enter to explore details about %s', 'web-stories'),
                   template.title
                 )}
               />
               <CardPreviewContainer
                 ariaLabel={sprintf(
-                  /* translators: %s: saved template title. */
-                  __('preview of %s', 'web-stories'),
+                  /* translators: %s: story title. */
+                  __('Preview of %s', 'web-stories'),
                   template.title
                 )}
                 tabIndex={tabIndex}
@@ -202,7 +201,6 @@ SavedTemplateGridView.propTypes = {
   // bottomActionLabel: ActionLabel,
   pageSize: PageSizePropType.isRequired,
   templateMenu: StoryMenuPropType,
-  initialFocusId: PropTypes.number,
 };
 
 export default SavedTemplateGridView;

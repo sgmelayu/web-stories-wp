@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 Google LLC
+ * Copyright 2021 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,15 +15,15 @@
  */
 
 /**
- * Internal dependencies
+ * External dependencies
  */
-import { FULLBLEED_RATIO, PAGE_HEIGHT, PAGE_WIDTH } from '../constants';
-import { getCorners } from './getBoundRect';
+import {
+  DANGER_ZONE_HEIGHT,
+  FULLBLEED_HEIGHT,
+  getCorners,
+} from '@web-stories-wp/units';
 
-const FULLBLEED_HEIGHT = PAGE_WIDTH / FULLBLEED_RATIO;
-const DANGER_ZONE_HEIGHT = (FULLBLEED_HEIGHT - PAGE_HEIGHT) / 2;
-
-const isLinkBelowLimit = (element, verifyLink = true) => {
+function isElementBelowLimit(element, verifyLink = true) {
   if (verifyLink && !element.link?.url?.length > 0) {
     return false;
   }
@@ -31,6 +31,5 @@ const isLinkBelowLimit = (element, verifyLink = true) => {
   const { x, y, width, height, rotationAngle } = element;
   const points = getCorners(rotationAngle, x, y, width, height);
   return Object.keys(points).find((point) => points[point].y > limit);
-};
-
-export default isLinkBelowLimit;
+}
+export default isElementBelowLimit;

@@ -15,18 +15,19 @@
  */
 
 /**
- * Internal dependencies
- */
-/**
  * External dependencies
  */
 import { Simulate } from 'react-dom/test-utils';
+
+/**
+ * Internal dependencies
+ */
 import MediaElement from '../panes/media/common/mediaElement';
 import { renderWithTheme } from '../../../testUtils';
 import CanvasContext from '../../../app/canvas/context';
 import StoryContext from '../../../app/story/context';
 
-const renderMediaElement = (resource, providerType) => {
+const renderMediaElement = (resource, providerType, canEditMedia = true) => {
   const canvasContext = {
     state: {
       pageSize: {
@@ -53,9 +54,13 @@ const renderMediaElement = (resource, providerType) => {
     <StoryContext.Provider value={storyContext}>
       <CanvasContext.Provider value={canvasContext}>
         <MediaElement
+          index={0}
           resource={resource}
           onInsert={() => {}}
           providerType={providerType}
+          width={150}
+          height={150}
+          canEditMedia={canEditMedia}
         />
       </CanvasContext.Provider>
     </StoryContext.Provider>
@@ -68,6 +73,7 @@ describe('MediaElement', () => {
       id: 123,
       src: 'http://image-url.com',
       type: 'image',
+      mimeType: 'image/png',
       width: 100,
       height: 100,
       local: false, // Already uploaded
@@ -91,6 +97,7 @@ describe('MediaElement', () => {
       id: 456,
       src: 'http://video-url.com',
       type: 'video',
+      mimeType: 'video/mp4',
       width: 100,
       height: 100,
       local: false, // Already uploaded
@@ -109,11 +116,37 @@ describe('MediaElement', () => {
     expect(getByAriaLabel('More')).toBeInTheDocument();
   });
 
+  it("should render dropdown menu's more icon users without permission", () => {
+    const resource = {
+      id: 456,
+      src: 'http://video-url.com',
+      type: 'video',
+      mimeType: 'video/mp4',
+      width: 100,
+      height: 100,
+      local: false, // Already uploaded
+      alt: 'video :)',
+    };
+
+    const { getByAriaLabel, queryByAriaLabel } = renderMediaElement(
+      resource,
+      'local',
+      false
+    );
+    expect(queryByAriaLabel('More')).not.toBeInTheDocument();
+
+    const element = getByAriaLabel('video :)');
+    Simulate.focus(element);
+
+    expect(queryByAriaLabel('More')).not.toBeInTheDocument();
+  });
+
   it("should not render dropdown menu's more icon for not uploaded image", () => {
     const resource = {
       id: 789,
       src: 'http://image-url.com',
       type: 'image',
+      mimeType: 'image/png',
       width: 100,
       height: 100,
       local: true, // Not yet uploaded
@@ -137,6 +170,7 @@ describe('MediaElement', () => {
       id: 987,
       src: 'http://video-url.com',
       type: 'video',
+      mimeType: 'video/mp4',
       width: 100,
       height: 100,
       local: true, // Not yet uploaded

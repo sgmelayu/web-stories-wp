@@ -15,13 +15,19 @@
  */
 
 /**
+ * External dependencies
+ */
+import {
+  convertToCSS,
+  createSolid,
+  generatePatternStyles,
+  isPatternEqual,
+} from '@web-stories-wp/patterns';
+
+/**
  * Internal dependencies
  */
-import isPatternEqual from '../../../../utils/isPatternEqual';
-import convertToCSS from '../../../../utils/convertToCSS';
-import generatePatternStyles from '../../../../utils/generatePatternStyles';
 import objectPick from '../../../../utils/objectPick';
-import createSolid from '../../../../utils/createSolid';
 import { generateFontFamily } from '../../../../elements/text/util';
 import {
   BACKGROUND_TEXT_MODE,
@@ -32,6 +38,7 @@ import {
   STYLE_PRESETS_PER_ROW,
 } from '../../../../constants';
 import { getHTMLInfo } from '../../../richText/htmlManipulation';
+import { PRESET_TYPES } from './constants';
 
 const TEXT_PRESET_STYLES = [
   'backgroundColor',
@@ -119,13 +126,8 @@ function getExtractedInlineValue(value) {
 }
 
 function getTextInlineStyles(content) {
-  const {
-    color,
-    fontWeight,
-    isItalic,
-    isUnderline,
-    letterSpacing,
-  } = getHTMLInfo(content);
+  const { color, fontWeight, isItalic, isUnderline, letterSpacing } =
+    getHTMLInfo(content);
   return {
     color: color !== MULTIPLE_VALUE ? color : createSolid(0, 0, 0),
     fontWeight: getExtractedInlineValue(fontWeight),
@@ -137,7 +139,7 @@ function getTextInlineStyles(content) {
 
 export function getTextPresets(elements, storyStyles, type) {
   const colors =
-    'style' === type
+    PRESET_TYPES.STYLE === type
       ? []
       : elements
           .map(({ content }) => getHTMLInfo(content).color)
@@ -147,7 +149,7 @@ export function getTextPresets(elements, storyStyles, type) {
           );
 
   const textStyles =
-    'color' === type
+    PRESET_TYPES.COLOR === type
       ? []
       : elements
           .map((text) => {

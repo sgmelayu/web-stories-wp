@@ -17,8 +17,9 @@
 /**
  * External dependencies
  */
-import { waitFor, fireEvent } from '@testing-library/react';
-
+import { waitFor, fireEvent, screen } from '@testing-library/react';
+import Modal from 'react-modal';
+import { SnackbarContext } from '@web-stories-wp/design-system';
 /**
  * Internal dependencies
  */
@@ -26,7 +27,6 @@ import DeleteDialog from '../panes/media/local/deleteDialog';
 import { renderWithTheme } from '../../../testUtils';
 import ApiContext from '../../../app/api/context';
 import MediaContext from '../../../app/media/context';
-import SnackbarContext from '../../../app/snackbar/context';
 
 const deleteMedia = jest.fn();
 const deleteMediaElement = jest.fn();
@@ -53,7 +53,7 @@ function setup() {
 
   const snackbarValue = { showSnackbar };
 
-  const { queryByText, getByRole } = renderWithTheme(
+  return renderWithTheme(
     <SnackbarContext.Provider value={snackbarValue}>
       <MediaContext.Provider value={mediaValue}>
         <ApiContext.Provider value={apiValue}>
@@ -62,20 +62,21 @@ function setup() {
       </MediaContext.Provider>
     </SnackbarContext.Provider>
   );
-  return { queryByText, getByRole };
 }
 
 describe('DeleteDialog', () => {
   it('should render', () => {
-    const { queryByText, getByRole } = setup();
+    const { container } = setup();
+    Modal.setAppElement(container);
 
-    expect(queryByText('Delete Image?')).toBeInTheDocument();
-    expect(getByRole('button', { name: /cancel/i })).toBeInTheDocument();
-    expect(getByRole('button', { name: /delete/i })).toBeInTheDocument();
+    expect(screen.queryByText('Delete Image?')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /cancel/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /delete/i })).toBeInTheDocument();
   });
 
   it('should update server and internal state on delete', async () => {
-    const { getByRole } = setup();
+    const { container } = setup();
+    Modal.setAppElement(container);
 
     // Mock out `deleteMedia`.
     let serverDeleted = false;
@@ -89,7 +90,7 @@ describe('DeleteDialog', () => {
       stateDeleted = true;
     });
 
-    fireEvent.click(getByRole('button', { name: /delete/i }));
+    fireEvent.click(screen.getByRole('button', { name: /delete/i }));
 
     await waitFor(() => expect(deleteMedia).toHaveBeenCalledTimes(1));
     expect(deleteMediaElement).toHaveBeenCalledTimes(1);
@@ -99,14 +100,15 @@ describe('DeleteDialog', () => {
   });
 
   it('should show snackbar if error on delete from server', async () => {
-    const { getByRole } = setup();
+    const { container } = setup();
+    Modal.setAppElement(container);
 
     // Mock out `deleteMedia`.
     deleteMedia.mockImplementation(() => {
       throw Error;
     });
 
-    fireEvent.click(getByRole('button', { name: /delete/i }));
+    fireEvent.click(screen.getByRole('button', { name: /delete/i }));
 
     await waitFor(() => expect(deleteMedia).toHaveBeenCalledTimes(1));
     expect(deleteMediaElement).toHaveBeenCalledTimes(0);
@@ -114,14 +116,15 @@ describe('DeleteDialog', () => {
   });
 
   it('should show snackbar if error on delete from state', async () => {
-    const { getByRole } = setup();
+    const { container } = setup();
+    Modal.setAppElement(container);
 
     // Mock out `deleteMediaElement`.
     deleteMediaElement.mockImplementation(() => {
       throw Error;
     });
 
-    fireEvent.click(getByRole('button', { name: /delete/i }));
+    fireEvent.click(screen.getByRole('button', { name: /delete/i }));
 
     await waitFor(() => expect(deleteMedia).toHaveBeenCalledTimes(1));
     expect(deleteMediaElement).toHaveBeenCalledTimes(1);

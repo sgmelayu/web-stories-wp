@@ -20,36 +20,31 @@
 import PropTypes from 'prop-types';
 import { useCallback, useRef, useState } from 'react';
 import styled from 'styled-components';
-
+import { editorToDataX, editorToDataY } from '@web-stories-wp/units';
+import { useKeyDownEffect } from '@web-stories-wp/design-system';
 /**
  * Internal dependencies
  */
-import { editorToDataX, editorToDataY } from '../../../../units';
+import { ZOOM_SETTING } from '../../../../constants';
 import Moveable from '../../../moveable';
 import { useDropTargets } from '../../../dropTargets';
 import { useLayout } from '../../../../app/layout';
 import useInsertElement from '../../../canvas/useInsertElement';
 import { useInsertTextSet } from '../../../canvas';
-import isMouseUpAClick from '../../../../utils/isMouseUpAClick';
+import areEventsDragging from '../../../../utils/areEventsDragging';
 import InOverlay from '../../../overlay';
 import isTargetOutOfContainer from '../../../../utils/isTargetOutOfContainer';
-import { useKeyDownEffect } from '../../../../../design-system';
 import useSnapping from '../../../canvas/utils/useSnapping';
 import { useStory, useCanvas } from '../../../../app';
 import objectWithout from '../../../../utils/objectWithout';
 
 const TargetBox = styled.div`
   position: absolute;
-  width: ${({ width }) => `${width}px`};
-  height: ${({ height }) => `${height}px`};
-  ${({ isDragging }) =>
-    !isDragging &&
-    `
-      max-width: 100%;
-      max-height: 100%;
-    `};
+  width: 100%;
+  height: 100%;
   top: 0;
   z-index: 1;
+  cursor: pointer;
 `;
 
 function LibraryMoveable({
@@ -60,7 +55,6 @@ function LibraryMoveable({
   onClick,
   cloneElement,
   cloneProps,
-  previewSize,
   elements = [],
   active = false,
 }) {
@@ -75,20 +69,35 @@ function LibraryMoveable({
   const overlayRef = useRef(null);
   const moveable = useRef(null);
 
-  const { pageSize } = useLayout(({ state }) => ({
-    pageSize: state.canvasPageSize,
+  // These useLayout's are specifically kept as separate entries
+  const pageSize = useLayout(({ state: { pageWidth, pageHeight } }) => ({
+    width: pageWidth,
+    height: pageHeight,
+  }));
+  // This is a stable function, so it will ever only run once
+  const { setZoomSetting } = useLayout(({ actions: { setZoomSetting } }) => ({
+    setZoomSetting,
   }));
 
   const insertElement = useInsertElement();
   const { backgroundElement } = useStory((state) => ({
     backgroundElement: state.state.currentPage?.elements?.[0] ?? {},
   }));
-  const { fullbleedContainer, nodesById, pageContainer } = useCanvas(
-    (state) => ({
+  const { fullbleedContainer, nodesById, pageContainer, designSpaceGuideline } =
+    useCanvas((state) => ({
       fullbleedContainer: state.state.fullbleedContainer,
       pageContainer: state.state.pageContainer,
       nodesById: state.state.nodesById,
-    })
+      designSpaceGuideline: state.state.designSpaceGuideline,
+    }));
+
+  const toggleDesignSpace = useCallback(
+    (visible) => {
+      if (designSpaceGuideline) {
+        designSpaceGuideline.style.visibility = visible ? 'visible' : null;
+      }
+    },
+    [designSpaceGuideline]
   );
 
   const {
@@ -136,14 +145,16 @@ function LibraryMoveable({
   const onDrag = ({ beforeTranslate, inputEvent }) => {
     // This is needed if the user clicks "Esc" but continues dragging.
     if (didManuallyReset) {
+      toggleDesignSpace(false);
       return false;
     }
     frame.translate = beforeTranslate;
-    // Don't display the clone right away since otherwise it will be triggered for a click as well.
+    // Don't display the clone unless we're sure it's a drag gesture
     if (
       cloneRef.current &&
-      inputEvent.timeStamp - eventTracker.current.timeStamp > 300
+      areEventsDragging(eventTracker.current, inputEvent)
     ) {
+      toggleDesignSpace(true);
       if (cloneRef.current.style.opacity !== 1 && !activeDropTargetId) {
         // We're not doing it in `onDragStart` since otherwise on clicking it would appear, too.
         cloneRef.current.style.opacity = 1;
@@ -183,6 +194,7 @@ function LibraryMoveable({
     set(frame.translate);
     setIsDragging(true);
     startEventTracking(inputEvent);
+    setZoomSetting(ZOOM_SETTING.FIT);
 
     // Position the clone that's being dragged.
     const { offsetX, offsetY } = getTargetOffset();
@@ -195,14 +207,8 @@ function LibraryMoveable({
     // Assign new size to targetbox so that it would match the clone, for snapping.
     targetBoxRef.current.style.width = `${cloneProps.width}px`;
     targetBoxRef.current.style.height = `${cloneProps.height}px`;
-    let x1 = targetBox.left - offsetX;
-    let y1 = targetBox.top - offsetY;
-    // In case of shapes, the clone is larger than the preview
-    // so we position it to center.
-    if ('shape' === type) {
-      x1 = x1 - (cloneProps.width - targetBox.width) / 2;
-      y1 = y1 - (cloneProps.height - targetBox.height) / 2;
-    }
+    const x1 = targetBox.left - offsetX;
+    const y1 = targetBox.top - offsetY;
     cloneRef.current.style.left = `${x1}px`;
     cloneRef.current.style.top = `${y1}px`;
     // Update moveable to take the new size of the target for snapping.
@@ -212,13 +218,14 @@ function LibraryMoveable({
   };
 
   const onDragEnd = ({ inputEvent }) => {
+    toggleDesignSpace(false);
     if (didManuallyReset) {
       return false;
     }
     // Restore the original size of the target.
     targetBoxRef.current.style.width = `${targetBoxSize.current.width}px`;
     targetBoxRef.current.style.height = `${targetBoxSize.current.height}px`;
-    if (isMouseUpAClick(inputEvent, eventTracker.current)) {
+    if (!areEventsDragging(eventTracker.current, inputEvent)) {
       resetMoveable();
       onClick();
       return false;
@@ -263,25 +270,19 @@ function LibraryMoveable({
     snappingOffsetX,
   });
 
-  const targetSize = previewSize ?? cloneProps;
-  const { width, height } = targetSize;
   return (
     <>
       <TargetBox
         ref={targetBoxRef}
-        width={width}
-        height={height}
-        onClick={onClick}
         onPointerOver={() => setHover(true)}
         onPointerOut={() => setHover(false)}
-        isDragging={isDragging || hover}
       />
       {(isDragging || active || hover) && (
         <>
           <InOverlay
             ref={overlayRef}
             zIndex={1}
-            pointerEvents="initial"
+            pointerEvents="none"
             render={() => {
               return <CloneElement ref={cloneRef} {...cloneProps} />;
             }}
@@ -314,7 +315,6 @@ LibraryMoveable.propTypes = {
   cloneElement: PropTypes.object.isRequired,
   cloneProps: PropTypes.object.isRequired,
   active: PropTypes.bool,
-  previewSize: PropTypes.object,
   elements: PropTypes.array,
 };
 

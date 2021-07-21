@@ -15,42 +15,52 @@
  */
 
 /**
+ * External dependencies
+ */
+import { screen } from '@testing-library/react';
+import { SnackbarProvider } from '@web-stories-wp/design-system';
+
+/**
  * Internal dependencies
  */
 import { renderWithProviders } from '../../../../../testUtils';
-
 import { VIEW_STYLE, STORY_STATUSES } from '../../../../../constants';
 import LayoutProvider from '../../../../../components/layout/provider';
-import { SnackbarProvider } from '../../../../snackbar';
-import Content from '../';
+import Content from '..';
 
 const fakeStories = [
   {
     id: 1,
     status: 'publish',
     title: 'Story A',
-    pages: [{ id: '10' }],
+    pages: [{ id: '10', elements: [] }],
     centerTargetAction: () => {},
-    bottomTargetAction: () => {},
-    editStoryLink: () => {},
+    bottomTargetAction: 'https://example.com',
+    link: 'https://example.com',
+    editStoryLink: 'https://example.com',
+    previewLink: 'https://example.com',
   },
   {
     id: 2,
     status: 'draft',
     title: 'Story B',
-    pages: [{ id: '20' }],
+    pages: [{ id: '20', elements: [] }],
     centerTargetAction: () => {},
-    bottomTargetAction: () => {},
-    editStoryLink: () => {},
+    bottomTargetAction: 'https://example.com',
+    link: 'https://example.com',
+    editStoryLink: 'https://example.com',
+    previewLink: 'https://example.com',
   },
   {
     id: 3,
     status: 'publish',
     title: 'Story C',
-    pages: [{ id: '30' }],
+    pages: [{ id: '30', elements: [] }],
     centerTargetAction: () => {},
-    bottomTargetAction: () => {},
-    editStoryLink: () => {},
+    bottomTargetAction: 'https://example.com',
+    link: 'https://example.com',
+    editStoryLink: 'https://example.com',
+    previewLink: 'https://example.com',
   },
 ];
 
@@ -58,8 +68,12 @@ jest.mock(
   '../../../../../../edit-story/components/previewPage/previewPage.js',
   () => () => null
 );
-jest.mock('../../../../../app/font/fontProvider.js', () => ({ children }) =>
-  children
+
+jest.mock(
+  '../../../../../app/font/fontProvider.js',
+  () =>
+    ({ children }) =>
+      children
 );
 
 describe('My Stories <Content />', function () {
@@ -68,7 +82,7 @@ describe('My Stories <Content />', function () {
   });
 
   it('should render the content grid with the correct story count.', function () {
-    const { getAllByTestId } = renderWithProviders(
+    renderWithProviders(
       <SnackbarProvider>
         <LayoutProvider>
           <Content
@@ -80,7 +94,7 @@ describe('My Stories <Content />', function () {
             }}
             view={{
               style: VIEW_STYLE.GRID,
-              pageSize: { width: 200, height: 300 },
+              pageSize: { width: 200, height: 300, containerHeight: 300 },
             }}
             storyActions={{
               createTemplateFromStory: jest.fn,
@@ -94,11 +108,13 @@ describe('My Stories <Content />', function () {
       { features: { enableInProgressStoryActions: false } }
     );
 
-    expect(getAllByTestId(/^story-grid-item/)).toHaveLength(fakeStories.length);
+    expect(screen.getAllByTestId(/^story-grid-item/)).toHaveLength(
+      fakeStories.length
+    );
   });
 
   it('should show "Start telling Stories." if no stories are present.', function () {
-    const { getByText } = renderWithProviders(
+    renderWithProviders(
       <SnackbarProvider>
         <LayoutProvider>
           <Content
@@ -110,7 +126,7 @@ describe('My Stories <Content />', function () {
             }}
             view={{
               style: VIEW_STYLE.GRID,
-              pageSize: { width: 200, height: 300 },
+              pageSize: { width: 200, height: 300, containerHeight: 300 },
             }}
             storyActions={{
               createTemplateFromStory: jest.fn,
@@ -124,11 +140,11 @@ describe('My Stories <Content />', function () {
       { features: { enableInProgressStoryActions: false } }
     );
 
-    expect(getByText('Start telling Stories.')).toBeInTheDocument();
+    expect(screen.getByText('Start telling Stories.')).toBeInTheDocument();
   });
 
   it('should show "Sorry, we couldn\'t find any results matching "scooby dooby doo" if no stories are found for a search query are present.', function () {
-    const { getByText } = renderWithProviders(
+    renderWithProviders(
       <SnackbarProvider>
         <LayoutProvider>
           <Content
@@ -140,7 +156,7 @@ describe('My Stories <Content />', function () {
             }}
             view={{
               style: VIEW_STYLE.GRID,
-              pageSize: { width: 200, height: 300 },
+              pageSize: { width: 200, height: 300, containerHeight: 300 },
             }}
             storyActions={{
               createTemplateFromStory: jest.fn,
@@ -155,7 +171,7 @@ describe('My Stories <Content />', function () {
     );
 
     expect(
-      getByText(
+      screen.getByText(
         'Sorry, we couldn\'t find any results matching "scooby dooby doo"'
       )
     ).toBeInTheDocument();

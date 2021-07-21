@@ -15,12 +15,17 @@
  */
 
 /**
+ * External dependencies
+ */
+import { screen } from '@testing-library/react';
+
+/**
  * Internal dependencies
  */
 import { TEMPLATES_GALLERY_STATUS, VIEW_STYLE } from '../../../../../constants';
 import { renderWithProviders } from '../../../../../testUtils';
 import LayoutProvider from '../../../../../components/layout/provider';
-import Content from '../';
+import Content from '..';
 
 const fakeTemplates = [
   {
@@ -32,7 +37,7 @@ const fakeTemplates = [
     status: 'template',
     pages: [{ id: '10' }],
     centerTargetAction: () => {},
-    bottomTargetAction: () => {},
+    bottomTargetAction: 'https://example.com',
   },
   {
     id: 2,
@@ -43,7 +48,7 @@ const fakeTemplates = [
     status: 'template',
     pages: [{ id: '20' }],
     centerTargetAction: () => {},
-    bottomTargetAction: () => {},
+    bottomTargetAction: 'https://example.com',
   },
   {
     id: 3,
@@ -54,7 +59,7 @@ const fakeTemplates = [
     status: 'template',
     pages: [{ id: '30' }],
     centerTargetAction: () => {},
-    bottomTargetAction: () => {},
+    bottomTargetAction: 'https://example.com',
   },
 ];
 
@@ -62,8 +67,11 @@ jest.mock(
   '../../../../../../edit-story/components/previewPage/previewPage.js',
   () => () => null
 );
-jest.mock('../../../../../app/font/fontProvider.js', () => ({ children }) =>
-  children
+jest.mock(
+  '../../../../../app/font/fontProvider.js',
+  () =>
+    ({ children }) =>
+      children
 );
 
 describe('Explore Templates <Content />', function () {
@@ -72,7 +80,7 @@ describe('Explore Templates <Content />', function () {
   });
 
   it('should render the content grid with the correct template count.', function () {
-    const { getAllByTestId } = renderWithProviders(
+    renderWithProviders(
       <LayoutProvider>
         <Content
           filter={{ view: TEMPLATES_GALLERY_STATUS.ALL }}
@@ -84,19 +92,19 @@ describe('Explore Templates <Content />', function () {
           }}
           view={{
             style: VIEW_STYLE.GRID,
-            pageSize: { width: 200, height: 300 },
+            pageSize: { width: 200, height: 300, containerHeight: 300 },
           }}
         />
       </LayoutProvider>
     );
 
-    const useButtons = getAllByTestId(/^template-grid-item/);
+    const useButtons = screen.getAllByTestId(/^template-grid-item/);
 
     expect(useButtons).toHaveLength(fakeTemplates.length);
   });
 
   it('should show "No templates currently available." if no templates are present.', function () {
-    const { getByText } = renderWithProviders(
+    renderWithProviders(
       <LayoutProvider>
         <Content
           filter={{ view: TEMPLATES_GALLERY_STATUS.ALL }}
@@ -108,16 +116,18 @@ describe('Explore Templates <Content />', function () {
           }}
           view={{
             style: VIEW_STYLE.GRID,
-            pageSize: { width: 200, height: 300 },
+            pageSize: { width: 200, height: 300, containerHeight: 300 },
           }}
         />
       </LayoutProvider>
     );
-    expect(getByText('No templates currently available.')).toBeInTheDocument();
+    expect(
+      screen.getByText('No templates currently available.')
+    ).toBeInTheDocument();
   });
 
   it('should show "Sorry, we couldn\'t find any results matching "scooby dooby doo" if no templates are found for a search query are present.', function () {
-    const { getByText } = renderWithProviders(
+    renderWithProviders(
       <LayoutProvider>
         <Content
           filter={{ view: TEMPLATES_GALLERY_STATUS.ALL }}
@@ -129,14 +139,14 @@ describe('Explore Templates <Content />', function () {
           }}
           view={{
             style: VIEW_STYLE.GRID,
-            pageSize: { width: 200, height: 300 },
+            pageSize: { width: 200, height: 300, containerHeight: 300 },
           }}
         />
       </LayoutProvider>
     );
 
     expect(
-      getByText(
+      screen.getByText(
         'Sorry, we couldn\'t find any results matching "scooby dooby doo"'
       )
     ).toBeInTheDocument();

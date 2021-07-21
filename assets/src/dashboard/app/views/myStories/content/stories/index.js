@@ -20,7 +20,7 @@
 import { action } from '@storybook/addon-actions';
 import styled from 'styled-components';
 import { FlagsProvider } from 'flagged';
-
+import { SnackbarProvider } from '@web-stories-wp/design-system';
 /**
  * Internal dependencies
  */
@@ -36,8 +36,7 @@ import {
   STORYBOOK_PAGE_SIZE,
 } from '../../../../../storybookUtils';
 import { usePagePreviewSize } from '../../../../../utils';
-import { SnackbarProvider } from '../../../../snackbar';
-import Content from '../';
+import Content from '..';
 import StoriesView from '../storiesView';
 
 export default {
@@ -76,12 +75,20 @@ const storyActions = {
   duplicateStory: action('duplicate story clicked'),
   trashStory: action('trash story clicked'),
   updateStory: action('update story clicked'),
-  handlePreviewStory: action('handle preview story selected'),
 };
 
-const longerListOfStories = formattedStoriesArray
-  .concat(formattedStoriesArray)
-  .concat(formattedStoriesArray);
+// Prevents storybook from shouting a bunch of console warnings about duplicate ids
+function forceUniqueIds(stories) {
+  return stories.map((story, index) => {
+    const id = Math.floor(Math.random() * 500 * index);
+    return { ...story, id };
+  });
+}
+const longerListOfStories = forceUniqueIds(
+  formattedStoriesArray
+    .concat(formattedStoriesArray)
+    .concat(formattedStoriesArray)
+);
 
 const defaultProps = {
   allPagesFetched: false,

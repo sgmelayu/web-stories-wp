@@ -20,11 +20,10 @@
 import styled from 'styled-components';
 import PropTypes from 'prop-types';
 import { useRef } from 'react';
-
+import { getMediaSizePositionProps } from '@web-stories-wp/media';
 /**
  * Internal dependencies
  */
-import { getMediaSizePositionProps } from '../media';
 import StoryPropTypes from '../../types';
 import MediaDisplay from '../media/display';
 import { getBackgroundStyle, videoWithScale } from './util';
@@ -77,6 +76,10 @@ function VideoDisplay({ previewMode, box: { width, height }, element }) {
     focalY
   );
 
+  videoProps.crossOrigin = 'anonymous';
+
+  const muted = Boolean(resource?.isMuted);
+
   return (
     <MediaDisplay
       element={element}
@@ -85,26 +88,32 @@ function VideoDisplay({ previewMode, box: { width, height }, element }) {
       previewMode={previewMode}
     >
       {previewMode ? (
-        <Image
-          src={poster || resource.poster}
-          alt={element.alt || resource.alt}
-          style={style}
-          {...videoProps}
-          ref={ref}
-        />
+        (poster || resource.poster) && (
+          <Image
+            src={poster || resource.poster}
+            alt={element.alt || resource.alt}
+            style={style}
+            {...videoProps}
+            ref={ref}
+          />
+        )
       ) : (
+        // eslint-disable-next-line styled-components-a11y/media-has-caption -- False positive.
         <Video
           id={`video-${id}`}
           poster={poster || resource.poster}
           style={style}
           {...videoProps}
+          preload="metadata"
           loop={loop}
-          preload="none"
+          muted={muted}
           ref={ref}
           data-testid="videoElement"
           data-leaf-element="true"
         >
-          <source src={resource.src} type={resource.mimeType} />
+          {resource.src && (
+            <source src={resource.src} type={resource.mimeType} />
+          )}
           {tracks &&
             tracks.map(({ srclang, label, kind, track: src, id: key }, i) => (
               <track

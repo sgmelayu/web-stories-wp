@@ -17,17 +17,16 @@
 /**
  * External dependencies
  */
-import { useCallback } from 'react';
+import { forwardRef, useCallback } from 'react';
 import styled from 'styled-components';
 import PropTypes from 'prop-types';
 import { __, sprintf } from '@web-stories-wp/i18n';
+import { getPreviewText, PatternPropType } from '@web-stories-wp/patterns';
 
 /**
  * Internal dependencies
  */
-import { PatternPropType } from '../../../types';
 import { MULTIPLE_VALUE } from '../../../constants';
-import getPreviewText from '../../../../design-system/components/hex/getPreviewText';
 import applyOpacityChange from './applyOpacityChange';
 import OpacityInput from './opacityInput';
 import ColorInput from './colorInput';
@@ -50,15 +49,18 @@ const InputWrapper = styled.div`
   width: calc(50% - 10px);
 `;
 
-function Color({
-  onChange,
-  hasGradient,
-  hasOpacity,
-  value,
-  label,
-  colorPickerActions,
-  changedStyle,
-}) {
+const Color = forwardRef(function Color(
+  {
+    onChange,
+    hasGradient,
+    hasOpacity,
+    value,
+    label,
+    colorPickerActions,
+    changedStyle,
+  },
+  ref
+) {
   const handleOpacityChange = useCallback(
     (newOpacity) => onChange(applyOpacityChange(value, newOpacity)),
     [value, onChange]
@@ -77,6 +79,7 @@ function Color({
     <Container aria-label={containerLabel}>
       <InputWrapper>
         <ColorInput
+          ref={ref}
           onChange={onChange}
           hasGradient={hasGradient}
           hasOpacity={hasOpacity}
@@ -96,7 +99,7 @@ function Color({
       )}
     </Container>
   );
-}
+});
 
 Color.propTypes = {
   value: PropTypes.oneOfType([PatternPropType, PropTypes.string]),

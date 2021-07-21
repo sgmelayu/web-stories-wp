@@ -21,31 +21,53 @@ import PropTypes from 'prop-types';
 import styled from 'styled-components';
 import { useCallback, useMemo } from 'react';
 import { __, _x } from '@web-stories-wp/i18n';
+import stickers from '@web-stories-wp/stickers';
+import {
+  calcRotatedObjectPositionAndSize,
+  dataPixels,
+} from '@web-stories-wp/units';
+import {
+  Button,
+  LockToggle,
+  NumericInput,
+  Icons,
+  BUTTON_TYPES,
+  BUTTON_SIZES,
+  BUTTON_VARIANTS,
+} from '@web-stories-wp/design-system';
 
 /**
  * Internal dependencies
  */
-import {
-  LockToggle,
-  NumericInput,
-  Tooltip,
-  PLACEMENT,
-  Icons,
-} from '../../../../../design-system';
 import { MULTIPLE_DISPLAY_VALUE, MULTIPLE_VALUE } from '../../../../constants';
-import { dataPixels } from '../../../../units';
 import { getDefinitionForType } from '../../../../elements';
-import { calcRotatedObjectPositionAndSize } from '../../../../utils/getBoundRect';
 import { SimplePanel } from '../../panel';
 import FlipControls from '../../shared/flipControls';
-import { getCommonValue, useCommonObjectValue } from '../../shared';
+import {
+  focusStyle,
+  getCommonValue,
+  inputContainerStyleOverride,
+  useCommonObjectValue,
+} from '../../shared';
+import Tooltip from '../../../tooltip';
+import useStory from '../../../../app/story/useStory';
+import { getMediaBaseColor } from '../../../../utils/getMediaBaseColor';
 import usePresubmitHandlers from './usePresubmitHandlers';
 import { getMultiSelectionMinMaxXY, isNum } from './utils';
 import { MIN_MAX, DEFAULT_FLIP } from './constants';
 
+const StyledLockToggle = styled(LockToggle)`
+  ${focusStyle};
+`;
+
+function getStickerAspectRatio(element) {
+  return stickers?.[element?.sticker?.type].aspectRatio || 1;
+}
+
 const Grid = styled.div`
   display: grid;
   grid-template-areas:
+    ${({ isSingleMedia }) => (isSingleMedia ? `'b b b b b . .'` : null)}
     'x . . . y . .'
     'w . d . h . l'
     'r . . . f . .';
@@ -65,6 +87,13 @@ const Dash = styled.div`
   height: 1px;
   width: 100%;
   background: ${({ theme }) => theme.colors.divider.primary};
+`;
+
+const StyledButton = styled(Button)`
+  padding: 10px 16px;
+  width: 100%;
+
+  ${focusStyle};
 `;
 
 function SizePositionPanel({
@@ -94,10 +123,21 @@ function SizePositionPanel({
   const lockAspectRatio =
     rawLockAspectRatio === MULTIPLE_VALUE ? true : rawLockAspectRatio;
 
+  const { currentPage, combineElements } = useStory((state) => ({
+    currentPage: state.state.currentPage,
+    combineElements: state.actions.combineElements,
+  }));
+  const currentBackgroundId = currentPage?.elements[0].id;
+
   const isSingleElement = selectedElements.length === 1;
+  const { isMedia } = getDefinitionForType(selectedElements[0].type);
 
   const canFlip = selectedElements.every(
     ({ type }) => getDefinitionForType(type).canFlip
+  );
+
+  const isAspectAlwaysLocked = selectedElements.some(
+    ({ type }) => getDefinitionForType(type).isAspectAlwaysLocked
   );
 
   const hasText = selectedElements.some(({ type }) => 'text' === type);
@@ -140,6 +180,33 @@ function SizePositionPanel({
 
   usePresubmitHandlers(lockAspectRatio, height, width);
 
+  const handleSetBackground = useCallback(() => {
+    const setBackground = (baseColor) => {
+      if (!baseColor) {
+        combineElements({
+          firstElement: selectedElements[0],
+          secondId: currentBackgroundId,
+        });
+      } else {
+        combineElements({
+          firstElement: {
+            ...selectedElements[0],
+            resource: {
+              ...selectedElements[0].resource,
+              baseColor,
+            },
+          },
+          secondId: currentBackgroundId,
+        });
+      }
+    };
+    if (selectedElements[0].resource.baseColor) {
+      setBackground();
+    } else {
+      getMediaBaseColor(selectedElements[0].resource, setBackground);
+    }
+  }, [selectedElements, combineElements, currentBackgroundId]);
+
   const disableHeight = !lockAspectRatio && hasText;
   const enabledHeightPlaceholder =
     MULTIPLE_VALUE === height ? MULTIPLE_DISPLAY_VALUE : null;
@@ -154,21 +221,31 @@ function SizePositionPanel({
     };
   }, []);
   return (
-    <SimplePanel name="size" title={__('Size & position', 'web-stories')}>
-      <Grid>
+    <SimplePanel name="size" title={__('Size & Position', 'web-stories')}>
+      <Grid isSingleMedia={isMedia && isSingleElement}>
+        {isMedia && isSingleElement && (
+          <Area area="b">
+            <StyledButton
+              onClick={handleSetBackground}
+              type={BUTTON_TYPES.SECONDARY}
+              size={BUTTON_SIZES.SMALL}
+              variant={BUTTON_VARIANTS.RECTANGLE}
+            >
+              {__('Set as background', 'web-stories')}
+            </StyledButton>
+          </Area>
+        )}
         <Area area="x">
           <NumericInput
             suffix={_x('X', 'Position on X axis', 'web-stories')}
             value={x}
             min={minMaxXY.minX}
             max={minMaxXY.maxX}
-            onChange={(evt) => {
-              const value = Number(evt.target.value);
-              pushUpdate({ x: value }, true);
-            }}
+            onChange={(evt, value) => pushUpdate({ x: value }, true)}
             aria-label={__('X position', 'web-stories')}
             canBeNegative
             {...getMixedValueProps(x)}
+            containerStyleOverride={inputContainerStyleOverride}
           />
         </Area>
         <Area area="y">
@@ -177,13 +254,11 @@ function SizePositionPanel({
             value={y}
             min={minMaxXY.minY}
             max={minMaxXY.maxY}
-            onChange={(evt) => {
-              const value = Number(evt.target.value);
-              pushUpdate({ y: value }, true);
-            }}
+            onChange={(evt, value) => pushUpdate({ y: value }, true)}
             aria-label={__('Y position', 'web-stories')}
             canBeNegative
             {...getMixedValueProps(y)}
+            containerStyleOverride={inputContainerStyleOverride}
           />
         </Area>
         {/** Width/height & lock ratio */}
@@ -193,8 +268,8 @@ function SizePositionPanel({
             value={width}
             min={MIN_MAX.WIDTH.MIN}
             max={MIN_MAX.WIDTH.MAX}
-            onChange={(evt) => {
-              const newWidth = Number(evt.target.value);
+            onChange={(evt, value) => {
+              const newWidth = value;
               let newHeight = height;
               if (lockAspectRatio) {
                 if (newWidth === '') {
@@ -203,10 +278,22 @@ function SizePositionPanel({
                   newHeight = dataPixels(newWidth / origRatio);
                 }
               }
-              pushUpdate(getUpdateObject(newWidth, newHeight), true);
+              pushUpdate((element) => {
+                // For stickers, we maintain aspect ratio of the sticker
+                // regardless of input and selected elements.
+                if (element?.type === 'sticker') {
+                  const aspectRatio = getStickerAspectRatio(element);
+                  return getUpdateObject(
+                    newWidth,
+                    Math.floor(newWidth / aspectRatio)
+                  );
+                }
+                return getUpdateObject(newWidth, newHeight);
+              }, true);
             }}
             aria-label={__('Width', 'web-stories')}
             {...getMixedValueProps(width)}
+            containerStyleOverride={inputContainerStyleOverride}
           />
         </Area>
         <Area area="d">
@@ -219,8 +306,8 @@ function SizePositionPanel({
             disabled={disableHeight}
             min={MIN_MAX.HEIGHT.MIN}
             max={MIN_MAX.HEIGHT.MAX}
-            onChange={(evt) => {
-              const newHeight = Number(evt.target.value);
+            onChange={(evt, value) => {
+              const newHeight = value;
               let newWidth = width;
               if (lockAspectRatio) {
                 if (newHeight === '') {
@@ -229,23 +316,34 @@ function SizePositionPanel({
                   newWidth = dataPixels(newHeight * origRatio);
                 }
               }
-              pushUpdate(getUpdateObject(newWidth, newHeight), true);
+              pushUpdate((element) => {
+                // For stickers, we maintain aspect ratio of the sticker
+                // regardless of input and selected elements.
+                if (element?.type === 'sticker') {
+                  const aspectRatio = getStickerAspectRatio(element);
+                  return getUpdateObject(
+                    Math.floor(newHeight * aspectRatio),
+                    newHeight
+                  );
+                }
+                return getUpdateObject(newWidth, newHeight);
+              }, true);
             }}
             aria-label={__('Height', 'web-stories')}
             isIndeterminate={MULTIPLE_VALUE === height}
             placeholder={heightPlaceholder}
+            containerStyleOverride={inputContainerStyleOverride}
           />
         </Area>
         <Area area="l">
-          <Tooltip
-            placement={PLACEMENT.BOTTOM}
-            title={__('Lock aspect ratio', 'web-stories')}
-          >
-            <LockToggle
+          <Tooltip title={__('Lock aspect ratio', 'web-stories')}>
+            <StyledLockToggle
               aria-label={__('Lock aspect ratio', 'web-stories')}
               title={__('Lock aspect ratio', 'web-stories')}
-              isLocked={lockAspectRatio}
+              isLocked={lockAspectRatio || isAspectAlwaysLocked}
+              disabled={isAspectAlwaysLocked}
               onClick={() =>
+                !isAspectAlwaysLocked &&
                 pushUpdate({ lockAspectRatio: !lockAspectRatio }, true)
               }
             />
@@ -254,17 +352,17 @@ function SizePositionPanel({
         <Area area="r">
           <NumericInput
             suffix={<Icons.Angle />}
-            unit={_x('°', 'Degrees, 0 - 360. ', 'web-stories')}
+            unit={_x('°', 'Degrees, 0 - 360.', 'web-stories')}
             value={rotationAngle}
             min={MIN_MAX.ROTATION.MIN}
             max={MIN_MAX.ROTATION.MAX}
-            onChange={(evt) => {
-              const value = Number(evt.target.value);
-              pushUpdate({ rotationAngle: value }, true);
-            }}
+            onChange={(evt, value) =>
+              pushUpdate({ rotationAngle: value }, true)
+            }
             aria-label={__('Rotation', 'web-stories')}
             canBeNegative
             {...getMixedValueProps(rotationAngle)}
+            containerStyleOverride={inputContainerStyleOverride}
           />
         </Area>
         {canFlip && (

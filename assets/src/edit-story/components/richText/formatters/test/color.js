@@ -15,9 +15,12 @@
  */
 
 /**
+ * External dependencies
+ */
+import { createSolid } from '@web-stories-wp/patterns';
+/**
  * Internal dependencies
  */
-import createSolid from '../../../../utils/createSolid';
 import { MULTIPLE_VALUE } from '../../../../constants';
 import {
   togglePrefixStyle,
@@ -45,27 +48,27 @@ describe('Color formatter', () => {
   });
 
   describe('elementToStyle', () => {
-    function setup(element) {
+    function setupFormatter(element) {
       return elementToStyle(getDOMElement(element));
     }
 
     it('should ignore non-span elements', () => {
       const element = <div />;
-      const style = setup(element);
+      const style = setupFormatter(element);
 
       expect(style).toBeNull();
     });
 
     it('should ignore span elements without color style property', () => {
       const element = <span style={{ backgroundColor: 'red' }} />;
-      const style = setup(element);
+      const style = setupFormatter(element);
 
       expect(style).toBeNull();
     });
 
     it('should extract color without opacity from span elements and return correct style', () => {
       const element = <span style={{ color: 'red' }} />;
-      const style = setup(element);
+      const style = setupFormatter(element);
       const expected = `${COLOR}-ff000064`;
 
       expect(style).toBe(expected);
@@ -73,7 +76,7 @@ describe('Color formatter', () => {
 
     it('should extract color with opacity from span elements and return correct style', () => {
       const element = <span style={{ color: 'rgba(0, 255, 0, 0.5)' }} />;
-      const style = setup(element);
+      const style = setupFormatter(element);
       const expected = `${COLOR}-00ff0032`;
 
       expect(style).toBe(expected);
@@ -112,26 +115,26 @@ describe('Color formatter', () => {
       expect(getPrefixStylesInSelection).toHaveBeenCalledWith(state, COLOR);
     });
 
-    function setup(styleArray) {
+    function setupFormatter(styleArray) {
       getPrefixStylesInSelection.mockImplementationOnce(() => styleArray);
       return getters.color({});
     }
 
     it('should return multiple if more than one style matches', () => {
       const styles = [`${COLOR}-ff000064`, `${COLOR}-ffff0064`];
-      const result = setup(styles);
+      const result = setupFormatter(styles);
       expect(result).toBe(MULTIPLE_VALUE);
     });
 
     it('should return default black if no style matches', () => {
       const styles = [NONE];
-      const result = setup(styles);
+      const result = setupFormatter(styles);
       expect(result).toStrictEqual(createSolid(0, 0, 0));
     });
 
     it('should return parsed color if exactly one style matches', () => {
       const styles = [`${COLOR}-ffff0032`];
-      const result = setup(styles);
+      const result = setupFormatter(styles);
       expect(result).toStrictEqual(createSolid(255, 255, 0, 0.5));
     });
   });

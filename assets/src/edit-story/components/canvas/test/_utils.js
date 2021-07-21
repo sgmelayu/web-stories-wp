@@ -19,6 +19,7 @@
  */
 import { ThemeProvider } from 'styled-components';
 import PropTypes from 'prop-types';
+import { PAGE_WIDTH, PAGE_RATIO } from '@web-stories-wp/units';
 
 /**
  * Internal dependencies
@@ -26,7 +27,7 @@ import PropTypes from 'prop-types';
 import FrameElement from '../frameElement';
 import DisplayElement from '../displayElement';
 import { CanvasProvider } from '../../../app/canvas';
-import { LayoutProvider } from '../../../app/layout';
+import LayoutContext from '../../../app/layout/context';
 import ConfigProvider from '../../../app/config/configProvider';
 import StoryContext from '../../../app/story/context';
 import { TransformProvider, useTransform } from '../../transform';
@@ -34,6 +35,14 @@ import theme from '../../../theme';
 import useEditingElement from '../../../app/canvas/useEditingElement';
 
 jest.mock('../../../app/canvas/useEditingElement');
+
+const LAYOUT_CONTEXT = {
+  state: {
+    pageWidth: PAGE_WIDTH,
+    pageHeight: PAGE_WIDTH / PAGE_RATIO,
+  },
+  actions: {},
+};
 
 export function TestFrameElement({
   element,
@@ -74,7 +83,7 @@ export function TestFrameElement({
     <ThemeProvider theme={theme}>
       <ConfigProvider config={configContext}>
         <StoryContext.Provider value={storyContext}>
-          <LayoutProvider>
+          <LayoutContext.Provider value={LAYOUT_CONTEXT}>
             <CanvasProvider>
               <TransformProvider>
                 <WithRefs refs={refs}>
@@ -82,7 +91,7 @@ export function TestFrameElement({
                 </WithRefs>
               </TransformProvider>
             </CanvasProvider>
-          </LayoutProvider>
+          </LayoutContext.Provider>
         </StoryContext.Provider>
       </ConfigProvider>
     </ThemeProvider>
@@ -134,7 +143,7 @@ export function TestDisplayElement({
     <ThemeProvider theme={theme}>
       <ConfigProvider config={configContext}>
         <StoryContext.Provider value={storyContext}>
-          <LayoutProvider>
+          <LayoutContext.Provider value={LAYOUT_CONTEXT}>
             <CanvasProvider>
               <TransformProvider>
                 <WithRefs refs={refs}>
@@ -142,7 +151,7 @@ export function TestDisplayElement({
                 </WithRefs>
               </TransformProvider>
             </CanvasProvider>
-          </LayoutProvider>
+          </LayoutContext.Provider>
         </StoryContext.Provider>
       </ConfigProvider>
     </ThemeProvider>

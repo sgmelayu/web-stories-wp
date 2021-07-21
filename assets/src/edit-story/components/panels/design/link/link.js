@@ -17,30 +17,35 @@
 /**
  * External dependencies
  */
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
 import styled from 'styled-components';
 import { useDebouncedCallback } from 'use-debounce';
-import { __ } from '@web-stories-wp/i18n';
-
-/**
- * Internal dependencies
- */
+import { __, sprintf, translateToExclusiveList } from '@web-stories-wp/i18n';
 import {
   Input,
   Text,
   THEME_CONSTANTS,
+  MEDIA_VARIANTS,
   useBatchingCallback,
-} from '../../../../../design-system';
-import { useStory, useAPI, useCanvas } from '../../../../app';
+} from '@web-stories-wp/design-system';
+
+/**
+ * Internal dependencies
+ */
+
+import { useStory, useAPI, useCanvas, useConfig } from '../../../../app';
 import { isValidUrl, toAbsoluteUrl, withProtocol } from '../../../../utils/url';
 import useElementsWithLinks from '../../../../utils/useElementsWithLinks';
 import { MULTIPLE_DISPLAY_VALUE, MULTIPLE_VALUE } from '../../../../constants';
 import { Media, Row, LinkInput } from '../../../form';
 import { createLink } from '../../../elementLink';
 import { SimplePanel } from '../../panel';
-import { useCommonObjectValue } from '../../shared';
-import { MEDIA_VARIANTS } from '../../../../../design-system/components/mediaInput/constants';
+import {
+  inputContainerStyleOverride,
+  useCommonObjectValue,
+} from '../../shared';
+import { states, styles, useFocusHighlight } from '../../../../app/highlights';
 
 const IconInfo = styled.div`
   display: flex;
@@ -52,26 +57,31 @@ const IconText = styled(Text)`
   color: ${({ theme }) => theme.colors.fg.secondary};
 `;
 
+const StyledMedia = styled(Media)`
+  width: 54px;
+  height: 54px;
+`;
+
 const Error = styled.span`
   font-size: 12px;
   line-height: 16px;
-  color: ${({ theme }) => theme.DEPRECATED_THEME.colors.warning};
+  color: ${({ theme }) => theme.colors.fg.negative};
 `;
 
 function LinkPanel({ selectedElements, pushUpdateForObject }) {
-  const {
-    clearEditing,
-    setDisplayLinkGuidelines,
-    displayLinkGuidelines,
-  } = useCanvas((state) => ({
-    clearEditing: state.actions.clearEditing,
-    setDisplayLinkGuidelines: state.actions.setDisplayLinkGuidelines,
-    displayLinkGuidelines: state.state.displayLinkGuidelines,
-  }));
+  const { clearEditing, setDisplayLinkGuidelines, displayLinkGuidelines } =
+    useCanvas((state) => ({
+      clearEditing: state.actions.clearEditing,
+      setDisplayLinkGuidelines: state.actions.setDisplayLinkGuidelines,
+      displayLinkGuidelines: state.state.displayLinkGuidelines,
+    }));
 
   const { currentPage } = useStory((state) => ({
     currentPage: state.state.currentPage,
   }));
+
+  const linkRef = useRef(null);
+  const highlight = useFocusHighlight(states.LINK, linkRef);
 
   const { getElementsInAttachmentArea } = useElementsWithLinks();
   const hasElementsInAttachmentArea =
@@ -92,16 +102,18 @@ function LinkPanel({ selectedElements, pushUpdateForObject }) {
     actions: { getLinkMetadata },
   } = useAPI();
 
+  const { allowedImageMimeTypes, allowedImageFileTypes } = useConfig();
+
   const updateLinkFromMetadataApi = useBatchingCallback(
     ({ url, title, icon }) =>
       pushUpdateForObject(
         'link',
-        (prev) =>
+        () =>
           url
             ? {
                 url,
-                desc: title ? title : prev.desc,
-                icon: icon ? toAbsoluteUrl(url, icon) : prev.icon,
+                desc: title ? title : '',
+                icon: icon ? toAbsoluteUrl(url, icon) : '',
               }
             : null,
         defaultLink,
@@ -114,7 +126,7 @@ function LinkPanel({ selectedElements, pushUpdateForObject }) {
     !isValidUrl(withProtocol(link.url || ''))
   );
 
-  const [populateMetadata] = useDebouncedCallback((url) => {
+  const populateMetadata = useDebouncedCallback((url) => {
     setFetchingMetadata(true);
     getLinkMetadata(url)
       .then(({ title, image }) => {
@@ -161,10 +173,27 @@ function LinkPanel({ selectedElements, pushUpdateForObject }) {
 
   const handleChangeIcon = useCallback(
     (image) => {
-      handleChange({ icon: image?.sizes?.medium?.url || image?.url }, true);
+      handleChange({ icon: image?.sizes?.full?.url || image?.url }, true);
     },
     [handleChange]
   );
+
+  const iconErrorMessage = useMemo(() => {
+    let message = __(
+      'No image file types are currently supported.',
+      'web-stories'
+    );
+
+    if (allowedImageFileTypes.length) {
+      message = sprintf(
+        /* translators: %s: list of allowed file types. */
+        __('Please choose only %s as an icon.', 'web-stories'),
+        translateToExclusiveList(allowedImageFileTypes)
+      );
+    }
+
+    return message;
+  }, [allowedImageFileTypes]);
 
   const hasLinkSet = Boolean(link.url?.length);
   const displayMetaFields = hasLinkSet && !isInvalidUrl;
@@ -189,8 +218,14 @@ function LinkPanel({ selectedElements, pushUpdateForObject }) {
   const isMultipleUrl = MULTIPLE_VALUE === link.url;
   const isMultipleDesc = MULTIPLE_VALUE === link.desc;
   return (
-    <SimplePanel name="link" title={__('Link', 'web-stories')}>
+    <SimplePanel
+      name="link"
+      title={__('Link', 'web-stories')}
+      css={highlight?.showEffect && styles.FLASH}
+      isPersistable={!highlight}
+    >
       <LinkInput
+        ref={linkRef}
         onChange={(value) =>
           !displayLinkGuidelines &&
           handleChange({ url: value }, !value /* submit */)
@@ -210,6 +245,7 @@ function LinkPanel({ selectedElements, pushUpdateForObject }) {
         }
         isIndeterminate={isMultipleUrl}
         aria-label={__('Element link', 'web-stories')}
+        hasError={displayLinkGuidelines}
       />
       {displayLinkGuidelines && (
         <Row>
@@ -237,17 +273,25 @@ function LinkPanel({ selectedElements, pushUpdateForObject }) {
               value={link.desc || ''}
               aria-label={__('Link description', 'web-stories')}
               isIndeterminate={isMultipleDesc}
+              disabled={fetchingMetadata}
+              containerStyleOverride={inputContainerStyleOverride}
             />
           </Row>
           <Row spaceBetween={false}>
-            <Media
+            <StyledMedia
               value={link.icon || ''}
+              cropParams={{
+                width: 32,
+                height: 32,
+              }}
               onChange={handleChangeIcon}
+              onChangeErrorText={iconErrorMessage}
               title={__('Select as link icon', 'web-stories')}
               ariaLabel={__('Edit link icon', 'web-stories')}
               buttonInsertText={__('Select as link icon', 'web-stories')}
-              type={'image'}
+              type={allowedImageMimeTypes}
               isLoading={fetchingMetadata}
+              disabled={fetchingMetadata}
               variant={MEDIA_VARIANTS.CIRCLE}
               menuOptions={link.icon ? ['edit', 'remove'] : []}
             />

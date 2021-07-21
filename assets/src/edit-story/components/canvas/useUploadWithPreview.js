@@ -18,13 +18,13 @@
  * External dependencies
  */
 import { useCallback } from 'react';
-import { __ } from '@web-stories-wp/i18n';
 
 /**
  * Internal dependencies
  */
-import { useLocalMedia, useSnackbar, useStory } from '../../app';
-import { PAGE_HEIGHT, PAGE_WIDTH } from '../../constants';
+import useStory from '../../app/story/useStory';
+import { useLocalMedia } from '../../app/media';
+import useUpdateElementDimensions from '../../app/media/utils/useUpdateElementDimensions';
 import useInsertElement from './useInsertElement';
 
 function useUploadWithPreview() {
@@ -33,81 +33,45 @@ function useUploadWithPreview() {
     uploadVideoPoster: state.actions.uploadVideoPoster,
   }));
   const insertElement = useInsertElement();
-  const { updateElementsByResourceId, deleteElementsByResourceId } = useStory(
-    (state) => ({
-      updateElementsByResourceId: state.actions.updateElementsByResourceId,
-      deleteElementsByResourceId: state.actions.deleteElementsByResourceId,
-    })
-  );
-  const { showSnackbar } = useSnackbar();
+  const { updateElementDimensions } = useUpdateElementDimensions();
+  const { deleteElementsByResourceId } = useStory((state) => ({
+    deleteElementsByResourceId: state.actions.deleteElementsByResourceId,
+  }));
 
   const onUploadStart = useCallback(
     ({ resource }) => {
-      insertElement(resource.type, {
-        resource,
-        x: resource.isPlaceholder ? 0 : undefined,
-        y: resource.isPlaceholder ? 0 : undefined,
-      });
+      insertElement(resource.type, { resource });
     },
     [insertElement]
   );
 
-  const updateElement = useCallback(
-    ({ id, resource }) => {
-      updateElementsByResourceId({
-        id,
-        properties: (el) => {
-          const hasChangedDimensions =
-            el.resource.width !== resource.width ||
-            el.resource.height !== resource.height;
-
-          if (!hasChangedDimensions) {
-            return {
-              type: resource.type,
-              resource,
-            };
-          }
-
-          return {
-            resource,
-            type: resource.type,
-            width: resource.width,
-            height: resource.height,
-            x: PAGE_WIDTH / 2 - resource.width / 2,
-            y: PAGE_HEIGHT / 2 - resource.height / 2,
-          };
-        },
-      });
-    },
-    [updateElementsByResourceId]
-  );
-
   const onUploadProgress = useCallback(
     ({ id, resource }) => {
-      updateElement({ id, resource });
+      updateElementDimensions({ id, resource });
     },
-    [updateElement]
+    [updateElementDimensions]
   );
 
   const onUploadSuccess = useCallback(
     ({ id, resource }) => {
-      updateElement({ id, resource });
+      updateElementDimensions({ id, resource });
 
-      if (resource.type === 'video' && !resource.local) {
+      if (
+        ['video', 'gif'].includes(resource.type) &&
+        !resource.local &&
+        !resource.posterId
+      ) {
         uploadVideoPoster(resource.id, resource.src);
       }
     },
-    [updateElement, uploadVideoPoster]
+    [updateElementDimensions, uploadVideoPoster]
   );
 
   const onUploadError = useCallback(
     ({ id }) => {
       deleteElementsByResourceId({ id });
-      showSnackbar({
-        message: __('Upload failed, the element was removed', 'web-stories'),
-      });
     },
-    [deleteElementsByResourceId, showSnackbar]
+    [deleteElementsByResourceId]
   );
 
   const uploadWithPreview = useCallback(

@@ -16,15 +16,12 @@
 /**
  * External dependencies
  */
-import {
-  fireEvent,
-  getByRole as getByRoleFromNode,
-} from '@testing-library/react';
+import { fireEvent, screen, within } from '@testing-library/react';
 /**
  * Internal dependencies
  */
 import { renderWithProviders } from '../../../testUtils';
-import StoryMenu from '../';
+import StoryMenu from '..';
 import { STORY_CONTEXT_MENU_ITEMS } from '../../../constants';
 
 const mockMenuItemSelected = jest.fn();
@@ -38,7 +35,7 @@ describe('StoryMenu', () => {
   beforeEach(jest.clearAllMocks);
 
   it('should render a button by default', () => {
-    const { getAllByRole } = renderWithProviders(
+    renderWithProviders(
       <StoryMenu
         onMoreButtonSelected={jest.fn}
         contextMenuId={1}
@@ -47,14 +44,14 @@ describe('StoryMenu', () => {
       />
     );
 
-    const menuButton = getAllByRole('button')[0];
+    const menuButton = screen.getAllByRole('button')[0];
     expect(menuButton).toBeInTheDocument();
   });
 
   it('should get access to menu on button click', () => {
     const mockOnMoreButtonSelected = jest.fn();
 
-    const { getAllByRole } = renderWithProviders(
+    renderWithProviders(
       <StoryMenu
         onMoreButtonSelected={mockOnMoreButtonSelected}
         contextMenuId={1}
@@ -63,23 +60,23 @@ describe('StoryMenu', () => {
       />
     );
 
-    const menuButton = getAllByRole('button')[0];
+    const menuButton = screen.getAllByRole('button')[0];
     fireEvent.click(menuButton);
     expect(mockOnMoreButtonSelected).toHaveBeenCalledTimes(1);
   });
 
   it('should call onMenuItemSelected when menu item is clicked', () => {
-    const { getAllByRole } = renderWithProviders(
+    renderWithProviders(
       <StoryMenu
         onMoreButtonSelected={jest.fn}
         contextMenuId={1}
         menuItems={menuItems}
-        story={{ id: 1, status: 'publish', title: 'Sample Story' }}
+        storyId={1}
       />
     );
 
-    const menuItem = getAllByRole('listitem')[0];
-    const menuItemButton = getByRoleFromNode(menuItem, 'button');
+    const menuItem = screen.getAllByRole('menuitem')[0];
+    const menuItemButton = within(menuItem).getByRole('button');
 
     fireEvent.click(menuItemButton);
 

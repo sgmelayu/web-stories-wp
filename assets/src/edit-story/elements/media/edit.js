@@ -20,7 +20,12 @@
 import styled, { css } from 'styled-components';
 import { useCallback, useState, useRef, useEffect } from 'react';
 import { __ } from '@web-stories-wp/i18n';
-
+import PropTypes from 'prop-types';
+import {
+  getMediaSizePositionProps,
+  calculateSrcSet,
+} from '@web-stories-wp/media';
+import { BG_MIN_SCALE, BG_MAX_SCALE } from '@web-stories-wp/animation';
 /**
  * Internal dependencies
  */
@@ -29,15 +34,14 @@ import { useStory } from '../../app';
 import StoryPropTypes from '../../types';
 import WithMask from '../../masks/display';
 import getTransformFlip from '../shared/getTransformFlip';
-import { BG_MIN_SCALE, BG_MAX_SCALE } from '../../../animation';
 import useUnmount from '../../utils/useUnmount';
 import { shouldDisplayBorder } from '../../utils/elementBorder';
 import EditCropMoveable from './editCropMoveable';
-import { calculateSrcSet, mediaWithScale } from './util';
-import getMediaSizePositionProps from './getMediaSizePositionProps';
+import { mediaWithScale } from './util';
 import EditPanMoveable from './editPanMoveable';
 import ScalePanel from './scalePanel';
-import { CropBox, MEDIA_MASK_OPACITY } from './';
+import { MEDIA_MASK_OPACITY } from './constants';
+import { CropBox } from '.';
 
 const Element = styled.div`
   ${elementFillContent}
@@ -89,7 +93,7 @@ const CropVideo = styled.video`
   max-height: initial;
 `;
 
-function MediaEdit({ element, box }) {
+function MediaEdit({ element, box, setLocalProperties }) {
   const {
     id,
     resource,
@@ -107,21 +111,24 @@ function MediaEdit({ element, box }) {
   const [croppedMedia, setCroppedMedia] = useState(null);
   const [cropBox, setCropBox] = useState(null);
   const elementRef = useRef();
-  const [localProperties, setLocalProperties] = useState({});
+
   const isUpdatedLocally = useRef(false);
   const lastLocalProperties = useRef({ scale });
 
-  const updateLocalProperties = useCallback((properties) => {
-    const newProps = {
-      ...lastLocalProperties.current,
-      ...(typeof properties === 'function'
-        ? properties(lastLocalProperties.current)
-        : properties),
-    };
-    lastLocalProperties.current = newProps;
-    isUpdatedLocally.current = true;
-    setLocalProperties(lastLocalProperties.current);
-  }, []);
+  const updateLocalProperties = useCallback(
+    (properties) => {
+      const newProps = {
+        ...lastLocalProperties.current,
+        ...(typeof properties === 'function'
+          ? properties(lastLocalProperties.current)
+          : properties),
+      };
+      lastLocalProperties.current = newProps;
+      isUpdatedLocally.current = true;
+      setLocalProperties(lastLocalProperties.current);
+    },
+    [setLocalProperties]
+  );
 
   // Update the true global properties of the current element
   // This now only happens on unmount
@@ -142,24 +149,22 @@ function MediaEdit({ element, box }) {
   const isImage = ['image', 'gif'].includes(type);
   const isVideo = 'video' === type;
 
-  const localScale = localProperties.scale ?? scale;
-  const localFocalX = localProperties.focalX ?? focalX;
-  const localFocalY = localProperties.focalY ?? focalY;
-
   const mediaProps = getMediaSizePositionProps(
     resource,
     width,
     height,
-    localScale,
-    flip?.horizontal ? 100 - localFocalX : localFocalX,
-    flip?.vertical ? 100 - localFocalY : localFocalY
+    scale,
+    flip?.horizontal ? 100 - focalX : focalX,
+    flip?.vertical ? 100 - focalY : focalY
   );
 
   mediaProps.transformFlip = getTransformFlip(flip);
+  mediaProps.crossOrigin = 'anonymous';
 
   const fadedMediaProps = {
     ref: setFullMedia,
     draggable: false,
+    alt: '',
     opacity: opacity / 100,
     ...mediaProps,
   };
@@ -218,6 +223,7 @@ function MediaEdit({ element, box }) {
   return (
     <Element ref={elementRef}>
       {isImage && (
+        /* eslint-disable-next-line styled-components-a11y/alt-text -- False positive. */
         <FadedImage
           {...fadedMediaProps}
           src={resource.src}
@@ -225,14 +231,19 @@ function MediaEdit({ element, box }) {
         />
       )}
       {isVideo && (
+        //eslint-disable-next-line styled-components-a11y/media-has-caption -- Faded video doesn't need captions.
         <FadedVideo {...fadedMediaProps}>
-          <source src={resource.src} type={resource.mimeType} />
+          {resource.src && (
+            <source src={resource.src} type={resource.mimeType} />
+          )}
         </FadedVideo>
       )}
       <CropBox ref={setCropBox} {...borderProps}>
         <WithMask element={element} fill applyFlip={false} box={box}>
+          {/* eslint-disable-next-line styled-components-a11y/alt-text -- False positive. */}
           {isImage && <CropImage {...cropMediaProps} />}
           {isVideo && (
+            /*eslint-disable-next-line styled-components-a11y/media-has-caption -- Tracks might not exist. Also, unwanted in edit mode. */
             <CropVideo {...cropMediaProps}>
               <source src={resource.src} type={resource.mimeType} />
             </CropVideo>
@@ -282,7 +293,7 @@ function MediaEdit({ element, box }) {
         y={y}
         width={width}
         height={height}
-        scale={localScale || 100}
+        scale={scale || 100}
       />
     </Element>
   );
@@ -291,6 +302,7 @@ function MediaEdit({ element, box }) {
 MediaEdit.propTypes = {
   element: StoryPropTypes.elements.media.isRequired,
   box: StoryPropTypes.box.isRequired,
+  setLocalProperties: PropTypes.func.isRequired,
 };
 
 export default MediaEdit;

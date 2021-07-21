@@ -20,27 +20,33 @@
 import { useFeature } from 'flagged';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import styled from 'styled-components';
-import { __, _n, sprintf } from '@web-stories-wp/i18n';
-import { trackEvent } from '@web-stories-wp/tracking';
-
-/**
- * Internal dependencies
- */
 import {
-  Button,
+  __,
+  _n,
+  sprintf,
+  translateToExclusiveList,
+} from '@web-stories-wp/i18n';
+import { trackEvent } from '@web-stories-wp/tracking';
+import { resourceList } from '@web-stories-wp/media';
+import {
+  Button as DefaultButton,
   BUTTON_SIZES,
   BUTTON_TYPES,
   BUTTON_VARIANTS,
   Text,
   THEME_CONSTANTS,
-  DropDown,
-} from '../../../../../../design-system';
+  useSnackbar,
+} from '@web-stories-wp/design-system';
+
+/**
+ * Internal dependencies
+ */
 import { useConfig } from '../../../../../app/config';
 import { useLocalMedia } from '../../../../../app/media';
 import { useMediaPicker } from '../../../../mediaPicker';
 import { SearchInput } from '../../../common';
 import useLibrary from '../../../useLibrary';
-import createError from '../../../../../utils/createError';
+import { Select } from '../../../../form';
 import { getResourceFromMediaPicker } from '../../../../../app/media/utils';
 import {
   MediaGalleryMessage,
@@ -51,16 +57,20 @@ import {
 } from '../common/styles';
 import PaginatedMediaGallery from '../common/paginatedMediaGallery';
 import Flags from '../../../../../flags';
-import resourceList from '../../../../../utils/resourceList';
-import { Placement } from '../../../../popup';
+import { Placement } from '../../../../popup/constants';
 import { PANE_PADDING } from '../../shared';
-import { useSnackbar } from '../../../../../app';
 import { LOCAL_MEDIA_TYPE_ALL } from '../../../../../app/media/local/types';
+import { focusStyle } from '../../../../panels/shared';
+import useFFmpeg from '../../../../../app/media/utils/useFFmpeg';
 import MissingUploadPermissionDialog from './missingUploadPermissionDialog';
 import paneId from './paneId';
 import VideoOptimizationDialog from './videoOptimizationDialog';
 
 export const ROOT_MARGIN = 300;
+
+const Button = styled(DefaultButton)`
+  ${focusStyle};
+`;
 
 const FilterArea = styled.div`
   display: flex;
@@ -75,11 +85,6 @@ const SearchCount = styled(Text).attrs({
   display: flex;
   align-items: center;
   justify-content: center;
-`;
-
-const StyledDropDown = styled(DropDown)`
-  background-color: transparent;
-  width: 132px;
 `;
 
 const FILTER_NONE = LOCAL_MEDIA_TYPE_ALL;
@@ -103,6 +108,8 @@ function MediaPane(props) {
     setSearchTerm,
     uploadVideoPoster,
     totalItems,
+    optimizeVideo,
+    optimizeGif,
   } = useLocalMedia(
     ({
       state: {
@@ -120,6 +127,8 @@ function MediaPane(props) {
         setMediaType,
         setSearchTerm,
         uploadVideoPoster,
+        optimizeVideo,
+        optimizeGif,
       },
     }) => {
       return {
@@ -135,24 +144,48 @@ function MediaPane(props) {
         setMediaType,
         setSearchTerm,
         uploadVideoPoster,
+        optimizeVideo,
+        optimizeGif,
       };
     }
   );
 
   const { showSnackbar } = useSnackbar();
+  const isGifOptimizationEnabled = useFeature('enableGifOptimization');
 
   const {
+    allowedTranscodableMimeTypes,
     allowedFileTypes,
     allowedMimeTypes: {
       image: allowedImageMimeTypes,
       video: allowedVideoMimeTypes,
     },
+    capabilities: { hasUploadMediaAction },
   } = useConfig();
 
-  const allowedMimeTypes = useMemo(
-    () => [...allowedImageMimeTypes, ...allowedVideoMimeTypes],
-    [allowedImageMimeTypes, allowedVideoMimeTypes]
-  );
+  const { isTranscodingEnabled } = useFFmpeg();
+
+  const allowedMimeTypes = useMemo(() => {
+    if (isTranscodingEnabled) {
+      return [
+        ...allowedTranscodableMimeTypes,
+        ...allowedImageMimeTypes,
+        ...allowedVideoMimeTypes,
+      ];
+    }
+    return [...allowedImageMimeTypes, ...allowedVideoMimeTypes];
+  }, [
+    allowedImageMimeTypes,
+    allowedVideoMimeTypes,
+    isTranscodingEnabled,
+    allowedTranscodableMimeTypes,
+  ]);
+
+  const transcodableMimeTypes = useMemo(() => {
+    return allowedTranscodableMimeTypes.filter(
+      (x) => !allowedVideoMimeTypes.includes(x)
+    );
+  }, [allowedTranscodableMimeTypes, allowedVideoMimeTypes]);
 
   const { insertElement } = useLibrary((state) => ({
     insertElement: state.actions.insertElement,
@@ -172,27 +205,27 @@ function MediaPane(props) {
   const onSelect = (mediaPickerEl) => {
     const resource = getResourceFromMediaPicker(mediaPickerEl);
     try {
-      if (!allowedMimeTypes.includes(resource.mimeType)) {
-        /* translators: %s is a list of allowed file extensions. */
-        const message = sprintf(
-          /* translators: %s: list of allowed file types. */
-          __('Please choose only %s to insert into page.', 'web-stories'),
-          allowedFileTypes.join(
-            /* translators: delimiter used in a list */
-            __(', ', 'web-stories')
-          )
-        );
+      if (isTranscodingEnabled) {
+        if (transcodableMimeTypes.includes(resource.mimeType)) {
+          optimizeVideo({ resource });
+        }
 
-        throw createError('ValidError', resource.title, message);
+        if (isGifOptimizationEnabled && resource.mimeType === 'image/gif') {
+          optimizeGif({ resource });
+        }
       }
-
       // WordPress media picker event, sizes.medium.url is the smallest image
       insertMediaElement(
         resource,
         mediaPickerEl.sizes?.medium?.url || mediaPickerEl.url
       );
 
-      if (!resource.posterId && !resource.local) {
+      if (
+        !resource.posterId &&
+        !resource.local &&
+        (allowedVideoMimeTypes.includes(resource.mimeType) ||
+          resource.type === 'gif')
+      ) {
         // Upload video poster and update media element afterwards, so that the
         // poster will correctly show up in places like the Accessibility panel.
         uploadVideoPoster(resource.id, mediaPickerEl.url);
@@ -200,12 +233,26 @@ function MediaPane(props) {
     } catch (e) {
       showSnackbar({
         message: e.message,
+        dismissable: true,
       });
     }
   };
 
+  let onSelectErrorMessage = __(
+    'No file types are currently supported.',
+    'web-stories'
+  );
+  if (allowedFileTypes.length) {
+    onSelectErrorMessage = sprintf(
+      /* translators: %s: list of allowed file types. */
+      __('Please choose only %s to insert into page.', 'web-stories'),
+      translateToExclusiveList(allowedFileTypes)
+    );
+  }
+
   const openMediaPicker = useMediaPicker({
     onSelect,
+    onSelectErrorMessage,
     onClose,
     type: allowedMimeTypes,
     onPermissionError: () => setIsPermissionDialogOpen(true),
@@ -272,20 +319,19 @@ function MediaPane(props) {
             />
           </SearchInputContainer>
           <FilterArea>
-            <StyledDropDown
+            <Select
               selectedValue={mediaType?.toString() || FILTER_NONE}
               onMenuItemClick={onFilter}
               options={FILTERS}
               placement={Placement.BOTTOM_START}
-              fitContentWidth
             />
             {isSearching && media.length > 0 && (
               <SearchCount>
                 {sprintf(
                   /* translators: %d: number of results. */
                   _n(
-                    '%d result found',
-                    '%d results found',
+                    '%s result found.',
+                    '%s results found.',
                     totalItems,
                     'web-stories'
                   ),
@@ -309,12 +355,13 @@ function MediaPane(props) {
         {isMediaLoaded && !media.length ? (
           <MediaGalleryMessage>
             {isSearching
-              ? __('No results found', 'web-stories')
-              : __('No media found', 'web-stories')}
+              ? __('No results found.', 'web-stories')
+              : __('No media found.', 'web-stories')}
           </MediaGalleryMessage>
         ) : (
           <PaginatedMediaGallery
             providerType="local"
+            canEditMedia={hasUploadMediaAction}
             resources={media}
             isMediaLoading={isMediaLoading}
             isMediaLoaded={isMediaLoaded}
@@ -326,7 +373,7 @@ function MediaPane(props) {
         )}
 
         <MissingUploadPermissionDialog
-          open={isPermissionDialogOpen}
+          isOpen={isPermissionDialogOpen}
           onClose={() => setIsPermissionDialogOpen(false)}
         />
         <VideoOptimizationDialog />

@@ -21,18 +21,23 @@ import PropTypes from 'prop-types';
 import { useCallback } from 'react';
 import styled, { css } from 'styled-components';
 import { __ } from '@web-stories-wp/i18n';
-
-/**
- * Internal dependencies
- */
-import { Row } from '../../../form';
-import { useCommonObjectValue } from '../../shared';
 import {
   LockToggle,
   NumericInput,
   Text,
   THEME_CONSTANTS,
-} from '../../../../../design-system';
+} from '@web-stories-wp/design-system';
+
+/**
+ * Internal dependencies
+ */
+import { Row } from '../../../form';
+import Tooltip from '../../../tooltip';
+import {
+  focusStyle,
+  inputContainerStyleOverride,
+  useCommonObjectValue,
+} from '../../shared';
 import { MULTIPLE_DISPLAY_VALUE, MULTIPLE_VALUE } from '../../../../constants';
 import { DEFAULT_BORDER } from './shared';
 
@@ -41,6 +46,10 @@ const INPUT_WIDTH = 44;
 
 const BorderRow = styled(Row)`
   ${({ locked }) => locked && 'justify-content: normal'};
+`;
+
+const StyledLockToggle = styled(LockToggle)`
+  ${focusStyle};
 `;
 
 const Separator = styled.div`
@@ -83,7 +92,10 @@ function UnLockedInput({ labelText, ...rest }) {
     <>
       <Separator />
       <Label>
-        <NumericInput {...rest} />
+        <NumericInput
+          containerStyleOverride={inputContainerStyleOverride}
+          {...rest}
+        />
         <LabelText>{labelText}</LabelText>
       </Label>
     </>
@@ -105,21 +117,18 @@ function WidthControls({ selectedElements, pushUpdateForObject }) {
   const lockBorder = border.lockedWidth === true;
 
   const handleChange = useCallback(
-    (name) => (evt) => {
-      const value = Number(evt?.target?.value);
-      if (value) {
-        const newBorder = !lockBorder
-          ? {
-              [name]: value,
-            }
-          : {
-              left: value,
-              top: value,
-              right: value,
-              bottom: value,
-            };
-        pushUpdateForObject('border', newBorder, DEFAULT_BORDER, true);
-      }
+    (name) => (evt, value) => {
+      const newBorder = !lockBorder
+        ? {
+            [name]: value,
+          }
+        : {
+            left: value,
+            top: value,
+            right: value,
+            bottom: value,
+          };
+      pushUpdateForObject('border', newBorder, DEFAULT_BORDER, true);
     },
     [pushUpdateForObject, lockBorder]
   );
@@ -150,6 +159,7 @@ function WidthControls({ selectedElements, pushUpdateForObject }) {
           onChange={handleChange('left')}
           aria-label={firstInputLabel}
           {...getMixedValueProps(border.left)}
+          containerStyleOverride={inputContainerStyleOverride}
         />
         {!lockBorder && <LabelText>{__('Left', 'web-stories')}</LabelText>}
       </Label>
@@ -179,25 +189,27 @@ function WidthControls({ selectedElements, pushUpdateForObject }) {
         </>
       )}
       <ToggleWrapper locked={lockBorder}>
-        <LockToggle
-          isLocked={lockBorder}
-          onClick={() => {
-            let args = {
-              lockedWidth: !lockBorder,
-            };
-            // If the border width wasn't locked before (and is now), unify all the values.
-            if (!lockBorder) {
-              args = {
-                ...args,
-                top: border.left,
-                right: border.left,
-                bottom: border.left,
+        <Tooltip title={__('Toggle consistent border', 'web-stories')}>
+          <StyledLockToggle
+            isLocked={lockBorder}
+            onClick={() => {
+              let args = {
+                lockedWidth: !lockBorder,
               };
-            }
-            handleLockChange(args);
-          }}
-          aria-label={__('Toggle border ratio lock', 'web-stories')}
-        />
+              // If the border width wasn't locked before (and is now), unify all the values.
+              if (!lockBorder) {
+                args = {
+                  ...args,
+                  top: border.left,
+                  right: border.left,
+                  bottom: border.left,
+                };
+              }
+              handleLockChange(args);
+            }}
+            aria-label={__('Toggle consistent border', 'web-stories')}
+          />
+        </Tooltip>
       </ToggleWrapper>
     </BorderRow>
   );

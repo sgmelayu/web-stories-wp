@@ -15,20 +15,18 @@
  * limitations under the License.
  */
 
-namespace Google\Web_Stories\Tests;
+namespace Google\Web_Stories\Tests\Widgets;
 
 use Google\Web_Stories\Widgets\Stories as Testee;
 use WP_Widget;
+use Google\Web_Stories\Tests\Test_Case;
 
 /**
  * Class Stories
  *
  * @coversDefaultClass \Google\Web_Stories\Widgets\Stories
- *
- * @package Google\Web_Stories\Tests
  */
-class Stories extends \WP_UnitTestCase {
-	use Private_Access;
+class Stories extends Test_Case {
 	/**
 	 * Object in test.
 	 *
@@ -42,7 +40,8 @@ class Stories extends \WP_UnitTestCase {
 	 * @return void
 	 */
 	public static function setUpBeforeClass() {
-		self::$testee = new Testee();
+		$assets       = new \Google\Web_Stories\Assets();
+		self::$testee = new Testee( $assets );
 	}
 
 	/**
@@ -69,7 +68,7 @@ class Stories extends \WP_UnitTestCase {
 	}
 
 	/**
-	 * @covers ::stories_widget_scripts
+	 * @covers ::enqueue_scripts
 	 */
 	public function test_enqueue_scripts() {
 		self::$testee->enqueue_scripts();

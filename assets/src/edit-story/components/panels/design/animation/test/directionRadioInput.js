@@ -18,13 +18,13 @@
  * External dependencies
  */
 import { useState } from 'react';
-import { fireEvent } from '@testing-library/react';
+import { fireEvent, screen } from '@testing-library/react';
 import PropTypes from 'prop-types';
+import { DIRECTION, SCALE_DIRECTION } from '@web-stories-wp/animation';
 
 /**
  * Internal dependencies
  */
-import { DIRECTION, SCALE_DIRECTION } from '../../../../../../animation';
 import { renderWithTheme } from '../../../../../testUtils';
 import { DirectionRadioInput } from '../directionRadioInput';
 
@@ -49,83 +49,47 @@ DirectionRadioInputUncontrolled.propTypes = {
 
 describe('<DirectionRadioInput />', () => {
   it('should render', () => {
-    const { getByRole } = renderWithTheme(<DirectionRadioInput />);
-    const fieldset = getByRole('group');
+    renderWithTheme(<DirectionRadioInput />);
+    const fieldset = screen.getByRole('group');
     expect(fieldset).toBeInTheDocument();
   });
 
-  it('should render directions supplied as radio inputs', () => {
-    const { getAllByRole } = renderWithTheme(
+  it('should render directions supplied as buttons', () => {
+    renderWithTheme(
       <DirectionRadioInput
         directions={[DIRECTION.TOP_TO_BOTTOM, DIRECTION.BOTTOM_TO_TOP]}
         onChange={() => {}}
       />
     );
-    const radios = getAllByRole('radio');
-    expect(radios).toHaveLength(2);
+    const buttons = screen.getAllByRole('button');
+    expect(buttons).toHaveLength(2);
   });
 
-  it('should call onChange when radio input clicked', () => {
-    const onChange = jest.fn((e) => e.target.value);
+  it('should call onChange when button clicked', () => {
+    const onChange = jest.fn((value) => value);
     const directions = [DIRECTION.TOP_TO_BOTTOM, DIRECTION.BOTTOM_TO_TOP];
-    const { getAllByRole } = renderWithTheme(
+    renderWithTheme(
       <DirectionRadioInput onChange={onChange} directions={directions} />
     );
 
-    const radios = getAllByRole('radio');
-    fireEvent(
-      radios[1],
-      new MouseEvent('click', {
-        bubbles: true,
-        cancelable: true,
-      })
-    );
+    const buttons = screen.getAllByRole('button');
+    fireEvent.click(buttons[1]);
 
     expect(onChange).toHaveBeenCalledTimes(1);
-    expect(onChange).toHaveReturnedWith(directions[1]);
-  });
-
-  it('should update checked when new input clicked', () => {
-    const onChange = jest.fn();
-    const { getAllByRole, getByRole } = renderWithTheme(
-      <DirectionRadioInputUncontrolled
-        onChange={onChange}
-        directions={[DIRECTION.TOP_TO_BOTTOM, DIRECTION.BOTTOM_TO_TOP]}
-      />
-    );
-
-    const radios = getAllByRole('radio');
-
-    fireEvent(
-      radios[1],
-      new MouseEvent('click', {
-        bubbles: true,
-        cancelable: true,
-      })
-    );
-    expect(getByRole('radio', { checked: true })).toBe(radios[1]);
-
-    fireEvent(
-      radios[0],
-      new MouseEvent('click', {
-        bubbles: true,
-        cancelable: true,
-      })
-    );
-    expect(getByRole('radio', { checked: true })).toBe(radios[0]);
+    expect(onChange).toHaveBeenCalledWith(directions[1]);
   });
 
   it('should render the correct number of arrows for scale direction', () => {
     const onChange = jest.fn();
-    const { getAllByRole } = renderWithTheme(
+    renderWithTheme(
       <DirectionRadioInputUncontrolled
         onChange={onChange}
         directions={[SCALE_DIRECTION.SCALE_IN, SCALE_DIRECTION.SCALE_OUT]}
       />
     );
 
-    const radios = getAllByRole('radio');
+    const buttons = screen.getAllByRole('button');
 
-    expect(radios).toHaveLength(4);
+    expect(buttons).toHaveLength(4);
   });
 });

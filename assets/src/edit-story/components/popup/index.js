@@ -19,42 +19,36 @@
  */
 import { createPortal } from 'react-dom';
 import styled from 'styled-components';
-import { useLayoutEffect, useCallback, useState, useRef } from 'react';
+import {
+  useLayoutEffect,
+  useEffect,
+  useCallback,
+  useState,
+  useRef,
+} from 'react';
+import { useResizeEffect } from '@web-stories-wp/design-system';
+
 /**
  * Internal dependencies
  */
-import { useResizeEffect } from '../../../design-system';
+import { useConfig } from '../../app/config';
 import { getTransforms, getOffset } from './utils';
-
-/**
- * Internal dependencies
- */
-
-export const Placement = {
-  // TOP
-  TOP: 'top',
-  TOP_START: 'top-start',
-  TOP_END: 'top-end',
-  // BOTTOM
-  BOTTOM: 'bottom',
-  BOTTOM_START: 'bottom-start',
-  BOTTOM_END: 'bottom-end',
-  // RIGHT
-  RIGHT: 'right',
-  RIGHT_START: 'right-start',
-  RIGHT_END: 'right-end',
-  // LEFT
-  LEFT: 'left',
-  LEFT_START: 'left-start',
-  LEFT_END: 'left-end',
-};
+import { Placement } from './constants';
 
 const Container = styled.div.attrs(
-  ({ x, y, width, height, fillWidth, fillHeight, placement }) => ({
+  ({
+    $offset: { x, y, width, height },
+    fillWidth,
+    fillHeight,
+    placement,
+    isRTL,
+    invisible,
+  }) => ({
     style: {
-      transform: `translate(${x}px, ${y}px) ${getTransforms(placement)}`,
+      transform: `translate(${x}px, ${y}px) ${getTransforms(placement, isRTL)}`,
       ...(fillWidth ? { width: `${width}px` } : {}),
       ...(fillHeight ? { height: `${height}px` } : {}),
+      ...(invisible ? { visibility: `hidden` } : {}),
     },
   })
 )`
@@ -63,6 +57,8 @@ const Container = styled.div.attrs(
   top: 0px;
   position: fixed;
   z-index: 2;
+  overflow-y: auto;
+  max-height: 100vh;
 `;
 
 function Popup({
@@ -70,9 +66,10 @@ function Popup({
   dock,
   children,
   renderContents,
-  placement = 'bottom',
+  placement = Placement.BOTTOM,
   spacing,
   isOpen,
+  invisible,
   fillWidth = false,
   fillHeight = false,
   onPositionUpdate = () => {},
@@ -80,6 +77,7 @@ function Popup({
   const [popupState, setPopupState] = useState(null);
   const [mounted, setMounted] = useState(false);
   const popup = useRef(null);
+  const { isRTL } = useConfig();
 
   const positionPopup = useCallback(
     (evt) => {
@@ -92,11 +90,24 @@ function Popup({
         return;
       }
       setPopupState({
-        offset: getOffset(placement, spacing, anchor, dock, popup),
+        offset:
+          anchor?.current &&
+          getOffset(placement, spacing, anchor, dock, popup, isRTL),
+        height: popup.current?.getBoundingClientRect()?.height,
       });
     },
-    [anchor, dock, placement, spacing, mounted]
+    [anchor, dock, placement, spacing, mounted, isRTL]
   );
+
+  useEffect(() => {
+    // If the popup height changes meanwhile, let's update the popup, too.
+    if (
+      popupState?.height &&
+      popupState.height !== popup.current?.getBoundingClientRect()?.height
+    ) {
+      positionPopup();
+    }
+  }, [popupState?.height, positionPopup]);
 
   useLayoutEffect(() => {
     setMounted(true);
@@ -118,10 +129,12 @@ function Popup({
     ? createPortal(
         <Container
           ref={popup}
-          {...popupState.offset}
           fillWidth={fillWidth}
           fillHeight={fillHeight}
           placement={placement}
+          isRTL={isRTL}
+          $offset={popupState.offset}
+          invisible={invisible}
         >
           {renderContents
             ? renderContents({ propagateDimensionChange: positionPopup })

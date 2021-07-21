@@ -19,33 +19,32 @@
  */
 import PropTypes from 'prop-types';
 import { __ } from '@web-stories-wp/i18n';
+import { Text, THEME_CONSTANTS } from '@web-stories-wp/design-system';
 
 /**
  * Internal dependencies
  */
-import { Plain } from '../button';
 import Dialog from '../dialog';
 
-function PreviewErrorDialog({ open, onClose, onRetry }) {
+function PreviewErrorDialog({ isOpen, onClose, onRetry }) {
   return (
     <Dialog
-      open={open}
+      isOpen={isOpen}
       onClose={onClose}
       title={__('Open preview', 'web-stories')}
-      actions={
-        <>
-          <Plain onClick={onClose}>{__('Cancel', 'web-stories')}</Plain>
-          <Plain onClick={onRetry}>{__('Try again', 'web-stories')}</Plain>
-        </>
-      }
+      secondaryText={__('Cancel', 'web-stories')}
+      onPrimary={onRetry}
+      primaryText={__('Try again', 'web-stories')}
     >
-      {__('The preview window failed to open.', 'web-stories')}
+      <Text size={THEME_CONSTANTS.TYPOGRAPHY.PRESET_SIZES.SMALL}>
+        {__('The preview window failed to open.', 'web-stories')}
+      </Text>
     </Dialog>
   );
 }
 
 PreviewErrorDialog.propTypes = {
-  open: PropTypes.bool.isRequired,
+  isOpen: PropTypes.bool.isRequired,
   onClose: PropTypes.func.isRequired,
   onRetry: PropTypes.func.isRequired,
 };

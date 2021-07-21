@@ -22,55 +22,53 @@ import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useFeature } from 'flagged';
 import { __, sprintf } from '@web-stories-wp/i18n';
 import { trackEvent } from '@web-stories-wp/tracking';
+import {
+  LoadingSpinner,
+  useSnackbar,
+  Text,
+  THEME_CONSTANTS,
+} from '@web-stories-wp/design-system';
+
 /**
  * Internal dependencies
  */
-import {
-  Dialog,
-  Button,
-  BUTTON_TYPES,
-  BUTTON_SIZES,
-} from '../../../../../../design-system';
-
 import { StoriesPropType, StoryActionsPropType } from '../../../../../types';
 import { titleFormatted } from '../../../../../utils';
 import {
   SortPropTypes,
   ViewPropTypes,
+  ShowStoriesWhileLoadingPropType,
 } from '../../../../../utils/useStoryView';
+import { Dialog, LoadingContainer } from '../../../../../components';
 import {
   VIEW_STYLE,
-  STORY_ITEM_CENTER_ACTION_LABELS,
   STORY_CONTEXT_MENU_ACTIONS,
   STORY_CONTEXT_MENU_ITEMS,
 } from '../../../../../constants';
-import { useSnackbarContext } from '../../../../snackbar';
-import { StoryGridView, StoryListView } from '../../../shared';
+import ListView from '../listView';
+import StoryGridView from '../storyGridView';
 
 const ACTIVE_DIALOG_DELETE_STORY = 'DELETE_STORY';
 function StoriesView({
   filterValue,
+  loading,
   sort,
   storyActions,
   stories,
   view,
-  initialFocusStoryId = null,
 }) {
   const [contextMenuId, setContextMenuId] = useState(-1);
   const [titleRenameId, setTitleRenameId] = useState(-1);
   const enableInProgressStoryActions = useFeature(
     'enableInProgressStoryActions'
   );
-  const enableStoryPreviews = useFeature('enableStoryPreviews');
 
   const [activeDialog, setActiveDialog] = useState('');
   const [activeStory, setActiveStory] = useState(null);
   const [focusedStory, setFocusedStory] = useState({});
   const [returnStoryFocusId, setReturnStoryFocusId] = useState(null);
 
-  const {
-    actions: { addSnackbarMessage },
-  } = useSnackbarContext();
+  const { showSnackbar } = useSnackbar();
 
   const isActiveDeleteStoryDialog =
     activeDialog === ACTIVE_DIALOG_DELETE_STORY && activeStory;
@@ -83,11 +81,13 @@ function StoriesView({
     // then we use storiesById to find the proper index of the interacted with item and use that to decide where to move focus
     if (focusedStory.id && !returnStoryFocusId) {
       const storyArrayIndex = storiesById.indexOf(focusedStory.id);
-      const adjustedIndex = focusedStory.isDeleted ? -1 : 0;
+      const isDeletedAdjustmentDirection = storyArrayIndex > 0 ? -1 : +1;
+      const adjustedIndex = focusedStory.isDeleted
+        ? isDeletedAdjustmentDirection
+        : 0;
       const focusIndex = storyArrayIndex + adjustedIndex;
       const storyIdToFocus = storiesById[focusIndex];
-
-      setReturnStoryFocusId(storyIdToFocus);
+      storyIdToFocus && setReturnStoryFocusId(storyIdToFocus);
     }
   }, [focusedStory, returnStoryFocusId, storiesById]);
 
@@ -137,6 +137,7 @@ function StoriesView({
       setContextMenuId(-1);
       trackEvent('duplicate_story');
       storyActions.duplicateStory(story);
+      setFocusedStory({ id: story.id });
     },
     [storyActions]
   );
@@ -160,22 +161,17 @@ function StoriesView({
       setContextMenuId(-1);
       global.navigator.clipboard.writeText(story.link);
 
-      addSnackbarMessage({
-        message:
-          story.title.length > 0
-            ? sprintf(
-                /* translators: %s: story title. */
-                __('%s has been copied to your clipboard.', 'web-stories'),
-                story.title
-              )
-            : __(
-                '(no title) has been copied to your clipboard.',
-                'web-stories'
-              ),
-        id: Date.now(),
+      showSnackbar({
+        message: sprintf(
+          /* translators: %s: story title. */
+          __('%s has been copied to your clipboard.', 'web-stories'),
+          titleFormatted(story.title)
+        ),
+        dismissable: true,
       });
+      setFocusedStory({ id: story.id });
     },
-    [addSnackbarMessage]
+    [showSnackbar]
   );
 
   const enabledMenuItems = useMemo(() => {
@@ -192,7 +188,8 @@ function StoriesView({
       menuItemActions: {
         default: () => setContextMenuId(-1),
         [STORY_CONTEXT_MENU_ACTIONS.COPY_STORY_LINK]: handleCopyStoryLink,
-        [STORY_CONTEXT_MENU_ACTIONS.CREATE_TEMPLATE]: handleCreateTemplateFromStory,
+        [STORY_CONTEXT_MENU_ACTIONS.CREATE_TEMPLATE]:
+          handleCreateTemplateFromStory,
         [STORY_CONTEXT_MENU_ACTIONS.DELETE]: handleDeleteStory,
         [STORY_CONTEXT_MENU_ACTIONS.DUPLICATE]: handleDuplicateStory,
         [STORY_CONTEXT_MENU_ACTIONS.OPEN_STORY_LINK]: handleOpenStoryInEditor,
@@ -220,38 +217,71 @@ function StoriesView({
     };
   }, [handleOnRenameStory, setTitleRenameId, titleRenameId]);
 
-  const ActiveView =
-    view.style === VIEW_STYLE.LIST ? (
-      <StoryListView
-        handleSortChange={sort.set}
-        handleSortDirectionChange={sort.setDirection}
-        pageSize={view.pageSize}
-        renameStory={renameStory}
-        sortDirection={sort.direction}
-        stories={stories}
-        storyMenu={storyMenu}
-        storySort={sort.value}
-        storyStatus={filterValue}
-      />
-    ) : (
-      <StoryGridView
-        bottomActionLabel={__('Open in editor', 'web-stories')}
-        centerActionLabelByStatus={
-          enableStoryPreviews && STORY_ITEM_CENTER_ACTION_LABELS
-        }
-        pageSize={view.pageSize}
-        renameStory={renameStory}
-        previewStory={storyActions.handlePreviewStory}
-        storyMenu={storyMenu}
-        stories={stories}
-        returnStoryFocusId={returnStoryFocusId}
-        initialFocusStoryId={initialFocusStoryId}
-      />
-    );
+  const ActiveView = useMemo(() => {
+    // Stories should be shown when we trigger a fetch from `InfiniteScroll`.
+    // Stories should be hidden when a filter is changed.
+    if (view.style === VIEW_STYLE.LIST) {
+      // StoryListView needs to show the table header when loading stories
+      // when filtering.
+      return (
+        <ListView
+          handleSortChange={sort.set}
+          handleSortDirectionChange={sort.setDirection}
+          hideStoryList={
+            loading?.isLoading && !loading?.showStoriesWhileLoading.current
+          }
+          pageSize={view.pageSize}
+          renameStory={renameStory}
+          sortDirection={sort.direction}
+          stories={stories}
+          storyMenu={storyMenu}
+          storySort={sort.value}
+          storyStatus={filterValue}
+        />
+      );
+    }
+
+    if (
+      !loading?.isLoading ||
+      (loading?.isLoading && loading?.showStoriesWhileLoading.current)
+    ) {
+      return (
+        <StoryGridView
+          bottomActionLabel={__('Open in editor', 'web-stories')}
+          isLoading={loading?.isLoading}
+          pageSize={view.pageSize}
+          renameStory={renameStory}
+          storyMenu={storyMenu}
+          stories={stories}
+          returnStoryFocusId={{
+            value: returnStoryFocusId,
+            set: setReturnStoryFocusId,
+          }}
+        />
+      );
+    }
+
+    // Hide all stories when filter is triggered.
+    return null;
+  }, [
+    loading,
+    filterValue,
+    renameStory,
+    returnStoryFocusId,
+    sort,
+    stories,
+    storyMenu,
+    view,
+  ]);
 
   return (
     <>
       {ActiveView}
+      {loading?.isLoading && !loading?.showStoriesWhileLoading.current && (
+        <LoadingContainer>
+          <LoadingSpinner />
+        </LoadingContainer>
+      )}
       {isActiveDeleteStoryDialog && (
         <Dialog
           isOpen
@@ -261,43 +291,31 @@ function StoriesView({
             setFocusedStory({ id: activeStory.id });
             setActiveDialog('');
           }}
-          actions={
-            <>
-              <Button
-                type={BUTTON_TYPES.TERTIARY}
-                size={BUTTON_SIZES.SMALL}
-                onClick={() => {
-                  setFocusedStory({ id: activeStory.id });
-                  setActiveDialog('');
-                }}
-                aria-label={sprintf(
-                  /* translators: %s: story title */
-                  __('Cancel deleting story "%s"', 'web-stories'),
-                  titleFormatted(activeStory.title)
-                )}
-              >
-                {__('Cancel', 'web-stories')}
-              </Button>
-              <Button
-                type={BUTTON_TYPES.PRIMARY}
-                size={BUTTON_SIZES.SMALL}
-                onClick={handleOnDeleteStory}
-                aria-label={sprintf(
-                  /* translators: %s: story title */
-                  __('Confirm deleting story "%s"', 'web-stories'),
-                  titleFormatted(activeStory.title)
-                )}
-              >
-                {__('Delete', 'web-stories')}
-              </Button>
-            </>
-          }
+          secondaryText={__('Cancel', 'web-stories')}
+          secondaryRest={{
+            ['aria-label']: sprintf(
+              /* translators: %s: story title. */
+              __('Cancel deleting story "%s"', 'web-stories'),
+              titleFormatted(activeStory.title)
+            ),
+          }}
+          primaryText={__('Delete', 'web-stories')}
+          onPrimary={handleOnDeleteStory}
+          primaryRest={{
+            ['aria-label']: sprintf(
+              /* translators: %s: story title. */
+              __('Confirm deleting story "%s"', 'web-stories'),
+              titleFormatted(activeStory.title)
+            ),
+          }}
         >
-          {sprintf(
-            /* translators: %s: story title. */
-            __('Are you sure you want to delete "%s"?', 'web-stories'),
-            titleFormatted(activeStory.title)
-          )}
+          <Text size={THEME_CONSTANTS.TYPOGRAPHY.PRESET_SIZES.SMALL}>
+            {sprintf(
+              /* translators: %s: story title. */
+              __('Are you sure you want to delete "%s"?', 'web-stories'),
+              titleFormatted(activeStory.title)
+            )}
+          </Text>
         </Dialog>
       )}
     </>
@@ -306,10 +324,13 @@ function StoriesView({
 
 StoriesView.propTypes = {
   filterValue: PropTypes.string,
+  loading: PropTypes.shape({
+    isLoading: PropTypes.bool,
+    showStoriesWhileLoading: ShowStoriesWhileLoadingPropType,
+  }),
   sort: SortPropTypes,
   storyActions: StoryActionsPropType,
   stories: StoriesPropType,
   view: ViewPropTypes,
-  initialFocusStoryId: PropTypes.number,
 };
 export default StoriesView;

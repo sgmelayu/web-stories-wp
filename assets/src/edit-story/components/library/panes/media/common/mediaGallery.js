@@ -17,7 +17,7 @@
 /**
  * External dependencies
  */
-import React, { useCallback } from 'react';
+import { useCallback } from 'react';
 import PropTypes from 'prop-types';
 
 /**
@@ -29,15 +29,21 @@ import MediaElement from './mediaElement';
 const PHOTO_MARGIN = 4;
 
 /**
+ * @callback InsertionCallback
+ * @param {Object} element Inserted element.
+ */
+
+/**
  * Displays a gallery of media elements arranged in a row-based format.
  *
  * @param {Object} props Component props.
  * @param {Array.<Object>} props.resources List of resources to display.
- * @param {function(Object)} props.onInsert Called when element is selected.
+ * @param {InsertionCallback} props.onInsert Called when element is selected.
  * @param {string} props.providerType Provider of gallery's elements.
+ * @param {boolean} props.canEditMedia Current user can upload media.
  * @return {*} The gallery element.
  */
-function MediaGallery({ resources, onInsert, providerType }) {
+function MediaGallery({ resources, onInsert, providerType, canEditMedia }) {
   const photos = resources.map((resource) => ({
     src: resource.src,
     width: resource.width,
@@ -55,9 +61,10 @@ function MediaGallery({ resources, onInsert, providerType }) {
         height={photo.height}
         onInsert={onInsert}
         providerType={providerType}
+        canEditMedia={canEditMedia}
       />
     ),
-    [providerType, onInsert, resources]
+    [providerType, onInsert, resources, canEditMedia]
   );
 
   return (
@@ -78,6 +85,11 @@ MediaGallery.propTypes = {
   resources: PropTypes.arrayOf(PropTypes.object).isRequired,
   onInsert: PropTypes.func.isRequired,
   providerType: PropTypes.string.isRequired,
+  canEditMedia: PropTypes.bool,
+};
+
+MediaGallery.defaultProps = {
+  canEditMedia: false,
 };
 
 export default MediaGallery;

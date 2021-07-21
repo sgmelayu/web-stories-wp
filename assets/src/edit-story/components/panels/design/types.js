@@ -28,36 +28,32 @@ const PAGE_ATTACHMENT = 'pageAttachment';
 const PAGE_BACKGROUND = 'pageBackground';
 const SIZE_POSITION = 'sizePosition';
 const SHAPE_STYLE = 'shapeStyle';
-const TEXT = 'text';
 const TEXT_BOX = 'textBox';
 const TEXT_STYLE = 'textStyle';
 const VIDEO_OPTIONS = 'videoOptions';
-const VIDEO_POSTER = 'videoPoster';
 const VIDEO_ACCESSIBILITY = 'videoAccessibility';
 const ELEMENT_ALIGNMENT = 'elementAlignment';
 
 const PanelTypes = {
   ELEMENT_ALIGNMENT,
-  COLOR_PRESETS,
-  STYLE_PRESETS,
   PAGE_BACKGROUND,
   PAGE_ATTACHMENT,
-  FILTER,
   SIZE_POSITION,
-  SHAPE_STYLE,
-  LAYER_STYLE,
-  TEXT,
+  COLOR_PRESETS,
+  STYLE_PRESETS,
   TEXT_STYLE,
   TEXT_BOX,
-  BORDER_RADIUS,
+  LAYER_STYLE,
+  FILTER,
+  SHAPE_STYLE,
   BORDER,
-  LINK,
+  BORDER_RADIUS,
+  ANIMATION,
   VIDEO_OPTIONS,
-  VIDEO_POSTER,
+  CAPTIONS,
+  LINK,
   IMAGE_ACCESSIBILITY,
   VIDEO_ACCESSIBILITY,
-  CAPTIONS,
-  ANIMATION,
 };
 
 export default PanelTypes;

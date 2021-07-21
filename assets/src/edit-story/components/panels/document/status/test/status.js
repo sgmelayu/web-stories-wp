@@ -17,7 +17,7 @@
 /**
  * External dependencies
  */
-import { fireEvent } from '@testing-library/react';
+import { fireEvent, screen } from '@testing-library/react';
 
 /**
  * Internal dependencies
@@ -27,7 +27,7 @@ import ConfigContext from '../../../../../app/config/context';
 import { renderWithTheme } from '../../../../../testUtils';
 import StatusPanel from '../status';
 
-function setupPanel(
+function arrange(
   capabilities = {
     hasPublishAction: true,
   }
@@ -41,7 +41,7 @@ function setupPanel(
     },
     actions: { updateStory },
   };
-  const { getByRole, queryByText } = renderWithTheme(
+  const view = renderWithTheme(
     <ConfigContext.Provider value={config}>
       <StoryContext.Provider value={storyContextValue}>
         <StatusPanel />
@@ -49,8 +49,7 @@ function setupPanel(
     </ConfigContext.Provider>
   );
   return {
-    getByRole,
-    queryByText,
+    ...view,
     updateStory,
   };
 }
@@ -68,26 +67,26 @@ describe('StatusPanel', () => {
   });
 
   it('should render Status Panel', () => {
-    const { getByRole } = setupPanel();
-    const element = getByRole('button', { name: 'Status & Visibility' });
+    arrange();
+    const element = screen.getByRole('button', {
+      name: 'Status and visibility',
+    });
     expect(element).toBeInTheDocument();
 
-    const radioOption = getByRole('radio', { name: 'Draft' });
-    expect(radioOption).toBeInTheDocument();
+    const radioOptions = screen.getAllByRole('radio');
+    expect(radioOptions).toHaveLength(3);
   });
 
   it('should not render the status option without correct permissions', () => {
-    const { queryByText } = setupPanel({
+    arrange({
       hasPublishAction: false,
     });
-    expect(queryByText('Public')).not.toBeInTheDocument();
+    expect(screen.queryByText('Public')).not.toBeInTheDocument();
   });
 
   it('should update the story when clicking on status', () => {
-    const { getByRole, updateStory } = setupPanel();
-    const publishOption = getByRole('radio', { name: /Public/i }).closest(
-      'label'
-    );
+    const { updateStory } = arrange();
+    const publishOption = screen.getByText('Public');
     fireEvent.click(publishOption);
     expect(updateStory).toHaveBeenCalledWith({
       properties: {

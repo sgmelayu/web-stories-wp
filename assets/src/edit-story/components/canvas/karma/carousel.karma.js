@@ -15,13 +15,16 @@
  */
 
 /**
+ * External dependencies
+ */
+import { createSolid } from '@web-stories-wp/patterns';
+/**
  * Internal dependencies
  */
 import { Fixture } from '../../../karma';
 import { useStory } from '../../../app/story';
 import { useInsertElement } from '..';
 import { TEXT_ELEMENT_DEFAULT_FONT } from '../../../app/font/defaultFonts';
-import createSolid from '../../../utils/createSolid';
 
 describe('Carousel integration', () => {
   let fixture;
@@ -82,10 +85,11 @@ describe('Carousel integration', () => {
     expect(await getSelection()).toEqual([element1.id]);
   });
 
+  // Since we're already on the first page, selection and current page id remains unchanged.
   it('should click into carousel on the first page', async () => {
     await clickOnThumbnail(0);
     expect(await getCurrentPageId()).toEqual('page1');
-    expect(await getSelection()).toEqual([]);
+    expect(await getSelection()).toEqual([element1.id]);
   });
 
   it('should exit the carousel on Esc', async () => {

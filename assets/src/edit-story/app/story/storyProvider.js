@@ -34,6 +34,14 @@ import useHistoryReplay from './effects/useHistoryReplay';
 import useStoryReducer from './useStoryReducer';
 import useAutoSave from './actions/useAutoSave';
 import useSaveMetaBoxes from './effects/useSaveMetaBoxes';
+import { StoryTriggersProvider } from './storyTriggers';
+
+/**
+ * Shared reference to an empty array for cases where it is important to avoid
+ * returning a new array reference on every invocation, as in a connected or
+ * other pure component which performs `shouldComponentUpdate` check on props.
+ */
+const EMPTY_ARRAY = [];
 
 function StoryProvider({ storyId, children }) {
   const { isDemo } = useConfig();
@@ -45,42 +53,32 @@ function StoryProvider({ storyId, children }) {
   } = useStoryReducer({
     current: hashPageId,
   });
-  const {
-    pages,
-    current,
-    selection,
-    story,
-    animationState,
-    capabilities,
-  } = reducerState;
+  const { pages, current, selection, story, animationState, capabilities } =
+    reducerState;
 
   useEffect(() => setHashPageId(current), [current, setHashPageId]);
 
   // Generate current page info.
-  const {
-    currentPageId,
-    currentPageIndex,
-    currentPageNumber,
-    currentPage,
-  } = useMemo(() => {
-    if (!current) {
+  const { currentPageId, currentPageIndex, currentPageNumber, currentPage } =
+    useMemo(() => {
+      if (!current) {
+        return {
+          currentPageId: null,
+          currentPageIndex: null,
+          currentPageNumber: null,
+          currentPage: null,
+        };
+      }
+      const index = pages.findIndex(({ id }) => id === current);
+      const number = index + 1;
+      const page = pages[index];
       return {
-        currentPageId: null,
-        currentPageIndex: null,
-        currentPageNumber: null,
-        currentPage: null,
+        currentPageId: current,
+        currentPageIndex: index,
+        currentPageNumber: number,
+        currentPage: page,
       };
-    }
-    const index = pages.findIndex(({ id }) => id === current);
-    const number = index + 1;
-    const page = pages[index];
-    return {
-      currentPageId: current,
-      currentPageIndex: index,
-      currentPageNumber: number,
-      currentPage: page,
-    };
-  }, [pages, current]);
+    }, [pages, current]);
 
   // Generate selection info
   const {
@@ -91,8 +89,9 @@ function StoryProvider({ storyId, children }) {
   } = useMemo(() => {
     if (!currentPage) {
       return {
-        selectedElements: [],
-        selectedElementIds: [],
+        selectedElements: EMPTY_ARRAY,
+        selectedElementIds: EMPTY_ARRAY,
+        selectedElementAnimations: EMPTY_ARRAY,
         hasSelection: false,
       };
     }
@@ -110,9 +109,10 @@ function StoryProvider({ storyId, children }) {
     );
 
     return {
-      selectedElementIds: selection,
-      selectedElements: els,
-      selectedElementAnimations: animations,
+      selectedElementIds: selection.length > 0 ? selection : EMPTY_ARRAY,
+      selectedElements: els.length > 0 ? els : EMPTY_ARRAY,
+      selectedElementAnimations:
+        animations.length > 0 ? animations : EMPTY_ARRAY,
       hasSelection: els.length > 0,
     };
   }, [currentPage, selection]);
@@ -149,8 +149,8 @@ function StoryProvider({ storyId, children }) {
     isAutoSaving,
   });
 
-  const state = {
-    state: {
+  const fullStory = useMemo(
+    () => ({
       pages,
       currentPageId,
       currentPageIndex,
@@ -167,7 +167,29 @@ function StoryProvider({ storyId, children }) {
         isSaving: isSaving || isAutoSaving || isSavingMetaBoxes,
         isFreshlyPublished,
       },
-    },
+    }),
+    [
+      pages,
+      currentPageId,
+      currentPageIndex,
+      currentPageNumber,
+      currentPage,
+      selectedElementIds,
+      selectedElements,
+      selectedElementAnimations,
+      hasSelection,
+      story,
+      animationState,
+      capabilities,
+      isSaving,
+      isAutoSaving,
+      isSavingMetaBoxes,
+      isFreshlyPublished,
+    ]
+  );
+
+  const state = {
+    state: fullStory,
     actions: {
       ...api,
       autoSave,
@@ -176,7 +198,13 @@ function StoryProvider({ storyId, children }) {
     internal: { reducerState, restore },
   };
 
-  return <Context.Provider value={state}>{children}</Context.Provider>;
+  return (
+    <Context.Provider value={state}>
+      <StoryTriggersProvider story={fullStory}>
+        {children}
+      </StoryTriggersProvider>
+    </Context.Provider>
+  );
 }
 
 StoryProvider.propTypes = {

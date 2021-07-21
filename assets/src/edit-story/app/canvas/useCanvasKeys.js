@@ -19,18 +19,19 @@
  */
 import { useCallback, useEffect, useRef } from 'react';
 import { v4 as uuidv4 } from 'uuid';
+import { useGlobalKeyDownEffect } from '@web-stories-wp/design-system';
 
 /**
  * Internal dependencies
  */
-import { useGlobalKeyDownEffect } from '../../../design-system';
 import { useStory } from '../story';
-import { useCanvas } from '../canvas';
 import { LAYER_DIRECTIONS } from '../../constants';
 import { getPastedCoordinates } from '../../utils/copyPaste';
 import getKeyboardMovement from '../../utils/getKeyboardMovement';
 import { getDefinitionForType } from '../../elements';
+import { useTransform } from '../../components/transform';
 import useAddPastedElements from './useAddPastedElements';
+import { useCanvas } from '.';
 
 /**
  * @param {{current: Node}} ref Reference.
@@ -77,6 +78,10 @@ function useCanvasKeys(ref) {
       };
     }
   );
+
+  const {
+    actions: { clearTransforms },
+  } = useTransform();
 
   const { isEditing, getNodeForElement, setEditingElement } = useCanvas(
     ({
@@ -141,7 +146,15 @@ function useCanvasKeys(ref) {
   useGlobalKeyDownEffect('delete', () => deleteSelectedElements(), [
     deleteSelectedElements,
   ]);
-  useGlobalKeyDownEffect('esc', () => clearSelection(), [clearSelection]);
+
+  useGlobalKeyDownEffect(
+    'esc',
+    () => {
+      clearSelection();
+      clearTransforms();
+    },
+    [clearSelection, clearTransforms]
+  );
 
   useGlobalKeyDownEffect(
     { key: ['mod+a'] },

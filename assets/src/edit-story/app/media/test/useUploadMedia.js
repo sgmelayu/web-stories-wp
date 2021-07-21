@@ -22,10 +22,7 @@ import { renderHook, act } from '@testing-library/react-hooks';
 /**
  * Internal dependencies
  */
-import {
-  getResourceFromLocalFile,
-  getResourceFromAttachment,
-} from '../../../app/media/utils';
+import { getResourceFromLocalFile, getResourceFromAttachment } from '../utils';
 import useUploadMedia from '../useUploadMedia';
 
 const mockValidateFileForUpload = jest.fn();
@@ -61,7 +58,8 @@ jest.mock('../utils/useMediaUploadQueue', () => ({
 
 const mockShowSnackbar = jest.fn();
 
-jest.mock('../../snackbar', () => ({
+jest.mock('@web-stories-wp/design-system', () => ({
+  ...jest.requireActual('@web-stories-wp/design-system'),
   useSnackbar: jest.fn(() => ({
     showSnackbar: mockShowSnackbar,
   })),
@@ -78,10 +76,9 @@ jest.mock('../../config', () => ({
 
 jest.mock('../../../app/media/utils');
 
-jest.mock('../utils/useTranscodeVideo', () => ({
+jest.mock('../utils/useFFmpeg', () => ({
   __esModule: true,
   default: jest.fn(() => ({
-    isFeatureEnabled: true,
     isTranscodingEnabled: true,
     canTranscodeFile: jest.fn(),
     isFileTooLarge: jest.fn(),
@@ -157,6 +154,7 @@ describe('useUploadMedia', () => {
     expect(mockShowSnackbar).toHaveBeenCalledTimes(1);
     expect(mockShowSnackbar).toHaveBeenCalledWith({
       message: 'Whoopsie',
+      dismissable: true,
     });
   });
 });

@@ -21,11 +21,11 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
 import styled from 'styled-components';
 import { v4 as uuidv4 } from 'uuid';
+import { useFocusOut } from '@web-stories-wp/design-system';
 
 /**
  * Internal dependencies
  */
-import useFocusOut from '../../../utils/useFocusOut';
 import SearchInput from './searchInput';
 import { isKeywordFilterable } from './utils';
 
@@ -37,8 +37,8 @@ const Container = styled.div`
   width: 100%;
   min-width: 160px;
   z-index: 2;
-  background-color: ${({ theme }) => theme.DEPRECATED_THEME.colors.bg.black};
-  border-radius: ${({ theme }) => theme.DEPRECATED_THEME.border.radius.default};
+  background-color: ${({ theme }) => theme.colors.bg.primary};
+  border-radius: ${({ theme }) => theme.borders.radius.small};
   padding: 5px;
   margin-top: 16px;
   ${({ isInline }) =>

@@ -29,7 +29,7 @@ namespace Google\Web_Stories;
 /**
  * Class AdSense
  */
-class AdSense {
+class AdSense extends Service_Base {
 	/**
 	 * Initializes all hooks.
 	 *
@@ -37,7 +37,7 @@ class AdSense {
 	 *
 	 * @return void
 	 */
-	public function init() {
+	public function register() {
 		add_action( 'web_stories_print_analytics', [ $this, 'print_adsense_tag' ] );
 	}
 
@@ -48,7 +48,7 @@ class AdSense {
 	 *
 	 * @return string Publisher ID.
 	 */
-	private function get_publisher_id() {
+	private function get_publisher_id(): string {
 		return (string) get_option( Settings::SETTING_NAME_ADSENSE_PUBLISHER_ID );
 	}
 
@@ -59,7 +59,7 @@ class AdSense {
 	 *
 	 * @return string Slot ID.
 	 */
-	private function get_slot_id() {
+	private function get_slot_id(): string {
 		return (string) get_option( Settings::SETTING_NAME_ADSENSE_SLOT_ID );
 	}
 
@@ -70,7 +70,7 @@ class AdSense {
 	 *
 	 * @return bool
 	 */
-	private function is_enabled() {
+	private function is_enabled(): bool {
 		return ( 'adsense' === (string) get_option( Settings::SETTING_NAME_AD_NETWORK, 'none' ) );
 	}
 

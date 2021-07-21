@@ -20,12 +20,11 @@
 import styled from 'styled-components';
 import { useCallback } from 'react';
 import { __, sprintf } from '@web-stories-wp/i18n';
-
+import { Icons, Text, THEME_CONSTANTS } from '@web-stories-wp/design-system';
 /**
  * Internal dependencies
  */
-import { Icons, Text, THEME_CONSTANTS } from '../../../../design-system';
-import { useStory, useHistory, useConfig, useCanvas } from '../../../app';
+import { useStory, useHistory, useConfig, useLayout } from '../../../app';
 import { createPage, duplicatePage } from '../../../elements';
 import PageMenuButton from './pageMenuButton';
 import AnimationToggle from './animationToggle';
@@ -81,25 +80,27 @@ function PageMenu() {
       };
     }
   );
-  const { pageSize } = useCanvas((state) => ({
-    pageSize: state.state.pageSize,
+  const { pageWidth } = useLayout((state) => ({
+    pageWidth: state.state.pageWidth,
   }));
   const { isRTL } = useConfig();
 
-  const handleDeletePage = useCallback(() => deleteCurrentPage(), [
-    deleteCurrentPage,
-  ]);
+  const handleDeletePage = useCallback(
+    () => deleteCurrentPage(),
+    [deleteCurrentPage]
+  );
 
-  const handleAddPage = useCallback(() => addPage({ page: createPage() }), [
-    addPage,
-  ]);
+  const handleAddPage = useCallback(
+    () => addPage({ page: createPage() }),
+    [addPage]
+  );
 
   const handleDuplicatePage = useCallback(
     () => addPage({ page: duplicatePage(currentPage) }),
     [addPage, currentPage]
   );
 
-  const isWidePage = pageSize.width > 280;
+  const isWidePage = pageWidth > 280;
 
   const handleUndo = useCallback(() => undo(), [undo]);
 
@@ -120,7 +121,7 @@ function PageMenu() {
       </Text>
       <CountSpace />
       <PageMenuButton
-        title={__('Delete page', 'web-stories')}
+        title={__('Delete Page', 'web-stories')}
         onClick={handleDeletePage}
         aria-label={__('Delete Page', 'web-stories')}
       >
@@ -128,7 +129,7 @@ function PageMenu() {
       </PageMenuButton>
       <IconSpace />
       <PageMenuButton
-        title={__('Duplicate page', 'web-stories')}
+        title={__('Duplicate Page', 'web-stories')}
         onClick={handleDuplicatePage}
         aria-label={__('Duplicate Page', 'web-stories')}
       >
@@ -136,7 +137,7 @@ function PageMenu() {
       </PageMenuButton>
       <IconSpace />
       <PageMenuButton
-        title={__('New page', 'web-stories')}
+        title={__('New Page', 'web-stories')}
         onClick={handleAddPage}
         aria-label={__('Add New Page', 'web-stories')}
       >

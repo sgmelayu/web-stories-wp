@@ -49,7 +49,7 @@ function render_stories( array $attrs = [], array $query_args = [] ) {
  *
  * @return array
  */
-function get_stories( array $attrs = [], array $query_args = [] ) {
+function get_stories( array $attrs = [], array $query_args = [] ): array {
 	$stories_obj = new Story_Query( $attrs, $query_args );
 
 	return $stories_obj->get_stories();
@@ -63,6 +63,12 @@ function get_stories( array $attrs = [], array $query_args = [] ) {
  * @return void
  */
 function render_theme_stories() {
+	$injector = Services::get_injector();
+	if ( ! method_exists( $injector, 'make' ) ) {
+		return;
+	}
+
+	$customizer = $injector->make( Admin\Customizer::class );
 	//phpcs:disable WordPress.Security.EscapeOutput.OutputNotEscaped
-	echo get_plugin_instance()->customizer->render_stories();
+	echo $customizer->render_stories();
 }

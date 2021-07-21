@@ -16,38 +16,54 @@
 /**
  * External dependencies
  */
-import styled from 'styled-components';
 import PropTypes from 'prop-types';
 import { useCallback, useRef } from 'react';
+import styled, { css } from 'styled-components';
+import {
+  useKeyDownEffect,
+  Text,
+  THEME_CONSTANTS,
+} from '@web-stories-wp/design-system';
 
 /**
  * Internal dependencies
  */
-import { useKeyDownEffect } from '../../../../../../design-system';
 import { useConfig } from '../../../../../app/config';
-import { narrowPill } from './pill';
+import { focusStyle } from '../../../../panels/shared';
+
+const StyledText = styled(Text)`
+  color: inherit;
+`;
 
 const Tab = styled.button`
-  ${narrowPill};
   padding: 6px 16px;
-  height: 32px;
-  display: inline-block;
-  font-family: ${({ theme }) => theme.DEPRECATED_THEME.fonts.body2.family};
-  background-color: ${({ active, theme }) =>
-    active ? theme.DEPRECATED_THEME.colors.fg.primary : 'transparent'};
-  text-align: center;
-  opacity: 0.86;
+  background: none;
+  border: none;
+  color: ${({ theme }) => theme.colors.fg.secondary};
+  position: relative;
   cursor: pointer;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  color: ${({ active, theme }) =>
-    active
-      ? theme.DEPRECATED_THEME.colors.fg.gray8
-      : theme.DEPRECATED_THEME.colors.fg.primary};
 
-  &:last-child {
-    margin-right: 0;
+  :hover {
+    color: ${({ theme }) => theme.colors.fg.primary};
   }
+
+  border-radius: ${({ theme }) => theme.borders.radius.x_large};
+  ${focusStyle};
+
+  ${({ isActive, theme }) =>
+    isActive &&
+    css`
+      ::after {
+        content: '';
+        position: absolute;
+        background-color: ${theme.colors.border.selection};
+        height: 2px;
+        border-radius: 1px;
+        bottom: -17px;
+        left: 16px;
+        right: 16px;
+      }
+    `}
 `;
 
 function ProviderTab({
@@ -98,10 +114,15 @@ function ProviderTab({
       data-testid={'providerTab'}
       onClick={() => setSelectedProvider({ provider: providerType })}
       data-provider-type={providerType}
-      active={active}
+      isActive={active}
       id={id}
     >
-      {name}
+      <StyledText
+        forwardedAs="span"
+        size={THEME_CONSTANTS.TYPOGRAPHY.PRESET_SIZES.SMALL}
+      >
+        {name}
+      </StyledText>
     </Tab>
   );
 }

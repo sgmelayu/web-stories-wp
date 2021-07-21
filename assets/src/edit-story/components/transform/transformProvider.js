@@ -55,9 +55,8 @@ function TransformProvider({ children }) {
     }
 
     if (isDoneTransform(lastTransforms[id])) {
-      const allTransformsDone = Object.values(lastTransforms).every(
-        isDoneTransform
-      );
+      const allTransformsDone =
+        Object.values(lastTransforms).every(isDoneTransform);
       if (allTransformsDone) {
         lastTransformsRef.current = {};
         setIsAnythingTransforming(false);
@@ -69,6 +68,11 @@ function TransformProvider({ children }) {
     }
   }, []);
 
+  const clearTransforms = useCallback(() => {
+    lastTransformsRef.current = {};
+    setIsAnythingTransforming(false);
+  }, [setIsAnythingTransforming]);
+
   const state = {
     state: {
       isAnythingTransforming,
@@ -76,6 +80,7 @@ function TransformProvider({ children }) {
     actions: {
       registerTransformHandler,
       pushTransform,
+      clearTransforms,
     },
   };
 

@@ -28,10 +28,6 @@ import {
 import PropTypes from 'prop-types';
 import { __ } from '@web-stories-wp/i18n';
 import { v4 as uuidv4 } from 'uuid';
-
-/**
- * Internal dependencies
- */
 import {
   Button,
   BUTTON_SIZES,
@@ -39,7 +35,11 @@ import {
   BUTTON_VARIANTS,
   Icons,
   useKeyDownEffect,
-} from '../../../design-system';
+} from '@web-stories-wp/design-system';
+
+/**
+ * Internal dependencies
+ */
 import { isKeyboardUser } from '../../utils/keyboardOnlyOutline';
 import useFocusTrapping from '../../utils/useFocusTrapping';
 import { ADMIN_TOOLBAR_HEIGHT, HEADER_HEIGHT } from '../../constants';
@@ -51,7 +51,7 @@ import { TOGGLE_SHORTCUTS_MENU, TOP_MARGIN } from './constants';
 const BORDER_WIDTH = 1;
 const Container = styled.div`
   position: absolute;
-  right: 0;
+  left: 0;
   bottom: 0;
   width: 352px;
   border-radius: ${({ theme }) => theme.borders.radius.small};
@@ -97,7 +97,8 @@ function ShortcutMenu({ toggleMenu }) {
     const calc = () => {
       // Find node bottom offset from bottom of browser window
       const nodeRect = node.getBoundingClientRect();
-      const docRect = node.ownerDocument.documentElement.getBoundingClientRect();
+      const docRect =
+        node.ownerDocument.documentElement.getBoundingClientRect();
       setBottomOffset(docRect.height - nodeRect.y - nodeRect.height);
     };
     // Call it now
@@ -111,9 +112,10 @@ function ShortcutMenu({ toggleMenu }) {
     return () => window.removeEventListener('resize', calc);
   }, []);
 
-  const handleCloseClick = useCallback((e) => toggleMenu(e, false), [
-    toggleMenu,
-  ]);
+  const handleCloseClick = useCallback(
+    (e) => toggleMenu(e, false),
+    [toggleMenu]
+  );
 
   useEffect(() => {
     // When the popup opens, move focus inside it
@@ -130,7 +132,7 @@ function ShortcutMenu({ toggleMenu }) {
   useKeyDownEffect(containerRef, 'esc', toggleMenu);
   useFocusTrapping({ ref: containerRef });
 
-  const closeLabel = __('Close menu', 'web-stories');
+  const closeLabel = __('Close Menu', 'web-stories');
 
   return (
     <Container

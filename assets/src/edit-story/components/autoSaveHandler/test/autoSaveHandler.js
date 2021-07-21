@@ -18,7 +18,6 @@
  * External dependencies
  */
 import { render } from '@testing-library/react';
-import React from 'react';
 
 /**
  * Internal dependencies
@@ -27,7 +26,7 @@ import HistoryContext from '../../../app/history/context';
 import StoryContext from '../../../app/story/context';
 import ConfigContext from '../../../app/config/context';
 import MediaContext from '../../../app/media/context';
-import AutoSaveHandler from '../index';
+import AutoSaveHandler from '..';
 
 function setup({
   hasNewChanges = true,
@@ -89,9 +88,11 @@ function setup({
   };
 }
 
-jest.useFakeTimers();
-
 describe('AutoSaveHandler', () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+  });
+
   it('should trigger saving in case of a draft', () => {
     const { saveStory } = setup({});
     jest.runAllTimers();
@@ -127,6 +128,8 @@ describe('AutoSaveHandler', () => {
   });
 
   it('should only setup one timeout even if saveStory updates', () => {
+    jest.spyOn(window, 'setTimeout');
+
     const { renderAgain, saveStory } = setup({});
     // The number of invocations of setTimeout might vary due to other components
     // so the only thing we can check for sure is, that the number doesn't go up by

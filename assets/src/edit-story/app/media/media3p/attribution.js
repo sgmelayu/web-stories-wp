@@ -16,16 +16,19 @@
 /**
  * External dependencies
  */
-import { __ } from '@web-stories-wp/i18n';
-import React from 'react';
+import { __, sprintf } from '@web-stories-wp/i18n';
 import styled, { css } from 'styled-components';
 import { rgba } from 'polished';
+import {
+  Text as DefaultText,
+  THEME_CONSTANTS,
+} from '@web-stories-wp/design-system';
 
 /**
  * Internal dependencies
  */
 import { ReactComponent as UnsplashLogoFull } from '../../../icons/unsplash_logo_full.svg';
-import { ReactComponent as CoverrLogoFull } from '../../../icons/coverr_logo.svg';
+import { ReactComponent as CoverrLogoFull } from '../../../images/coverr_logo.svg';
 import { ReactComponent as TenorLogoFull } from '../../../icons/tenor_logo_white.svg';
 
 const AttributionPill = styled.div`
@@ -33,19 +36,23 @@ const AttributionPill = styled.div`
   left: 24px;
   bottom: 10px;
   border-radius: 100px;
-  padding: 5px 8px;
-  line-height: 16px;
+  padding: 2px 8px;
+  height: 24px;
   display: flex;
   flex-wrap: nowrap;
-  font-size: 12px;
-  color: ${({ theme }) => theme.DEPRECATED_THEME.colors.fg.white};
-  background-color: ${({ theme }) =>
-    rgba(theme.DEPRECATED_THEME.colors.bg.black, 0.7)};
+  background-color: ${({ theme }) => rgba(theme.colors.standard.black, 0.7)};
   cursor: pointer;
+  align-items: center;
+  z-index: 9999;
+`;
+
+const Text = styled(DefaultText)`
+  color: ${({ theme }) => theme.colors.fg.primary};
 `;
 
 const logo = css`
-  fill: ${({ theme }) => theme.DEPRECATED_THEME.colors.fg.white};
+  color: ${({ theme }) => theme.colors.standard.white};
+  fill: ${({ theme }) => theme.colors.standard.white};
   margin-left: 6px;
   line-height: 14px;
 `;
@@ -74,12 +81,30 @@ const coverrUrl =
 const tenorUrl =
   'https://tenor.com?utm_source=web_stories_wordpress&utm_medium=referral';
 
+const MEDIA_PROVIDER = {
+  coverr: 'Coverr',
+  tenor: 'Tenor',
+  unsplash: 'Unsplash',
+};
+const getAriaLabel = (provider) =>
+  sprintf(
+    /* translators: %s: media provider name. */
+    __('Powered by %s', 'web-stories'),
+    provider
+  );
+
 export function UnsplashAttribution() {
   return (
     <a href={unsplashUrl} target={'_blank'} rel={'noreferrer'}>
       <AttributionPill>
-        {__('Powered by', 'web-stories')}
-        <UnsplashLogo />
+        <Text
+          forwardedAs="span"
+          size={THEME_CONSTANTS.TYPOGRAPHY.PRESET_SIZES.X_SMALL}
+          aria-label={getAriaLabel(MEDIA_PROVIDER.unsplash)}
+        >
+          {__('Powered by', 'web-stories')}
+        </Text>
+        <UnsplashLogo aria-hidden />
       </AttributionPill>
     </a>
   );
@@ -89,8 +114,14 @@ export function CoverrAttribution() {
   return (
     <a href={coverrUrl} target={'_blank'} rel={'noreferrer'}>
       <AttributionPill>
-        {__('Powered by', 'web-stories')}
-        <CoverrLogo />
+        <Text
+          forwardedAs="span"
+          size={THEME_CONSTANTS.TYPOGRAPHY.PRESET_SIZES.X_SMALL}
+          aria-label={getAriaLabel(MEDIA_PROVIDER.coverr)}
+        >
+          {__('Powered by', 'web-stories')}
+        </Text>
+        <CoverrLogo aria-hidden />
       </AttributionPill>
     </a>
   );
@@ -98,9 +129,14 @@ export function CoverrAttribution() {
 
 export function TenorAttribution() {
   return (
-    <a href={tenorUrl} target={'_blank'} rel={'noreferrer'}>
+    <a
+      href={tenorUrl}
+      target={'_blank'}
+      rel={'noreferrer'}
+      aria-label={getAriaLabel(MEDIA_PROVIDER.tenor)}
+    >
       <AttributionPill>
-        <TenorLogo data-label={__('Powered by Tenor', 'web-stories')} />
+        <TenorLogo aria-hidden />
       </AttributionPill>
     </a>
   );

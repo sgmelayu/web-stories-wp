@@ -22,22 +22,22 @@ import styled from 'styled-components';
 import PropTypes from 'prop-types';
 import { TranslateWithMarkup, __ } from '@web-stories-wp/i18n';
 import { trackClick } from '@web-stories-wp/tracking';
-
-/**
- * Internal dependencies
- */
 import {
   Text,
   THEME_CONSTANTS,
   DropDown,
   Link,
-} from '../../../../design-system';
+} from '@web-stories-wp/design-system';
+
+/**
+ * Internal dependencies
+ */
 import { StandardViewContentGutter, ViewStyleBar } from '../../../components';
 import { DROPDOWN_TYPES, VIEW_STYLE } from '../../../constants';
 import TelemetryBanner from './telemetryBanner';
 
 const DisplayFormatContainer = styled.div`
-  height: ${({ theme }) => theme.DEPRECATED_THEME.formatContainer.height}px;
+  height: 76px;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -67,6 +67,7 @@ export default function BodyViewOptions({
   currentSort,
   handleLayoutSelect,
   handleSortChange,
+  isLoading,
   resultsLabel,
   layoutStyle,
   pageSortOptions = [],
@@ -82,41 +83,43 @@ export default function BodyViewOptions({
   return (
     <StandardViewContentGutter>
       <TelemetryBanner />
-      <DisplayFormatContainer>
-        <Text as="span" size={THEME_CONSTANTS.TYPOGRAPHY.PRESET_SIZES.SMALL}>
-          <TranslateWithMarkup>{resultsLabel}</TranslateWithMarkup>
-        </Text>
-        <ControlsContainer>
-          {layoutStyle === VIEW_STYLE.GRID && showSortDropdown && (
-            <StorySortDropdownContainer>
-              <StyledDropDown
-                ariaLabel={sortDropdownAriaLabel}
-                options={pageSortOptions}
-                type={DROPDOWN_TYPES.MENU}
-                selectedValue={currentSort}
-                onMenuItemClick={(_, newSort) => handleSortChange(newSort)}
-              />
-            </StorySortDropdownContainer>
-          )}
-          {showGridToggle && (
-            <ControlsContainer>
-              {layoutStyle === VIEW_STYLE.LIST && wpListURL && (
-                <StyledLink
-                  href={wpListURL}
-                  onClick={handleClassicListViewClick}
-                  size={THEME_CONSTANTS.TYPOGRAPHY.PRESET_SIZES.SMALL}
-                >
-                  {__('See classic WP list view', 'web-stories')}
-                </StyledLink>
-              )}
-              <ViewStyleBar
-                layoutStyle={layoutStyle}
-                onPress={handleLayoutSelect}
-              />
-            </ControlsContainer>
-          )}
-        </ControlsContainer>
-      </DisplayFormatContainer>
+      {!isLoading && (
+        <DisplayFormatContainer>
+          <Text as="span" size={THEME_CONSTANTS.TYPOGRAPHY.PRESET_SIZES.SMALL}>
+            <TranslateWithMarkup>{resultsLabel}</TranslateWithMarkup>
+          </Text>
+          <ControlsContainer>
+            {layoutStyle === VIEW_STYLE.GRID && showSortDropdown && (
+              <StorySortDropdownContainer>
+                <StyledDropDown
+                  ariaLabel={sortDropdownAriaLabel}
+                  options={pageSortOptions}
+                  type={DROPDOWN_TYPES.MENU}
+                  selectedValue={currentSort}
+                  onMenuItemClick={(_, newSort) => handleSortChange(newSort)}
+                />
+              </StorySortDropdownContainer>
+            )}
+            {showGridToggle && (
+              <ControlsContainer>
+                {layoutStyle === VIEW_STYLE.LIST && wpListURL && (
+                  <StyledLink
+                    href={wpListURL}
+                    onClick={handleClassicListViewClick}
+                    size={THEME_CONSTANTS.TYPOGRAPHY.PRESET_SIZES.SMALL}
+                  >
+                    {__('See classic WP list view', 'web-stories')}
+                  </StyledLink>
+                )}
+                <ViewStyleBar
+                  layoutStyle={layoutStyle}
+                  onPress={handleLayoutSelect}
+                />
+              </ControlsContainer>
+            )}
+          </ControlsContainer>
+        </DisplayFormatContainer>
+      )}
     </StandardViewContentGutter>
   );
 }
@@ -125,6 +128,7 @@ BodyViewOptions.propTypes = {
   currentSort: PropTypes.string.isRequired,
   handleLayoutSelect: PropTypes.func,
   handleSortChange: PropTypes.func,
+  isLoading: PropTypes.bool,
   layoutStyle: PropTypes.string.isRequired,
   resultsLabel: PropTypes.string.isRequired,
   wpListURL: PropTypes.string,

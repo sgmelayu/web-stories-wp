@@ -18,18 +18,20 @@
 namespace Google\Web_Stories\Tests\Integrations;
 
 use DOMDocument;
+use Google\Web_Stories\Experiments;
 use Google\Web_Stories\Story_Post_Type;
+use Google\Web_Stories\Tests\Test_Case;
 
 /**
  * @coversDefaultClass \Google\Web_Stories\Integrations\AMP
  */
-class AMP extends \WP_UnitTestCase {
+class AMP extends Test_Case {
 	/**
-	 * @covers ::init
+	 * @covers ::register
 	 */
-	public function test_init() {
-		$amp = new \Google\Web_Stories\Integrations\AMP();
-		$amp->init();
+	public function test_register() {
+		$amp = new \Google\Web_Stories\Integrations\AMP( new Experiments() );
+		$amp->register();
 
 		$this->assertSame( 10, has_filter( 'option_amp-options', [ $amp, 'filter_amp_options' ] ) );
 		$this->assertSame( 10, has_filter( 'amp_supportable_post_types', [ $amp, 'filter_supportable_post_types' ] ) );
@@ -48,7 +50,7 @@ class AMP extends \WP_UnitTestCase {
 	 * @covers ::filter_amp_options
 	 */
 	public function test_filter_amp_options_if_not_requested_post_type() {
-		$amp = new \Google\Web_Stories\Integrations\AMP();
+		$amp = new \Google\Web_Stories\Integrations\AMP( new Experiments() );
 		$this->assertEqualSets( [], $amp->filter_amp_options( [] ) );
 	}
 
@@ -70,7 +72,7 @@ class AMP extends \WP_UnitTestCase {
 			'supported_templates'  => [ 'is_page', 'is_singular' ],
 		];
 
-		$amp    = new \Google\Web_Stories\Integrations\AMP();
+		$amp    = new \Google\Web_Stories\Integrations\AMP( new Experiments() );
 		$actual = $amp->filter_amp_options( $before );
 
 		unset( $GLOBALS['current_screen'] );
@@ -82,7 +84,7 @@ class AMP extends \WP_UnitTestCase {
 	 * @covers ::filter_supportable_post_types
 	 */
 	public function test_filter_supportable_post_types_if_not_requested_post_type() {
-		$amp = new \Google\Web_Stories\Integrations\AMP();
+		$amp = new \Google\Web_Stories\Integrations\AMP( new Experiments() );
 		$this->assertEqualSets( [], $amp->filter_supportable_post_types( [ Story_Post_Type::POST_TYPE_SLUG ] ) );
 	}
 
@@ -92,7 +94,7 @@ class AMP extends \WP_UnitTestCase {
 	public function test_filter_supportable_post_types() {
 		$GLOBALS['current_screen'] = convert_to_screen( Story_Post_Type::POST_TYPE_SLUG );
 
-		$amp    = new \Google\Web_Stories\Integrations\AMP();
+		$amp    = new \Google\Web_Stories\Integrations\AMP( new Experiments() );
 		$actual = $amp->filter_supportable_post_types( [] );
 
 		unset( $GLOBALS['current_screen'] );
@@ -139,7 +141,7 @@ class AMP extends \WP_UnitTestCase {
 	 * @dataProvider data_test_filter_amp_to_amp_linking_element_excluded
 	 */
 	public function test_filter_amp_to_amp_linking_element_excluded( $args, $expected ) {
-		$amp = new \Google\Web_Stories\Integrations\AMP();
+		$amp = new \Google\Web_Stories\Integrations\AMP( new Experiments() );
 
 		$actual = call_user_func_array( [ $amp, 'filter_amp_to_amp_linking_element_excluded' ], $args );
 		$this->assertSame( $actual, $expected );

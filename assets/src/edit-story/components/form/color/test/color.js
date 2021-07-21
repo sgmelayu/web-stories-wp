@@ -17,12 +17,11 @@
 /**
  * External dependencies
  */
-import { fireEvent } from '@testing-library/react';
-
+import { fireEvent, screen } from '@testing-library/react';
+import { createSolid } from '@web-stories-wp/patterns';
 /**
  * Internal dependencies
  */
-import createSolid from '../../../../utils/createSolid';
 import Color from '../color';
 import applyOpacityChange from '../applyOpacityChange';
 import { renderWithTheme } from '../../../../testUtils';
@@ -31,11 +30,9 @@ jest.mock('../applyOpacityChange', () => jest.fn());
 
 function arrange(props = {}) {
   const onChange = jest.fn();
-  const { queryByLabelText, getByRole } = renderWithTheme(
-    <Color label="Color" onChange={onChange} {...props} />
-  );
-  const colorPreview = getByRole('button', { name: 'Color' });
-  const opacityInput = queryByLabelText(/Opacity/);
+  renderWithTheme(<Color label="Color" onChange={onChange} {...props} />);
+  const colorPreview = screen.getByRole('button', { name: 'Color' });
+  const opacityInput = screen.queryByLabelText(/Opacity/);
   return {
     colorPreview,
     opacityInput,

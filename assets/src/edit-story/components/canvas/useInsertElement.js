@@ -18,14 +18,18 @@
  * External dependencies
  */
 import { useCallback } from 'react';
+import STICKERS from '@web-stories-wp/stickers';
+import { dataPixels } from '@web-stories-wp/units';
 
 /**
  * Internal dependencies
  */
 import { createNewElement, getDefinitionForType } from '../../elements';
-import { dataPixels } from '../../units';
-import { useLocalMedia, useStory } from '../../app';
-import { DEFAULT_MASK } from '../../masks';
+import { useLocalMedia } from '../../app/media';
+import { useStory } from '../../app/story';
+import { useLayout } from '../../app/layout';
+import { DEFAULT_MASK } from '../../masks/constants';
+import { ZOOM_SETTING } from '../../constants';
 import useMedia3pApi from '../../app/media/media3p/api/useMedia3pApi';
 import getInsertedElementSize from '../../utils/getInsertedElementSize';
 import useFocusCanvas from './useFocusCanvas';
@@ -41,6 +45,10 @@ function useInsertElement() {
     actions: { registerUsage },
   } = useMedia3pApi();
 
+  const { setZoomSetting } = useLayout(({ actions: { setZoomSetting } }) => ({
+    setZoomSetting,
+  }));
+
   /**
    * @param {Object} resource The resource to verify/update.
    * @param {string} elementId The element's id to be updated once resource
@@ -51,7 +59,7 @@ function useInsertElement() {
       const { type, src, id, posterId, local } = resource;
 
       // Generate video poster if one not set.
-      if (type === 'video' && id && !posterId && !local) {
+      if (['video', 'gif'].includes(type) && id && !posterId && !local) {
         uploadVideoPoster(id, src);
       }
     },
@@ -83,6 +91,7 @@ function useInsertElement() {
    */
   const insertElement = useCallback(
     (type, props) => {
+      setZoomSetting(ZOOM_SETTING.FIT);
       const element = createElementForCanvas(type, props);
       const { id, resource } = element;
       addElement({ element });
@@ -91,7 +100,7 @@ function useInsertElement() {
         handleRegisterUsage(resource);
       }
       // Auto-play on insert.
-      if (type === 'video') {
+      if (type === 'video' && resource?.src && !resource.isPlaceholder) {
         setTimeout(() => {
           const videoEl = document.getElementById(`video-${id}`);
           if (videoEl) {
@@ -102,7 +111,13 @@ function useInsertElement() {
       focusCanvas();
       return element;
     },
-    [addElement, backfillResource, focusCanvas, handleRegisterUsage]
+    [
+      addElement,
+      backfillResource,
+      focusCanvas,
+      handleRegisterUsage,
+      setZoomSetting,
+    ]
   );
 
   return insertElement;
@@ -129,12 +144,15 @@ function getElementProperties(
     scale = 100,
     focalX = 50,
     focalY = 50,
+    sticker,
     ...rest
   }
 ) {
   const { isMaskable } = getDefinitionForType(type);
 
   const attrs = { type, ...rest };
+
+  const stickerRatio = sticker && STICKERS?.[sticker?.type]?.aspectRatio;
 
   // Width and height defaults. Width takes precedence.
   const ratio =
@@ -146,7 +164,7 @@ function getElementProperties(
     width,
     height,
     attrs,
-    ratio,
+    stickerRatio || ratio,
     resource
   );
   width = size.width;
@@ -165,14 +183,7 @@ function getElementProperties(
 
   return {
     ...attrs,
-    ...(Boolean(resource) && {
-      resource: {
-        ...resource,
-        width,
-        height,
-        alt: resource.alt || '',
-      },
-    }),
+    resource,
     x,
     y,
     width,
@@ -186,6 +197,7 @@ function getElementProperties(
           mask: mask || DEFAULT_MASK,
         }
       : {}),
+    ...(sticker ? { sticker } : {}),
   };
 }
 

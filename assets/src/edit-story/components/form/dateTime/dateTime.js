@@ -21,11 +21,16 @@ import styled from 'styled-components';
 import PropTypes from 'prop-types';
 import { rgba } from 'polished';
 import { useCallback, useRef, useState } from 'react';
+import { __ } from '@web-stories-wp/i18n';
+import {
+  Button,
+  BUTTON_SIZES,
+  useKeyDownEffect,
+} from '@web-stories-wp/design-system';
 
 /**
  * Internal dependencies
  */
-import { useKeyDownEffect } from '../../../../design-system';
 import useFocusTrapping from '../../../utils/useFocusTrapping';
 import useRovingTabIndex from '../../../utils/useRovingTabIndex';
 import TimePicker from './timePicker';
@@ -34,11 +39,15 @@ import DatePicker from './datePicker';
 const DateTimeWrapper = styled.div`
   border-radius: 4px;
   box-shadow: 0 3px 30px rgba(25, 30, 35, 0.1);
-  border: 1px solid
-    ${({ theme }) => rgba(theme.DEPRECATED_THEME.colors.bg.black, 0.2)};
-  background-color: ${({ theme }) => theme.DEPRECATED_THEME.colors.fg.white};
+  border: 1px solid ${({ theme }) => rgba(theme.colors.standard.black, 0.2)};
+  background-color: ${({ theme }) => theme.colors.standard.white};
   width: 100%;
   padding: 4px;
+`;
+
+const StyledButton = styled(Button)`
+  color: #006edc;
+  margin: 5px 0;
 `;
 
 function DateTime({
@@ -48,6 +57,7 @@ function DateTime({
   is12Hour = true,
   forwardedRef,
   onClose,
+  canReset = false,
 }) {
   const selectedTime = value ? new Date(value) : new Date();
   const initialHours = selectedTime.getHours();
@@ -86,6 +96,18 @@ function DateTime({
         onChange={onChange}
         onViewChange={onViewChange}
       />
+      {canReset && (
+        <StyledButton
+          size={BUTTON_SIZES.SMALL}
+          onClick={() => {
+            onChange(null);
+            onClose();
+          }}
+          aria-label={__('Reset publish time', 'web-stories')}
+        >
+          {__('Reset', 'web-stories')}
+        </StyledButton>
+      )}
     </DateTimeWrapper>
   );
 }
@@ -97,6 +119,7 @@ DateTime.propTypes = {
   value: PropTypes.string,
   is12Hour: PropTypes.bool,
   forwardedRef: PropTypes.object,
+  canReset: PropTypes.bool,
 };
 
 export default DateTime;

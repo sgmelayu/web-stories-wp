@@ -59,9 +59,10 @@ function useDesignPanels() {
     }
   );
 
-  const panels = useMemo(() => getDesignPanelsForSelection(selectedElements), [
-    selectedElements,
-  ]);
+  const panels = useMemo(
+    () => getDesignPanelsForSelection(selectedElements),
+    [selectedElements]
+  );
   const [submitHandlers, registerSubmitHandler] = useHandlers();
   const onSetProperties = useCallback(
     (newPropertiesOrUpdater) => {
@@ -104,17 +105,28 @@ function useDesignPanels() {
     };
   }, [onSetProperties, registerSubmitHandler]);
 
-  return {
-    panels,
-    createSubmitHandlerForPanel,
-    panelProperties: {
+  return useMemo(
+    () => ({
+      panels,
+      createSubmitHandlerForPanel,
+      panelProperties: {
+        onSetProperties,
+        deleteSelectedElements,
+        selectedElements,
+        selectedElementAnimations,
+        updateAnimationState,
+      },
+    }),
+    [
+      panels,
+      createSubmitHandlerForPanel,
       onSetProperties,
       deleteSelectedElements,
       selectedElements,
       selectedElementAnimations,
       updateAnimationState,
-    },
-  };
+    ]
+  );
 }
 
 export default useDesignPanels;

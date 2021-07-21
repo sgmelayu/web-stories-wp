@@ -21,11 +21,11 @@ import { useMemo, useCallback, useRef } from 'react';
 import PropTypes from 'prop-types';
 import { useVirtual } from 'react-virtual';
 import { __ } from '@web-stories-wp/i18n';
+import { UnitsProvider } from '@web-stories-wp/units';
 
 /**
  * Internal dependencies
  */
-import { UnitsProvider } from '../../../../../units';
 import {
   getVirtualizedItemIndex,
   useVirtualizedGridNavigation,
@@ -106,6 +106,7 @@ function TextSets({ paneRef, filteredTextSets }) {
                   ref={(el) => (textSetRefs.current[textSet.id] = el)}
                   translateY={virtualRow.start}
                   translateX={virtualColumn.start}
+                  aria-label={textSet.title}
                   isActive={isActive}
                   onFocus={() => handleGridItemFocus(textSet.id)}
                   elements={textSet.elements}
@@ -125,6 +126,7 @@ TextSets.propTypes = {
     PropTypes.shape({
       id: PropTypes.string,
       elements: PropTypes.array,
+      title: PropTypes.string,
     })
   ),
 };

@@ -24,6 +24,7 @@ import {
 } from '@testing-library/react';
 import Modal from 'react-modal';
 import MockDate from 'mockdate';
+import { FlagsProvider } from 'flagged';
 
 /**
  * Internal dependencies
@@ -34,6 +35,8 @@ import MediaContext from '../../../app/media/context';
 import HistoryContext from '../../../app/history/context';
 import Buttons from '../buttons';
 import { renderWithTheme } from '../../../testUtils';
+import { StoryTriggersProvider } from '../../../app/story/storyTriggers';
+import { CheckpointContext } from '../../checklist';
 
 function setupButtons({
   story: extraStoryProps,
@@ -41,9 +44,12 @@ function setupButtons({
   media: extraMediaProps,
   config: extraConfigProps,
   history: extraHistoryProps,
+  checklist: extraChecklistProps,
 } = {}) {
   const saveStory = jest.fn();
   const autoSave = jest.fn();
+  const focusChecklistTab = jest.fn();
+  const onReviewDialogRequest = jest.fn();
 
   const storyContextValue = {
     state: {
@@ -52,8 +58,11 @@ function setupButtons({
         status: 'draft',
         storyId: 123,
         date: null,
+        editLink: 'http://localhost/wp-admin/post.php?post=123&action=edit',
+        embedPostLink:
+          'https://example.com/wp-admin/post-new.php?from-web-story=123',
         previewLink:
-          'https://example.com?preview_id=1679&preview_nonce=b5ea827939&preview=true',
+          'http://localhost?preview_id=1679&preview_nonce=b5ea827939&preview=true',
         ...extraStoryProps,
       },
     },
@@ -74,21 +83,38 @@ function setupButtons({
     state: { ...extraHistoryProps },
   };
 
-  const { getByRole } = renderWithTheme(
+  const prepublishChecklistContextValue = {
+    state: {
+      shouldReviewDialogBeSeen: false,
+      ...extraChecklistProps,
+    },
+    actions: {
+      onReviewDialogRequest,
+    },
+  };
+  renderWithTheme(
     <HistoryContext.Provider value={historyContextValue}>
       <ConfigContext.Provider value={configValue}>
-        <StoryContext.Provider value={storyContextValue}>
-          <MediaContext.Provider value={mediaContextValue}>
-            <Buttons />
-          </MediaContext.Provider>
-        </StoryContext.Provider>
+        <FlagsProvider features={{ enableChecklistCompanion: true }}>
+          <StoryContext.Provider value={storyContextValue}>
+            <StoryTriggersProvider story={storyContextValue}>
+              <CheckpointContext.Provider
+                value={prepublishChecklistContextValue}
+              >
+                <MediaContext.Provider value={mediaContextValue}>
+                  <Buttons />
+                </MediaContext.Provider>
+              </CheckpointContext.Provider>
+            </StoryTriggersProvider>
+          </StoryContext.Provider>
+        </FlagsProvider>
       </ConfigContext.Provider>
     </HistoryContext.Provider>
   );
   return {
-    getByRole,
     autoSave,
     saveStory,
+    focusChecklistTab,
   };
 }
 
@@ -122,15 +148,15 @@ describe('buttons', () => {
   });
 
   it('should display Publish button when in draft mode', () => {
-    const { getByRole } = setupButtons();
-    const publishButton = getByRole('button', { name: 'Publish' });
+    setupButtons();
+    const publishButton = screen.getByRole('button', { name: 'Publish' });
     expect(publishButton).toBeInTheDocument();
   });
 
   it('should not be able to save draft if no changes', () => {
-    const { getByRole, saveStory } = setupButtons();
+    const { saveStory } = setupButtons();
 
-    const saveDraftButton = getByRole('button', { name: 'Save draft' });
+    const saveDraftButton = screen.getByRole('button', { name: 'Save draft' });
     expect(saveDraftButton).toBeDisabled();
     fireEvent.click(saveDraftButton);
 
@@ -138,11 +164,11 @@ describe('buttons', () => {
   });
 
   it('should be able to save draft if changes', () => {
-    const { getByRole, saveStory } = setupButtons({
+    const { saveStory } = setupButtons({
       history: { hasNewChanges: true },
     });
 
-    const saveDraftButton = getByRole('button', { name: 'Save draft' });
+    const saveDraftButton = screen.getByRole('button', { name: 'Save draft' });
     expect(saveDraftButton).toBeEnabled();
     fireEvent.click(saveDraftButton);
 
@@ -150,12 +176,12 @@ describe('buttons', () => {
   });
 
   it('should be able to save a post if has changes and already published', () => {
-    const { getByRole, saveStory } = setupButtons({
+    const { saveStory } = setupButtons({
       history: { hasNewChanges: true },
       story: { status: 'publish' },
     });
 
-    const updateButton = getByRole('button', { name: 'Update' });
+    const updateButton = screen.getByRole('button', { name: 'Update' });
     expect(updateButton).toBeEnabled();
     fireEvent.click(updateButton);
 
@@ -163,10 +189,10 @@ describe('buttons', () => {
   });
 
   it('should update window location when publishing', () => {
-    const { getByRole, saveStory } = setupButtons({
+    const { saveStory } = setupButtons({
       story: { title: 'Some title' },
     });
-    const publishButton = getByRole('button', { name: 'Publish' });
+    const publishButton = screen.getByRole('button', { name: 'Publish' });
 
     fireEvent.click(publishButton);
     expect(saveStory).toHaveBeenCalledTimes(1);
@@ -215,10 +241,10 @@ describe('buttons', () => {
   });
 
   it('should display Switch to draft button when published', () => {
-    const { getByRole, saveStory } = setupButtons({
+    const { saveStory } = setupButtons({
       story: { status: 'publish' },
     });
-    const draftButton = getByRole('button', { name: 'Switch to Draft' });
+    const draftButton = screen.getByRole('button', { name: 'Switch to Draft' });
 
     expect(draftButton).toBeInTheDocument();
     fireEvent.click(draftButton);
@@ -226,14 +252,14 @@ describe('buttons', () => {
   });
 
   it('should display Schedule button when future date is set', () => {
-    const { getByRole, saveStory } = setupButtons({
+    const { saveStory } = setupButtons({
       story: {
         title: 'Some title',
         status: 'draft',
         date: FUTURE_DATE,
       },
     });
-    const scheduleButton = getByRole('button', { name: 'Schedule' });
+    const scheduleButton = screen.getByRole('button', { name: 'Schedule' });
 
     expect(scheduleButton).toBeInTheDocument();
     fireEvent.click(scheduleButton);
@@ -241,18 +267,21 @@ describe('buttons', () => {
   });
 
   it('should only save a story without a title if confirmed', async () => {
-    const { getByRole, saveStory } = setupButtons({
+    const { saveStory } = setupButtons({
       story: {
         title: '',
         status: 'draft',
       },
+      checklist: {
+        shouldReviewDialogBeSeen: true,
+      },
     });
-    const publishButton = getByRole('button', { name: 'Publish' });
+    const publishButton = screen.getByRole('button', { name: 'Publish' });
     expect(publishButton).toBeInTheDocument();
     fireEvent.click(publishButton);
 
-    const publishAnywayButton = screen.getByRole('button', {
-      name: 'Publish without title',
+    const publishAnywayButton = await screen.findByRole('button', {
+      name: 'Continue to publish',
     });
     expect(publishAnywayButton).toBeInTheDocument();
     fireEvent.click(publishAnywayButton);
@@ -260,73 +289,78 @@ describe('buttons', () => {
     expect(saveStory).toHaveBeenCalledTimes(1);
 
     await waitForElementToBeRemoved(() =>
-      screen.getByRole('button', { name: 'Publish without title' })
+      screen.getByRole('button', { name: 'Continue to publish' })
     );
   });
 
   it('should not save a story without a title if opting to add a title', async () => {
-    const { getByRole, saveStory } = setupButtons({
+    const { saveStory } = setupButtons({
       story: {
         title: '',
         status: 'draft',
       },
+      checklist: {
+        shouldReviewDialogBeSeen: true,
+      },
     });
-    const publishButton = getByRole('button', { name: 'Publish' });
+    const publishButton = screen.getByRole('button', { name: 'Publish' });
     expect(publishButton).toBeInTheDocument();
     fireEvent.click(publishButton);
 
-    const addTitleButton = screen.getByRole('button', { name: 'Add a title' });
-    expect(addTitleButton).toBeInTheDocument();
-    fireEvent.click(addTitleButton);
+    const reviewChecklistButton = screen.getByRole('button', {
+      name: /^Review Checklist/,
+    });
+    expect(reviewChecklistButton).toBeInTheDocument();
+    fireEvent.click(reviewChecklistButton);
 
     expect(saveStory).not.toHaveBeenCalled();
 
     await waitForElementToBeRemoved(() =>
-      screen.getByRole('button', { name: 'Add a title' })
+      screen.getByRole('button', { name: /^Review Checklist/ })
     );
   });
 
   it('should display Schedule button with future status', () => {
-    const { getByRole } = setupButtons({
+    setupButtons({
       story: {
         status: 'future',
         date: FUTURE_DATE,
       },
     });
-    const scheduleButton = getByRole('button', { name: 'Schedule' });
+    const scheduleButton = screen.getByRole('button', { name: 'Schedule' });
 
     expect(scheduleButton).toBeInTheDocument();
   });
 
   it('should display loading indicator while the story is updating', () => {
-    const { getByRole } = setupButtons({ meta: { isSaving: true } });
-    expect(getByRole('progressbar')).toBeInTheDocument();
-    expect(getByRole('button', { name: 'Save draft' })).toBeDisabled();
-    expect(getByRole('button', { name: 'Preview' })).toBeDisabled();
-    expect(getByRole('button', { name: 'Publish' })).toBeDisabled();
+    setupButtons({ meta: { isSaving: true } });
+    expect(screen.getByRole('progressbar')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Save draft' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Preview' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Publish' })).toBeDisabled();
   });
 
   it('should disable buttons while upload is in progress', () => {
-    const { getByRole } = setupButtons({ media: { isUploading: true } });
-    expect(getByRole('button', { name: 'Save draft' })).toBeDisabled();
-    expect(getByRole('button', { name: 'Preview' })).toBeDisabled();
-    expect(getByRole('button', { name: 'Publish' })).toBeDisabled();
+    setupButtons({ media: { isUploading: true } });
+    expect(screen.getByRole('button', { name: 'Save draft' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Preview' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Publish' })).toBeDisabled();
   });
 
   it('should disable publish button when user lacks permission', () => {
-    const { getByRole } = setupButtons({
+    setupButtons({
       config: { capabilities: { hasPublishAction: false } },
     });
-    expect(getByRole('button', { name: 'Publish' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Publish' })).toBeDisabled();
   });
 
   it('should open draft preview when clicking on Preview via about:blank', () => {
-    const { getByRole, saveStory } = setupButtons({
+    const { saveStory } = setupButtons({
       story: {
-        previewLink: 'https://example.com/?preview=true',
+        previewLink: 'http://localhost/?preview=true',
       },
     });
-    const previewButton = getByRole('button', { name: 'Preview' });
+    const previewButton = screen.getByRole('button', { name: 'Preview' });
 
     expect(previewButton).toBeInTheDocument();
 
@@ -347,20 +381,20 @@ describe('buttons', () => {
     expect(saveStory).toHaveBeenCalledWith();
     expect(mockedOpen).toHaveBeenCalledWith('about:blank', 'story-preview');
     expect(previewPopup.location.replace).toHaveBeenCalledWith(
-      'https://example.com/?preview=true#development=1'
+      'http://localhost/?preview=true#development=1'
     );
 
     windowSpy.mockRestore();
   });
 
   it('should open preview for a published story when clicking on Preview via about:blank', () => {
-    const { getByRole, autoSave } = setupButtons({
+    const { autoSave } = setupButtons({
       story: {
-        link: 'https://example.com',
+        link: 'http://localhost',
         status: 'publish',
       },
     });
-    const previewButton = getByRole('button', { name: 'Preview' });
+    const previewButton = screen.getByRole('button', { name: 'Preview' });
     autoSave.mockImplementation(() => ({
       then(callback) {
         callback();
@@ -377,7 +411,7 @@ describe('buttons', () => {
 
     expect(autoSave).toHaveBeenCalledWith();
     expect(previewPopup.location.replace).toHaveBeenCalledWith(
-      'https://example.com/?preview_id=1679&preview_nonce=b5ea827939&preview=true#development=1'
+      'http://localhost/?preview_id=1679&preview_nonce=b5ea827939&preview=true#development=1'
     );
 
     windowSpy.mockRestore();

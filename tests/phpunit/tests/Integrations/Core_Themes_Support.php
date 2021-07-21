@@ -17,15 +17,13 @@
 
 namespace Google\Web_Stories\Tests\Integrations;
 
-use Google\Web_Stories\Customizer;
-use Google\Web_Stories\Tests\Private_Access;
+use Google\Web_Stories\Admin\Customizer;
+use Google\Web_Stories\Tests\Test_Case;
 
 /**
  * @coversDefaultClass \Google\Web_Stories\Integrations\Core_Themes_Support
  */
-class Core_Themes_Support extends \WP_UnitTestCase {
-	use Private_Access;
-
+class Core_Themes_Support extends Test_Case {
 	/**
 	 * Stub for the conditional tests.
 	 *
@@ -49,7 +47,8 @@ class Core_Themes_Support extends \WP_UnitTestCase {
 		// Set stylesheet from one of the supported themes.
 		update_option( 'stylesheet', 'twentytwentyone' );
 		update_option( Customizer::STORY_OPTION, [ 'show_stories' => true ] );
-		$this->stub = new \Google\Web_Stories\Integrations\Core_Themes_Support();
+		$assets     = new \Google\Web_Stories\Assets();
+		$this->stub = new \Google\Web_Stories\Integrations\Core_Themes_Support( $assets );
 	}
 
 	/**
@@ -71,33 +70,31 @@ class Core_Themes_Support extends \WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests init with core theme.
+	 * Tests register with core theme.
 	 *
-	 * @covers ::init
+	 * @covers ::register
 	 */
-	public function test_init() {
-		$this->stub->init();
+	public function test_register() {
+		$this->stub->register();
 
 		$this->assertEquals( 10, has_filter( 'body_class', [ $this->stub, 'add_core_theme_classes' ] ) );
 		$this->assertEquals( 10, has_action( 'wp_body_open', [ $this->stub, 'embed_web_stories' ] ) );
 	}
 
 	/**
-	 * Tests init with non-core theme.
+	 * Tests register with non-core theme.
 	 *
-	 * @covers ::init
+	 * @covers ::register
 	 */
-	public function test_init_non_core_theme() {
+	public function test_register_non_core_theme() {
 		update_option( 'stylesheet', '' );
 
-		$this->stub->init();
+		$this->stub->register();
 
 		$this->assertFalse( has_action( 'wp_body_open', [ $this->stub, 'embed_web_stories' ] ) );
 	}
 
-	/**
-	 * @covers ::get_supported_themes
-	 */
+
 	public function test_get_supported_themes() {
 
 		$expected = [
@@ -125,7 +122,7 @@ class Core_Themes_Support extends \WP_UnitTestCase {
 	 * @covers ::extend_theme_support
 	 */
 	public function test_extend_theme_support() {
-		$this->stub->init();
+		$this->stub->register();
 
 		$this->assertTrue( get_theme_support( 'web-stories' ) );
 	}
@@ -137,7 +134,7 @@ class Core_Themes_Support extends \WP_UnitTestCase {
 	 */
 	public function test_extend_theme_support_non_core_themes() {
 		update_option( 'stylesheet', '' );
-		$this->stub->init();
+		$this->stub->register();
 
 		$this->assertFalse( get_theme_support( 'web-stories' ) );
 	}

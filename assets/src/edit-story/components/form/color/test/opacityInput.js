@@ -17,21 +17,24 @@
 /**
  * External dependencies
  */
-import { waitFor, act, fireEvent } from '@testing-library/react';
+import { waitFor, act, fireEvent, screen } from '@testing-library/react';
+import {
+  createSolid,
+  getPreviewText as getPreviewTextMock,
+} from '@web-stories-wp/patterns';
 
 /**
  * Internal dependencies
  */
-import createSolid from '../../../../utils/createSolid';
 import OpacityInput from '../opacityInput';
 import getPreviewOpacityMock from '../getPreviewOpacity';
-import getPreviewTextMock from '../../../../../design-system/components/hex/getPreviewText';
 import { renderWithTheme } from '../../../../testUtils';
 
 jest.mock('../getPreviewOpacity', () => jest.fn());
-jest.mock('../../../../../design-system/components/hex/getPreviewText', () =>
-  jest.fn()
-);
+jest.mock('@web-stories-wp/patterns', () => ({
+  ...jest.requireActual('@web-stories-wp/patterns'),
+  getPreviewText: jest.fn(),
+}));
 
 function arrange(customProps = {}) {
   const onChange = jest.fn();
@@ -40,10 +43,8 @@ function arrange(customProps = {}) {
     value: createSolid(0, 0, 0),
     ...customProps,
   };
-  const { queryByLabelText, rerender } = renderWithTheme(
-    <OpacityInput {...props} />
-  );
-  const element = queryByLabelText('Opacity');
+  const { rerender } = renderWithTheme(<OpacityInput {...props} />);
+  const element = screen.queryByLabelText('Opacity');
   const wrappedRerender = (extraProps) =>
     rerender(<OpacityInput {...props} {...extraProps} />);
   return { element, onChange, rerender: wrappedRerender };

@@ -23,27 +23,24 @@ import { addDecorator, addParameters } from '@storybook/react';
 import { withKnobs } from '@storybook/addon-knobs';
 import { INITIAL_VIEWPORTS } from '@storybook/addon-viewport';
 import { useDirection } from 'storybook-rtl-addon';
+import {
+  theme as designSystemTheme,
+  lightMode,
+  ThemeGlobals,
+  ModalGlobalStyle,
+} from '@web-stories-wp/design-system';
 
 /**
  * Internal dependencies
  */
 import theme, { GlobalStyle } from '../assets/src/edit-story/theme';
 import { GlobalStyle as CropMoveableGlobalStyle } from '../assets/src/edit-story/components/moveable/cropStyle';
-import { GlobalStyle as ModalGlobalStyle } from '../assets/src/edit-story/components/modal';
 
-import dashboardTheme, {
-  GlobalStyle as DashboardGlobalStyle,
-} from '../assets/src/dashboard/theme';
+import { GlobalStyle as DashboardGlobalStyle } from '../assets/src/dashboard/theme';
 import DashboardKeyboardOnlyOutline from '../assets/src/dashboard/utils/keyboardOnlyOutline';
 import { ConfigProvider as DashboardConfigProvider } from '../assets/src/dashboard/app/config';
 import { ConfigProvider as EditorConfigProvider } from '../assets/src/edit-story/app/config';
 import ApiProvider from '../assets/src/dashboard/app/api/apiProvider';
-
-import {
-  theme as designSystemTheme,
-  lightMode,
-  ThemeGlobals,
-} from '../assets/src/design-system/theme';
 
 // @todo: Find better way to mock these.
 const wp = {};
@@ -98,7 +95,6 @@ addDecorator((story, context) => {
     return (
       <ThemeProvider
         theme={{
-          DEPRECATED_THEME: dashboardTheme,
           ...designSystemTheme,
           colors: lightMode,
         }}
@@ -112,6 +108,7 @@ addDecorator((story, context) => {
         >
           <ApiProvider>
             <DashboardGlobalStyle />
+            <ModalGlobalStyle />
             <DashboardKeyboardOnlyOutline />
             {story()}
           </ApiProvider>
@@ -125,7 +122,8 @@ addDecorator((story, context) => {
     const dsTheme = { ...designSystemTheme, colors: lightMode };
     return (
       <ThemeProvider theme={dsTheme}>
-        <ThemeGlobals.OverrideFocusOutline />
+        <ThemeGlobals.Styles />
+        <ModalGlobalStyle />
         {story()}
       </ThemeProvider>
     );

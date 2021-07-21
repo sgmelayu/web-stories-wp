@@ -26,44 +26,98 @@
 
 namespace Google\Web_Stories;
 
-use WP_Post_Type;
+use Google\Web_Stories\Traits\Post_Type;
 
 /**
  * KSES class.
  *
  * Provides KSES utility methods to override the ones from core.
+ *
+ * @SuppressWarnings(PHPMD.ExcessiveClassComplexity)
  */
-class KSES {
+class KSES extends Service_Base {
+	use Post_Type;
+
 	/**
-	 * Initializes KSES filters for all post types if user can edit stories.
+	 * Initializes KSES filters for stories.
 	 *
 	 * @since 1.0.0
 	 *
 	 * @return void
 	 */
-	public function init() {
-
-		$edit_posts       = false;
-		$post_type_object = get_post_type_object( Story_Post_Type::POST_TYPE_SLUG );
-		if (
-			$post_type_object instanceof WP_Post_Type &&
-			property_exists( $post_type_object->cap, 'edit_posts' )
-		) {
-
-			$edit_posts = current_user_can( $post_type_object->cap->edit_posts );
-		}
-
-		if ( ! $edit_posts ) {
+	public function register() {
+		if ( ! $this->get_post_type_cap( Story_Post_Type::POST_TYPE_SLUG, 'edit_posts' ) ) {
 			return;
 		}
 
-		if ( ! current_user_can( 'unfiltered_html' ) ) {
-			add_filter( 'safe_style_css', [ $this, 'filter_safe_style_css' ] );
-			add_filter( 'wp_kses_allowed_html', [ $this, 'filter_kses_allowed_html' ], 10, 2 );
-			add_filter( 'content_save_pre', [ $this, 'filter_content_save_pre_before_kses' ], 0 );
-			add_filter( 'content_save_pre', [ $this, 'filter_content_save_pre_after_kses' ], 20 );
-			remove_filter( 'content_filtered_save_pre', 'wp_filter_post_kses' );
+		if ( current_user_can( 'unfiltered_html' ) ) {
+			return;
 		}
+
+		add_filter( 'wp_insert_post_data', [ $this, 'filter_insert_post_data' ], 10, 3 );
+	}
+
+	/**
+	 * Get the action priority to use for registering the service.
+	 *
+	 * @since 1.6.0
+	 *
+	 * @return int Registration action priority to use.
+	 */
+	public static function get_registration_action_priority(): int {
+		return 11;
+	}
+
+	/**
+	 * Filters slashed post data just before it is inserted into the database.
+	 *
+	 * Used to run story HTML markup through KSES on our own, but with some filters applied
+	 * that should only affect the web-story post type.
+	 *
+	 * This allows storing full AMP HTML documents in post_content for stories, which require
+	 * more allowed HTML tags and a patched version of {@see safecss_filter_attr}.
+	 *
+	 * @since 1.8.0
+	 *
+	 * @param array $data                An array of slashed, sanitized, and processed post data.
+	 * @param array $postarr             An array of sanitized (and slashed) but otherwise unmodified post data.
+	 * @param array $unsanitized_postarr An array of slashed yet *unsanitized* and unprocessed post data as
+	 *                                   originally passed to wp_insert_post().
+	 * @return array Filtered post data.
+	 */
+	public function filter_insert_post_data( $data, $postarr, $unsanitized_postarr ): array {
+		if (
+			( Story_Post_Type::POST_TYPE_SLUG !== $data['post_type'] ) && !
+			(
+				'revision' === $data['post_type'] &&
+				! empty( $data['post_parent'] ) &&
+				Story_Post_Type::POST_TYPE_SLUG === get_post_type( $data['post_parent'] )
+			)
+		) {
+			return $data;
+		}
+
+		// Simple sanity check to ensure story data is valid JSON.
+		if ( isset( $unsanitized_postarr['post_content_filtered'] ) ) {
+			$story_data                    = json_decode( (string) wp_unslash( $unsanitized_postarr['post_content_filtered'] ), true );
+			$data['post_content_filtered'] = null === $story_data ? '' : wp_slash( (string) wp_json_encode( $story_data ) );
+		}
+
+		if ( ! isset( $unsanitized_postarr['post_content'] ) ) {
+			return $data;
+		}
+
+		add_filter( 'safe_style_css', [ $this, 'filter_safe_style_css' ] );
+		add_filter( 'wp_kses_allowed_html', [ $this, 'filter_kses_allowed_html' ], 10, 2 );
+
+		$unsanitized_postarr['post_content'] = $this->filter_content_save_pre_before_kses( $unsanitized_postarr['post_content'] );
+		$data['post_content']                = wp_filter_post_kses( $unsanitized_postarr['post_content'] );
+		$data['post_content']                = $this->filter_content_save_pre_after_kses( $data['post_content'] );
+
+		remove_filter( 'safe_style_css', [ $this, 'filter_safe_style_css' ] );
+		remove_filter( 'wp_kses_allowed_html', [ $this, 'filter_kses_allowed_html' ] );
+
+		return $data;
 	}
 
 	/**
@@ -75,7 +129,7 @@ class KSES {
 	 *
 	 * @return array Filtered list of CSS attributes.
 	 */
-	public function filter_safe_style_css( $attr ) {
+	public function filter_safe_style_css( $attr ): array {
 		$additional = [
 			'display',
 			'opacity',
@@ -87,6 +141,7 @@ class KSES {
 			'clip-path',
 			'-webkit-clip-path',
 			'pointer-events',
+			'will-change',
 		];
 
 		array_push( $attr, ...$additional );
@@ -397,7 +452,6 @@ class KSES {
 		return $css;
 	}
 
-
 	/**
 	 * Filter the allowed tags for KSES to allow for complete amp-story document markup.
 	 *
@@ -480,6 +534,7 @@ class KSES {
 				'data-amp-bind-attribution' => true,
 				'data-amp-bind-src'         => true,
 				'data-amp-bind-srcset'      => true,
+				'disable-inline-width'      => true,
 				'lightbox'                  => true,
 				'lightbox-thumbnail-id'     => true,
 				'media'                     => true,
@@ -487,6 +542,7 @@ class KSES {
 				'object-fit'                => true,
 				'object-position'           => true,
 				'placeholder'               => true,
+				'sizes'                     => true,
 				'src'                       => true,
 				'srcset'                    => true,
 			],
@@ -583,7 +639,7 @@ class KSES {
 	 *
 	 * @return array An array of values resulted from merging the arguments together.
 	 */
-	protected function array_merge_recursive_distinct( array ...$arrays ) {
+	protected function array_merge_recursive_distinct( array ...$arrays ): array {
 		if ( count( $arrays ) < 2 ) {
 			if ( [] === $arrays ) {
 				return $arrays;
@@ -618,7 +674,7 @@ class KSES {
 	 * @param array $value An array of attributes.
 	 * @return array The array of attributes with global attributes added.
 	 */
-	protected function add_global_attributes( $value ) {
+	protected function add_global_attributes( $value ): array {
 		$global_attributes = [
 			'aria-describedby'    => true,
 			'aria-details'        => true,
@@ -651,7 +707,7 @@ class KSES {
 	 *
 	 * @return string Filtered post content.
 	 */
-	public function filter_content_save_pre_before_kses( $post_content ) {
+	public function filter_content_save_pre_before_kses( $post_content ): string {
 		return (string) preg_replace_callback(
 			'|(?P<before><\w+(?:-\w+)*\s[^>]*?)style=\\\"(?P<styles>[^"]*)\\\"(?P<after>([^>]+?)*>)|', // Extra slashes appear here because $post_content is pre-slashed..
 			static function ( $matches ) {
@@ -670,7 +726,7 @@ class KSES {
 	 *
 	 * @return string Filtered post content.
 	 */
-	public function filter_content_save_pre_after_kses( $post_content ) {
+	public function filter_content_save_pre_after_kses( $post_content ): string {
 		return (string) preg_replace_callback(
 			'/ data-temp-style=\\\"(?P<styles>[^"]*)\\\"/',
 			function ( $matches ) {

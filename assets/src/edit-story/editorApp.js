@@ -20,7 +20,10 @@
 import { StyleSheetManager, ThemeProvider } from 'styled-components';
 import stylisRTLPlugin from 'stylis-plugin-rtl';
 import PropTypes from 'prop-types';
-
+import {
+  SnackbarProvider,
+  ModalGlobalStyle,
+} from '@web-stories-wp/design-system';
 /**
  * Internal dependencies
  */
@@ -31,7 +34,6 @@ import { APIProvider } from './app/api';
 import { FileProvider } from './app/file';
 import { Media3pApiProvider } from './app/media/media3p/api';
 import { HistoryProvider } from './app/history';
-import { SnackbarProvider } from './app/snackbar';
 import { StoryProvider } from './app/story';
 import { FontProvider } from './app/font';
 import { MediaProvider } from './app/media';
@@ -39,12 +41,13 @@ import { CurrentUserProvider } from './app/currentUser';
 import AutoSaveHandler from './components/autoSaveHandler';
 import { TransformProvider } from './components/transform';
 import { DropTargetsProvider } from './components/dropTargets';
+import { HelpCenterProvider } from './app/helpCenter';
 import StatusCheck from './components/statusCheck';
+import PostLock from './components/postLock';
 import Layout from './components/layout';
 import DevTools from './components/devTools';
 import { GlobalStyle as DefaultMoveableGlobalStyle } from './components/moveable/moveStyle';
 import { GlobalStyle as CropMoveableGlobalStyle } from './components/moveable/cropStyle';
-import { GlobalStyle as ModalGlobalStyle } from './components/modal';
 import { GlobalStyle as CalendarStyle } from './components/form/dateTime/calendarStyle';
 import KeyboardOnlyOutlines from './utils/keyboardOnlyOutline';
 import { MetaBoxesProvider } from './integrations/wordpress/metaBoxes';
@@ -64,25 +67,28 @@ function App({ config }) {
                     <SnackbarProvider>
                       <MetaBoxesProvider>
                         <StoryProvider storyId={storyId}>
-                          <FontProvider>
-                            <CurrentUserProvider>
+                          <CurrentUserProvider>
+                            <PostLock />
+                            <FontProvider>
                               <MediaProvider>
                                 <AutoSaveHandler />
                                 <TransformProvider>
                                   <DropTargetsProvider>
-                                    <GlobalStyle />
-                                    <DevTools />
-                                    <DefaultMoveableGlobalStyle />
-                                    <CropMoveableGlobalStyle />
-                                    <ModalGlobalStyle />
-                                    <CalendarStyle />
-                                    <KeyboardOnlyOutlines />
-                                    <Layout />
+                                    <HelpCenterProvider>
+                                      <GlobalStyle />
+                                      <DevTools />
+                                      <DefaultMoveableGlobalStyle />
+                                      <CropMoveableGlobalStyle />
+                                      <ModalGlobalStyle />
+                                      <CalendarStyle />
+                                      <KeyboardOnlyOutlines />
+                                      <Layout />
+                                    </HelpCenterProvider>
                                   </DropTargetsProvider>
                                 </TransformProvider>
                               </MediaProvider>
-                            </CurrentUserProvider>
-                          </FontProvider>
+                            </FontProvider>
+                          </CurrentUserProvider>
                         </StoryProvider>
                       </MetaBoxesProvider>
                     </SnackbarProvider>

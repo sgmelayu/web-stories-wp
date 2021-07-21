@@ -28,15 +28,17 @@
 
 namespace Google\Web_Stories;
 
+use Google\Web_Stories\Traits\Post_Type;
 use Google\Web_Stories\Traits\Publisher;
+use Google\Web_Stories\Media\Media;
 
 use WP_Post;
 
 /**
  * Discovery class.
  */
-class Discovery {
-	use Publisher;
+class Discovery extends Service_Base {
+	use Publisher, Post_Type;
 	/**
 	 * Initialize discovery functionality.
 	 *
@@ -44,7 +46,7 @@ class Discovery {
 	 *
 	 * @return void
 	 */
-	public function init() {
+	public function register() {
 		add_action( 'web_stories_story_head', [ $this, 'print_metadata' ] );
 		add_action( 'web_stories_story_head', [ $this, 'print_schemaorg_metadata' ] );
 		add_action( 'web_stories_story_head', [ $this, 'print_open_graph_metadata' ] );
@@ -137,7 +139,7 @@ class Discovery {
 	 *
 	 * @return array $metadata All schema.org metadata for the post.
 	 */
-	protected function get_schemaorg_metadata() {
+	protected function get_schemaorg_metadata(): array {
 		$publisher = $this->get_publisher_data();
 
 		$metadata = [
@@ -232,7 +234,7 @@ class Discovery {
 	 *
 	 * @return array
 	 */
-	protected function get_open_graph_metadata() {
+	protected function get_open_graph_metadata(): array {
 		$metadata = [
 			'og:locale'    => get_bloginfo( 'language' ),
 			'og:site_name' => get_bloginfo( 'name' ),
@@ -306,7 +308,7 @@ class Discovery {
 	 *
 	 * @return array
 	 */
-	protected function get_twitter_metadata() {
+	protected function get_twitter_metadata(): array {
 		$metadata = [
 			'twitter:card' => 'summary_large_image',
 		];
@@ -345,13 +347,13 @@ class Discovery {
 	 *
 	 * @return void
 	 */
-	public static function print_feed_link() {
+	public function print_feed_link() {
 		if ( ! current_theme_supports( 'automatic-feed-links' ) ) {
 			return;
 		}
 
-		$post_type_object = get_post_type_object( Story_Post_Type::POST_TYPE_SLUG );
-		if ( ! ( $post_type_object instanceof \WP_Post_Type ) ) {
+		$name = $this->get_post_type_label( Story_Post_Type::POST_TYPE_SLUG, 'name' );
+		if ( ! $name ) {
 			return;
 		}
 
@@ -360,11 +362,6 @@ class Discovery {
 			Story_Post_Type::POST_TYPE_SLUG,
 			get_feed_link()
 		);
-
-		$name = '';
-		if ( property_exists( $post_type_object->labels, 'name' ) ) {
-			$name = $post_type_object->labels->name;
-		}
 
 		/* translators: Separator between blog name and feed type in feed links. */
 		$separator = _x( '&raquo;', 'feed link', 'web-stories' );

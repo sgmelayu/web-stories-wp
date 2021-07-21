@@ -28,19 +28,21 @@ namespace Google\Web_Stories\REST_API;
 
 use Google\Web_Stories\Decoder;
 use Google\Web_Stories\Experiments;
+use Google\Web_Stories\Story_Post_Type;
+use Google\Web_Stories\Traits\Post_Type;
 use WP_REST_Server;
-use WP_REST_Controller;
 use WP_REST_Request;
 use WP_REST_Response;
 use WP_Error;
-use WP_Post_Type;
 
 /**
  * API endpoint check status.
  *
  * Class Status_Check_Controller
  */
-class Status_Check_Controller extends WP_REST_Controller {
+class Status_Check_Controller extends REST_Controller {
+	use Post_Type;
+
 	/**
 	 * Decoder instance.
 	 *
@@ -50,11 +52,13 @@ class Status_Check_Controller extends WP_REST_Controller {
 
 	/**
 	 * Constructor.
+	 *
+	 * @param Decoder $decoder Decoder instance.
 	 */
-	public function __construct() {
+	public function __construct( Decoder $decoder ) {
 		$this->namespace = 'web-stories/v1';
 		$this->rest_base = 'status-check';
-		$this->decoder   = new Decoder();
+		$this->decoder   = $decoder;
 	}
 
 	/**
@@ -99,7 +103,68 @@ class Status_Check_Controller extends WP_REST_Controller {
 			'success' => true,
 		];
 
-		return rest_ensure_response( $data );
+		$response = $this->prepare_item_for_response( $data, $request );
+
+		return rest_ensure_response( $response );
+	}
+
+	/**
+	 * Prepares a status data output for response.
+	 *
+	 * @since 1.10.0
+	 *
+	 * @param array           $status    Status array.
+	 * @param WP_REST_Request $request Request object.
+	 * @return WP_REST_Response|WP_Error Response object.
+	 */
+	public function prepare_item_for_response( $status, $request ) {
+		$fields = $this->get_fields_for_response( $request );
+		$schema = $this->get_item_schema();
+
+		$data = [];
+
+		if ( rest_is_field_included( 'success', $fields ) ) {
+			$data['success'] = rest_sanitize_value_from_schema( $status['success'], $schema['properties']['success'] );
+		}
+
+		$context = ! empty( $request['context'] ) ? $request['context'] : 'view';
+		$data    = $this->add_additional_fields_to_object( $data, $request );
+		$data    = $this->filter_response_by_context( $data, $context );
+
+		// Wrap the data in a response object.
+		$response = rest_ensure_response( $data );
+
+		return $response;
+	}
+
+	/**
+	 * Retrieves the status schema, conforming to JSON Schema.
+	 *
+	 * @since 1.10.0
+	 *
+	 * @return array Item schema as an array.
+	 */
+	public function get_item_schema() {
+		if ( $this->schema ) {
+			return $this->add_additional_fields_schema( $this->schema );
+		}
+
+		$schema = [
+			'$schema'    => 'http://json-schema.org/draft-04/schema#',
+			'title'      => 'status',
+			'type'       => 'object',
+			'properties' => [
+				'success' => [
+					'description' => __( 'Whether check was successful', 'web-stories' ),
+					'type'        => 'boolean',
+					'context'     => [ 'view', 'edit', 'embed' ],
+				],
+			],
+		];
+
+		$this->schema = $schema;
+
+		return $this->add_additional_fields_schema( $this->schema );
 	}
 
 	/**
@@ -110,7 +175,7 @@ class Status_Check_Controller extends WP_REST_Controller {
 	 * @return true|WP_Error True if the request has read access, WP_Error object otherwise.
 	 */
 	public function status_check_permissions_check() {
-		if ( ! current_user_can( 'edit_web-stories' ) ) {
+		if ( ! $this->get_post_type_cap( Story_Post_Type::POST_TYPE_SLUG, 'edit_posts' ) ) {
 			return new WP_Error( 'rest_forbidden', __( 'Sorry, you are not allowed run status check.', 'web-stories' ), [ 'status' => rest_authorization_required_code() ] );
 		}
 

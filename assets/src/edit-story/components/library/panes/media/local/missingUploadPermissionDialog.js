@@ -19,32 +19,34 @@
  */
 import PropTypes from 'prop-types';
 import { __ } from '@web-stories-wp/i18n';
+import { Text, THEME_CONSTANTS } from '@web-stories-wp/design-system';
 
 /**
  * Internal dependencies
  */
-import { Plain } from '../../../../button';
 import Dialog from '../../../../dialog';
 
-function MissingUploadPermissionDialog({ open, onClose }) {
+function MissingUploadPermissionDialog({ isOpen, onClose }) {
   return (
     <Dialog
-      open={open}
+      isOpen={isOpen}
       onClose={onClose}
       title={__('Access Restrictions', 'web-stories')}
-      actions={<Plain onClick={onClose}>{__('Got it', 'web-stories')}</Plain>}
-      maxWidth={285}
+      primaryText={__('Got it', 'web-stories')}
+      onPrimary={onClose}
     >
-      {__(
-        `You don't have access to upload images or publish a story. Please check with your administrator to request upload and publish access.`,
-        'web-stories'
-      )}
+      <Text size={THEME_CONSTANTS.TYPOGRAPHY.PRESET_SIZES.SMALL}>
+        {__(
+          `You don't have access to upload images or publish a story. Please check with your administrator to request upload and publish access.`,
+          'web-stories'
+        )}
+      </Text>
     </Dialog>
   );
 }
 
 MissingUploadPermissionDialog.propTypes = {
-  open: PropTypes.bool.isRequired,
+  isOpen: PropTypes.bool.isRequired,
   onClose: PropTypes.func.isRequired,
 };
 

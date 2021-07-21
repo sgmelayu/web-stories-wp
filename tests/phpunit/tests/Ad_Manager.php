@@ -20,8 +20,7 @@ namespace Google\Web_Stories\Tests;
 /**
  * @coversDefaultClass \Google\Web_Stories\Ad_Manager
  */
-class Ad_Manager extends \WP_UnitTestCase {
-	use Private_Access;
+class Ad_Manager extends Test_Case {
 
 	public function setUp() {
 		parent::setUp();
@@ -38,11 +37,11 @@ class Ad_Manager extends \WP_UnitTestCase {
 	}
 
 	/**
-	 * @covers ::init
+	 * @covers ::register
 	 */
-	public function test_init() {
+	public function test_register() {
 		$adsense = new \Google\Web_Stories\Ad_Manager();
-		$adsense->init();
+		$adsense->register();
 
 		$this->assertSame( 10, has_action( 'web_stories_print_analytics', [ $adsense, 'print_ad_manager_tag' ] ) );
 	}
