@@ -34,7 +34,7 @@ jobs:
     timeout-minutes: 60
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Verify semver compatibility
         run: |
@@ -100,7 +100,7 @@ jobs:
 
       # Grab current assets version from `web-stories.php` and pass on to next steps.
       # - name: Checkout
-      #   uses: actions/checkout@v2
+      #   uses: actions/checkout@v3
       #   with:
       #     ref:
 
@@ -116,7 +116,7 @@ jobs:
       #       ASSETS_VERSION_REGEX: "https://wp.stories.google/static/([^']+)"
 
       - name: Checkout static-site
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           ref: static-site
           lfs: true
@@ -176,7 +176,7 @@ jobs:
       release_name: ${{ steps.changelog.outputs.release_name }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           fetch-depth: 0 # 0 indicates all history for all branches and tags.
 
@@ -262,7 +262,7 @@ jobs:
       release_branch: ${{ steps.release_branch.outputs.release_branch }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           fetch-depth: 0 # 0 indicates all history for all branches and tags.
 
@@ -418,7 +418,7 @@ jobs:
     needs: [build, changelog]
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Download release artifacts
         uses: actions/download-artifact@v2
@@ -574,7 +574,7 @@ jobs:
     if: ${{ ! startsWith(github.ref, 'refs/heads/release/') }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           ref: main
 
