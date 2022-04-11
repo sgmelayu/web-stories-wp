@@ -161,19 +161,19 @@ jobs:
           mv build/web-stories build/web-stories-dev/
 
       - name: Upload composer bundle
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: web-stories-composer
           path: build/web-stories-composer
 
       - name: Upload regular bundle
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: web-stories
           path: build/web-stories-regular
 
       - name: Upload development bundle
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: web-stories-dev
           path: build/web-stories-dev
