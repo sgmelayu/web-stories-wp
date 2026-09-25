@@ -1,9 +1,10 @@
 === Web Stories ===
 
 Contributors:      google
-Tested up to:      5.7
+Tested up to:      6.9
+Requires at least: 6.6
 Stable tag:        V.V.V
-License:           Apache License 2.0
+License:           Apache-2.0
 License URI:       https://www.apache.org/licenses/LICENSE-2.0
 Tags:              web stories, stories, amp, storytelling, google
 
@@ -104,100 +105,46 @@ There are two ways to include analytics in your Web Stories:
 
 Web Stories are powered by [AMP](https://amp.dev/), which adds some restrictions on a page's allowed markup. In some cases, other WordPress plugins use disallowed markup. We recommend temporarily disabling these plugins and reaching out to our [support forum](https://wordpress.org/plugins/web-stories/).
 
+= Where can I report bugs? =
+
+For help requests, support questions, or general feedback, please reach out via the [support forum](https://wordpress.org/plugins/web-stories/).
+
+Reproducible bug reports can be filed [on GitHub](https://github.com/googleforcreators/web-stories-wp/).
+
+To report a vulnerability in this plugin, please contact the Google Security Team at [g.co/vulnz](https://g.co/vulnz).
+
 == Changelog ==
 
-For the plugin's full changelog, please see [the Releases page on GitHub](https://github.com/google/web-stories-wp/releases).
+For the plugin's full changelog, please see [the Releases page on GitHub](https://github.com/googleforcreators/web-stories-wp/releases).
 
-= 1.5.0 =
+= 1.42.0 =
 
-**Release Date:** March 18, 2021.
+* Enhancement: raises minimum WordPress version to 6.6.
+* Enhancement: updated list of available Google Fonts.
+* Fixed: resolved issue with lightbox when using shortcode.
 
-* New feature: new ways to showcase your stories with an enhanced Gutenberg block, widget, and theme integrations.
-* New feature: new preview mode to see how your stories look on different devices.
-* Refreshed UI in the editor and dashboard.
-* Bug fixes and performance improvements.
+= 1.41.0 =
 
-= 1.4.0 =
+* Fixed: resolved issue with carousel on right-to-left languages.
+* Fixed: resolved issue with lightbox when using shortcode.
 
-**Release Date:** February 17, 2021.
+= 1.40.0 =
 
-* New feature: a new help center in the editor to get started.
-* New feature: support for custom meta boxes.
-* Improvements to the pre-publish checklist.
-* UI improvements in the editor and dashboard.
-* Bug fixes and performance improvements.
+* Enhancement: performance and UX improvements for the Web Stories block.
+* Enhancement: several performance improvements in the admin due to more lightweight bundles.
+* Enhancement: compatibility with WordPress 6.8.
+* Enhancement: updated list of available Google Fonts.
+* Fixed: Minor code quality improvements and bug fixes.
 
-= 1.3.0 =
+= 1.39.0 =
 
-**Release Date:** January 19, 2021.
-
-* New feature: support for monetization through Google AdSense and Google Ad Manager.
-* New feature: page layouts.
-* UI improvements in the editor
-* Bug fixes and performance improvements.
-
-= 1.2.1 =
-
-**Release Date:** December 17, 2020.
-
-* New feature: automated site environment compatibility checks.
-* Improved UI for border and corner radius panels.
-* Bug fixes and performance improvements.
-
-= 1.2.0 =
-
-**Release Date:** December 11, 2020.
-
-* New features: animations, pre-publish checklist.
-* Improved captions language selector.
-* Improved compatibility with Cloudflare WAF.
-
-= 1.1.1 =
-
-**Release Date:** November 11, 2020.
-
-* Bug fixes and performance improvements.
-
-= 1.1.0 =
-
-**Release Date:** October 28, 2020.
-
-* New features: text sets, Tenor GIFs, video captions.
-* Responsive design in Gutenberg block & shortcode support.
-* Improved compatibility with other WordPress plugins.
-
-= 1.0.0 =
-
-**Release Date:** September 22nd, 2020.
-
-* Initial stable release.
+* Enhancement: new experimental performance improvements in the dashboard and editor.
+* Fixed: resolved translation warning on WordPress 6.7.
+* Fixed: improved Google Analytics 4 banner.
+* Fixed: resolved edge case where the media library might crash.
 
 == Upgrade Notice ==
 
-= 1.5.0 =
+= 1.42.0 =
 
-Enhanced Gutenberg block, new story preview mode, updated UI, bug fixes and performance improvements.
-
-= 1.4.0 =
-
-New help center, custom meta boxes support, bug fixes and performance improvements.
-
-= 1.3.0 =
-
-New monetization capabilities, bug fixes and performance improvements.
-
-= 1.2.1 =
-
-Bug fixes and performance improvements.
-
-= 1.2.0 =
-
-Added basic animations and a pre-publish checklist.
-
-= 1.1.1 =
-
-Bug fixes and performance improvements.
-
-= 1.0.0 =
-
-Initial stable release.
+This release fixes a minor issues with the Web Stories shortcode. Now requires at least WordPress 6.6.

@@ -37,13 +37,12 @@ import { __ } from '@wordpress/i18n';
  * Internal dependencies
  */
 import { updateViewSettings } from '../utils';
-import { webStoriesData } from '../utils/globals';
-import name from '../store/name';
+import store from '../store';
 
-import TinyMCEToggle from './controls/Toggle';
+import TinyMceToggle from './controls/Toggle';
 
 const WebStoriesModal = (props) => {
-  const { modalOpen, settings, prepareShortCode } = props;
+  const { modalOpen, settings = {}, prepareShortCode } = props;
   const {
     author,
     date,
@@ -60,7 +59,7 @@ const WebStoriesModal = (props) => {
     sharp_corners,
     archive_link_label,
   } = settings;
-  const { views = {}, fields } = webStoriesData;
+  const { views = [], fields } = window.webStoriesData || {};
 
   const displayField = (fieldName) =>
     fields?.[view][fieldName].show && !fields?.[view][fieldName].hidden;
@@ -72,7 +71,7 @@ const WebStoriesModal = (props) => {
   return (
     <Modal
       onRequestClose={() => {
-        dispatch(name).toggleModal(false);
+        dispatch(store).toggleModal(false);
       }}
       closeButtonLabel={__('Close', 'web-stories')}
       title={__('Web Stories', 'web-stories')}
@@ -84,8 +83,10 @@ const WebStoriesModal = (props) => {
         value={view}
         options={views}
         onChange={(view_type) => {
-          dispatch(name).setCurrentView(view_type);
+          dispatch(store).setCurrentView(view_type);
         }}
+        __nextHasNoMarginBottom
+        __next40pxDefaultSize
       />
 
       <RangeControl
@@ -99,6 +100,8 @@ const WebStoriesModal = (props) => {
             field: 'number_of_stories',
           });
         }}
+        __nextHasNoMarginBottom
+        __next40pxDefaultSize
       />
 
       <SelectControl
@@ -117,6 +120,8 @@ const WebStoriesModal = (props) => {
         onChange={(value) => {
           updateViewSettings({ fieldObj: value, field: 'orderby' });
         }}
+        __nextHasNoMarginBottom
+        __next40pxDefaultSize
       />
 
       <SelectControl
@@ -135,15 +140,17 @@ const WebStoriesModal = (props) => {
         onChange={(value) => {
           updateViewSettings({ fieldObj: value, field: 'order' });
         }}
+        __nextHasNoMarginBottom
+        __next40pxDefaultSize
       />
 
-      <TinyMCEToggle field="title" fieldObj={title} />
+      <TinyMceToggle field="title" fieldObj={title} />
 
-      <TinyMCEToggle field="excerpt" fieldObj={excerpt} />
+      <TinyMceToggle field="excerpt" fieldObj={excerpt} />
 
-      <TinyMCEToggle field="author" fieldObj={author} />
+      <TinyMceToggle field="author" fieldObj={author} />
 
-      <TinyMCEToggle field="date" fieldObj={date} />
+      <TinyMceToggle field="date" fieldObj={date} />
 
       {displayField('image_alignment') && (
         <div style={{ margin: '0 0 10px 0' }}>
@@ -166,13 +173,14 @@ const WebStoriesModal = (props) => {
                 field: 'image_alignment',
               });
             }}
+            __nextHasNoMarginBottom
           />
         </div>
       )}
 
-      <TinyMCEToggle field="sharp_corners" fieldObj={sharp_corners} />
+      <TinyMceToggle field="sharp_corners" fieldObj={sharp_corners} />
 
-      <TinyMCEToggle field="archive_link" fieldObj={archive_link} />
+      <TinyMceToggle field="archive_link" fieldObj={archive_link} />
 
       {archive_link?.show && (
         <TextControl
@@ -184,6 +192,8 @@ const WebStoriesModal = (props) => {
               field: 'archive_link_label',
             });
           }}
+          __nextHasNoMarginBottom
+          __next40pxDefaultSize
         />
       )}
 
@@ -200,6 +210,8 @@ const WebStoriesModal = (props) => {
               field: 'circle_size',
             })
           }
+          __nextHasNoMarginBottom
+          __next40pxDefaultSize
         />
       )}
 
@@ -215,6 +227,8 @@ const WebStoriesModal = (props) => {
               field: 'number_of_columns',
             })
           }
+          __nextHasNoMarginBottom
+          __next40pxDefaultSize
         />
       )}
 
@@ -222,18 +236,18 @@ const WebStoriesModal = (props) => {
         <Button
           isPrimary
           onClick={() => {
-            const editorInstance = select(name).getEditor();
+            const editorInstance = select(store).getEditor();
             if (editorInstance) {
               const shortcode = prepareShortCode();
               editorInstance.insertContent(shortcode);
             }
 
-            dispatch(name).toggleModal(false);
+            dispatch(store).toggleModal(false);
           }}
         >
           {__('Insert', 'web-stories')}
         </Button>
-        <Button onClick={() => dispatch(name).toggleModal(false)}>
+        <Button onClick={() => dispatch(store).toggleModal(false)}>
           {__('Cancel', 'web-stories')}
         </Button>
       </div>

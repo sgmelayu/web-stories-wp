@@ -18,28 +18,29 @@
  * External dependencies
  */
 import { setDefaultOptions } from 'expect-puppeteer';
+import { matchers } from 'jest-json-schema';
 import { toBeValidAMP } from '@web-stories-wp/jest-puppeteer-amp';
-
-/**
- * WordPress dependencies
- */
 import {
-  enablePageDialogAccept,
-  setBrowserViewport,
+  setCurrentUser,
   trashAllPosts,
-} from '@wordpress/e2e-test-utils';
-
-// Extend Jest matchers.
-import 'jest-extended';
-
-expect.extend({
-  toBeValidAMP,
-});
+  deleteAllMedia,
+  trashAllTerms,
+  clearLocalStorage,
+} from '@web-stories-wp/e2e-test-utils';
 
 /**
  * Environment variables
  */
 const { PUPPETEER_TIMEOUT, EXPECT_PUPPETEER_TIMEOUT } = process.env;
+
+// The Jest timeout is increased because these tests are a bit slow
+jest.setTimeout(PUPPETEER_TIMEOUT || 100000);
+
+expect.extend({
+  toBeValidAMP,
+});
+
+expect.extend(matchers);
 
 /**
  * Set of console logging types observed to protect against unexpected yet
@@ -92,6 +93,42 @@ const ALLOWED_ERROR_MESSAGES = [
 
   // Another Firefox warning.
   'Layout was forced before the page was fully loaded',
+
+  // Upstream issue in gutenberg and twentytwenty theme.
+  'Stylesheet twentytwenty-block-editor-styles-css was not properly added.',
+
+  // TODO(#9240): Fix usage in the web stories block.
+  "select( 'core' ).getAuthors() is deprecated since version 5.9.",
+
+  // See https://www.chromestatus.com/feature/508239670987980
+  "Blocked attempt to show a 'beforeunload' confirmation panel for a frame that never had a user gesture since its load",
+
+  // Sometimes the AMP viewer can fail to load translations when viewing a story.
+  'Bundle not found for language en:',
+
+  // Media3p API requests can sometimes fail in the Docker environment (due to network issues?).
+  'Failed to fetch',
+
+  // Sometimes WASM modules (e.g. ffmpeg.wasm, @mediapipe/selfie_segmentation) are not loading.
+  'wasm streaming compile failed',
+  'falling back to ArrayBuffer instantiation',
+  'still waiting on run dependencies',
+  'dependency: wasm-instantiate',
+  '(end of list)',
+
+  // Customizer preview iframe.
+  'An iframe which has both allow-scripts and allow-same-origin for its sandbox attribute',
+
+  // Needed because the tinymce package is not yet using React 18.
+  // TODO: Migrate & remove once WordPress 6.2 is minimum.
+  'Warning: ReactDOM.render is no longer supported in React 18',
+
+  // Coming from <amp-story-player>
+  // See https://github.com/ampproject/amphtml/blob/413457c3598f8c6694ca4ee7b83a5d84f9b9f00c/src/amp-story-player/amp-story-player-impl.js#L562
+  "Unrecognized feature: 'web-share'",
+
+  // This is a known issue in core.
+  'You are importing createRoot from "react-dom" which is not supported.',
 ];
 
 export function addAllowedErrorMessage(message) {
@@ -109,21 +146,27 @@ export function addAllowedErrorMessage(message) {
  */
 const pageEvents = [];
 
-// The Jest timeout is increased because these tests are a bit slow
-jest.setTimeout(PUPPETEER_TIMEOUT || 100000);
-
 // Set default timeout for individual expect-puppeteer assertions. (Default: 500)
-setDefaultOptions({ timeout: EXPECT_PUPPETEER_TIMEOUT || 500 });
+setDefaultOptions({ timeout: EXPECT_PUPPETEER_TIMEOUT || 2000 });
 
 /**
  * Set up browser.
  */
 async function setupBrowser() {
   // Same as jest-puppeteer.config.cjs and percy.config.yml
-  await setBrowserViewport({
-    width: 1600,
-    height: 1000,
+  const width = 1600;
+  const height = 1000;
+
+  await page.setViewport({
+    width,
+    height,
   });
+
+  await page
+    .mainFrame()
+    .waitForFunction(
+      `window.innerWidth === ${width} && window.innerHeight === ${height}`
+    );
 }
 
 /**
@@ -145,6 +188,12 @@ function removePageEvents() {
   });
 }
 
+function enablePageDialogAccept() {
+  page.on('dialog', async (dialog) => {
+    await dialog.accept();
+  });
+}
+
 /**
  * Adds a page event handler to emit uncaught exception to process if one of
  * the observed console logging types is encountered.
@@ -163,7 +212,18 @@ function observeConsoleLogging() {
       return;
     }
 
-    //eslint-disable-next-line security/detect-object-injection
+    // Special case: ignore 403 errors on logout page.
+    // See https://github.com/googleforcreators/web-stories-wp/pull/7889
+    if (
+      text.includes(
+        'Failed to load resource: the server responded with a status of 403 (Forbidden)'
+      ) &&
+      message.stackTrace()?.[0]?.url?.endsWith('wp-login.php?action=logout')
+    ) {
+      return;
+    }
+
+    //eslint-disable-next-line security/detect-object-injection -- Negligible.
     const logFunction = OBSERVED_CONSOLE_MESSAGE_TYPES[type];
 
     // As of Puppeteer 1.6.1, `message.text()` wrongly returns an object of
@@ -179,45 +239,19 @@ function observeConsoleLogging() {
     // cannot be found, the default text value is used instead.
     text = message.args()?.[0]?._remoteObject?.description || text;
 
-    // Disable reason: We intentionally bubble up the console message
-    // which, unless the test explicitly anticipates the logging via
-    // @wordpress/jest-console matchers, will cause the intended test
-    // failure.
-
-    // eslint-disable-next-line no-console, security/detect-object-injection
+    /* eslint-disable-next-line no-console, security/detect-object-injection --
+     * We intentionally bubble up the console message
+     * which, unless the test explicitly anticipates the logging via
+     * @wordpress/jest-console matchers, will cause the intended test
+     * failure.
+     **/
     console[logFunction](text);
   });
 }
 
-/**
- * Runs Axe tests when the story editor is found on the current page.
- *
- * @return {?Promise} Promise resolving once Axe texts are finished.
- */
-async function runAxeTestsForStoriesEditor() {
-  if (!(await page.$('body.edit-story'))) {
-    return;
-  }
-
-  await expect(page).toPassAxeTests({
-    // Temporary disabled rules to enable initial integration.
-    disabledRules: [
-      'aria-allowed-role',
-      'aria-input-field-name',
-      'aria-required-parent',
-      'button-name',
-      'color-contrast',
-      // Because of multiple #_wpnonce elements.
-      'duplicate-id',
-      'label',
-      'landmark-banner-is-top-level',
-      'landmark-no-duplicate-banner',
-      'landmark-unique',
-      'page-has-heading-one',
-      'region',
-      'scrollable-region-focusable',
-    ],
-  });
+async function clearSessionStorage() {
+  // eslint-disable-next-line n/no-unsupported-features/node-builtins
+  await page.evaluate(() => window.sessionStorage.clear());
 }
 
 /**
@@ -231,16 +265,24 @@ beforeAll(async () => {
   enablePageDialogAccept();
   observeConsoleLogging();
   await setupBrowser();
-  await trashAllPosts();
-  await trashAllPosts('web-story');
   await page.setDefaultNavigationTimeout(10000);
   await page.setDefaultTimeout(3000);
+
+  await setCurrentUser('admin', 'password');
+  await trashAllPosts();
+  await trashAllPosts('web-story');
+  await trashAllTerms('web_story_category');
+  await trashAllTerms('web_story_tag');
+  await deleteAllMedia();
+
+  await clearLocalStorage();
+  await clearSessionStorage();
 });
 
 // eslint-disable-next-line jest/require-top-level-describe
 afterEach(async () => {
-  await runAxeTestsForStoriesEditor();
-  await setupBrowser();
+  await clearLocalStorage();
+  await clearSessionStorage();
 });
 
 // eslint-disable-next-line jest/require-top-level-describe

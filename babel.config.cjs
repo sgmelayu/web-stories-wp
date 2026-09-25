@@ -32,7 +32,14 @@ module.exports = function (api) {
           shippedProposals: true,
           targets,
           useBuiltIns: 'usage',
-          corejs: 3,
+          corejs: require('core-js/package.json').version,
+          // Remove some unnecessary polyfills, similar to how Gutenberg is handling that.
+          // See https://github.com/WordPress/gutenberg/blob/e95970d888c309274e24324d593c77c536c9f1d8/packages/babel-preset-default/polyfill-exclusions.js.
+          exclude: [
+            'es.array.push',
+            /^es(next)?\.set\./,
+            /^es(next)?\.iterator\./,
+          ],
         },
       ],
       [
@@ -43,17 +50,17 @@ module.exports = function (api) {
           development: !isProduction,
         },
       ],
+      '@babel/preset-typescript',
     ],
     plugins: [
+      ['babel-plugin-react-compiler', { target: '17' }],
       '@wordpress/babel-plugin-import-jsx-pragma',
-      '@babel/plugin-transform-react-jsx',
-      'babel-plugin-styled-components',
-      ['@babel/plugin-proposal-class-properties', { loose: true }],
-      ['@babel/plugin-proposal-private-methods', { loose: true }],
-      'babel-plugin-inline-json-import',
-      '@babel/plugin-syntax-top-level-await',
-      '@babel/plugin-proposal-optional-chaining',
-      '@babel/plugin-proposal-nullish-coalescing-operator',
+      [
+        'babel-plugin-styled-components',
+        {
+          meaninglessFileNames: ['index', 'styles', 'components'],
+        },
+      ],
     ],
     sourceMaps: true,
     env: {

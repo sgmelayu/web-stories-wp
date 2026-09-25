@@ -15,132 +15,175 @@
  */
 
 /**
- * WordPress dependencies
- */
-import {
-  activatePlugin,
-  deactivatePlugin,
-  getEditedPostContent,
-} from '@wordpress/e2e-test-utils';
-
-/**
  * External dependencies
  */
 import {
   createNewStory,
-  addRequestInterception,
-  publishPost,
   insertStoryTitle,
+  withPlugin,
+  publishStory,
+  loadPostEditor,
+  publishPost,
+  trashAllPosts,
 } from '@web-stories-wp/e2e-test-utils';
 
-describe('Publishing Flow', () => {
-  let stopRequestInterception;
+/**
+ * Internal dependencies
+ */
+import { addAllowedErrorMessage } from '../../config/bootstrap';
 
-  beforeAll(async () => {
-    await page.setRequestInterception(true);
-    stopRequestInterception = addRequestInterception((request) => {
-      if (request.url().startsWith('https://cdn.ampproject.org/')) {
-        request.respond({
-          status: 200,
-          body: '',
-        });
-      } else {
-        request.continue();
-      }
-    });
+async function addPosterImage() {
+  await expect(page).toClick('li[role="tab"]', { text: 'Document' });
+
+  await expect(page).toClick('button[aria-label="Poster image"]');
+  await expect(page).toClick('[role="menuitem"]', { text: 'Upload a file' });
+
+  await page.waitForSelector('.media-modal', {
+    visible: true,
+  });
+
+  await expect(page).toMatchElement('.media-toolbar-primary button', {
+    text: 'Select as poster image',
+  });
+
+  await expect(page).toClick('button', { text: 'Media Library' });
+
+  await expect(page).toClick(
+    '.attachments-browser .attachments .attachment[aria-label="example-3"]'
+  );
+
+  await expect(page).toClick('.media-toolbar-primary button', {
+    text: 'Select as poster image',
+  });
+
+  await page.waitForSelector('[alt="Preview image"]');
+  await expect(page).toMatchElement('[alt="Preview image"]');
+}
+
+jest.retryTimes(3, { logErrorsBeforeRetry: true });
+
+function getEditedPostContent() {
+  return page.evaluate(() =>
+    wp.data.select('core/editor').getEditedPostContent()
+  );
+}
+
+describe('Publishing Flow', () => {
+  let removeCORSErrorMessage;
+  let removeResourceErrorMessage;
+  let removeAMPPreloadErrorMessage;
+
+  beforeAll(() => {
+    // Ignore CORS errors related to the AMP validator JS.
+    removeCORSErrorMessage = addAllowedErrorMessage(
+      'has been blocked by CORS policy'
+    );
+    removeResourceErrorMessage = addAllowedErrorMessage(
+      'Failed to load resource'
+    );
+    // From the story embedded in amp-story-player
+    removeAMPPreloadErrorMessage = addAllowedErrorMessage(
+      'The resource https://cdn.ampproject.org/v0/amp-story-1.0.js was preloaded using link preload'
+    );
   });
 
   afterAll(async () => {
-    await page.setRequestInterception(false);
-    stopRequestInterception();
+    removeCORSErrorMessage();
+    removeResourceErrorMessage();
+    removeAMPPreloadErrorMessage();
+
+    await trashAllPosts();
+    await trashAllPosts('web-story');
   });
 
-  it('should guide me towards creating a new post to embed my story', async () => {
+  it('should guide me towards creating a new post to embed my story with poster', async () => {
     await createNewStory();
 
     await insertStoryTitle('Publishing Flow Test');
-
-    // Publish story.
-    await expect(page).toClick('button', { text: 'Publish' });
-
-    await expect(page).toMatchElement('button', { text: 'Dismiss' });
+    await addPosterImage();
+    await publishStory(false);
 
     // Create new post and embed story.
-    await expect(page).toClick('a', { text: 'Add to new post' });
-    await page.waitForNavigation();
+    await Promise.all([
+      expect(page).toClick('a', { text: 'Add to new post' }),
+      page.waitForNavigation(),
+    ]);
 
-    // See https://github.com/WordPress/gutenberg/blob/c31555d4cec541db929ee5f63b900c6577513272/packages/e2e-test-utils/src/create-new-post.js#L37-L63.
-    await page.waitForSelector('.edit-post-layout');
+    await loadPostEditor();
 
-    // Disable Gutenberg's Welcome Guide if existing.
-    const isWelcomeGuideActive = await page.evaluate(() =>
-      wp.data.select('core/edit-post').isFeatureActive('welcomeGuide')
+    await expect(getEditedPostContent()).resolves.toMatch(
+      '<!-- wp:web-stories/embed'
+    );
+    await expect(page).not.toMatchTextContent(
+      'This block contains unexpected or invalid content.'
     );
 
-    if (isWelcomeGuideActive) {
-      await page.evaluate(() =>
-        wp.data.dispatch('core/edit-post').toggleFeature('welcomeGuide')
-      );
-
-      await page.reload();
-      await page.waitForSelector('.edit-post-layout');
-    }
-
-    // Disable Gutenberg's full screen mode.
-    const isFullscreenMode = await page.evaluate(() =>
-      wp.data.select('core/edit-post').isFeatureActive('fullscreenMode')
+    await page.waitForFunction(
+      () => !document.querySelector('.wp-block-web-stories-embed.is-loading')
     );
 
-    if (isFullscreenMode) {
-      await page.evaluate(() =>
-        wp.data.dispatch('core/edit-post').toggleFeature('fullscreenMode')
-      );
+    await page.waitForSelector("iframe[title='Editor canvas']");
+    const frameHandle = await page.$("iframe[title='Editor canvas']");
+    const frame = await frameHandle.contentFrame();
+    expect(frame).not.toBeNull();
 
-      await page.waitForSelector('body:not(.is-fullscreen-mode)');
-    }
+    await frame.waitForSelector('amp-story-player');
 
-    await page.waitForSelector('amp-story-player');
-    await expect(page).toMatchElement('amp-story-player');
-    await expect(page).toMatch('Publishing Flow Test');
-
-    expect(await getEditedPostContent()).toMatchSnapshot();
+    await expect(frame).toMatchElement('amp-story-player');
+    await expect(frame).toMatchTextContent('Publishing Flow Test');
 
     const postPermalink = await publishPost();
 
     expect(postPermalink).not.toBeNull();
     expect(postPermalink).toStrictEqual(expect.any(String));
 
-    await Promise.all([page.goto(postPermalink), page.waitForNavigation()]);
+    await page.goto(postPermalink, {
+      waitUntil: 'networkidle2',
+    });
 
-    await page.waitForSelector('amp-story-player');
     await expect(page).toMatchElement('amp-story-player');
-    await expect(page).toMatch('Publishing Flow Test');
+    await expect(page).toMatchTextContent('Publishing Flow Test');
+  });
+
+  it('should guide me towards creating a new post to embed my story without poster', async () => {
+    await createNewStory();
+
+    await insertStoryTitle('Publishing Flow Test');
+    await publishStory(false);
+
+    // Create new post and embed story.
+    await Promise.all([
+      expect(page).toClick('a', { text: 'Add to new post' }),
+      page.waitForNavigation(),
+    ]);
+
+    await loadPostEditor();
+
+    await expect(getEditedPostContent()).resolves.toMatch(
+      '<!-- wp:web-stories/embed'
+    );
+    await expect(page).not.toMatchTextContent(
+      'This block contains unexpected or invalid content.'
+    );
   });
 
   describe('Classic Editor', () => {
-    beforeAll(async () => {
-      await activatePlugin('classic-editor');
-    });
-
-    afterAll(async () => {
-      await deactivatePlugin('classic-editor');
-    });
+    withPlugin('classic-editor');
 
     it('should guide me towards creating a new post to embed my story', async () => {
       await createNewStory();
 
       await insertStoryTitle('Publishing Flow Test (Shortcode)');
-
-      // Publish story.
-      await expect(page).toClick('button', { text: 'Publish' });
-
-      await expect(page).toMatchElement('button', { text: 'Dismiss' });
+      await addPosterImage();
+      await publishStory(false);
 
       // Create new post and embed story.
-      await expect(page).toClick('a', { text: 'Add to new post' });
-      await page.waitForNavigation();
+      await Promise.all([
+        expect(page).toClick('a', { text: 'Add to new post' }),
+        page.waitForNavigation(),
+      ]);
 
-      await expect(page).toMatch('Publishing Flow Test');
+      await expect(page).toMatchTextContent('Publishing Flow Test');
 
       // Switch to HTML mode
       await expect(page).toClick('#content-html');
@@ -150,7 +193,7 @@ describe('Publishing Flow', () => {
         (element) => element.value
       );
 
-      expect(textEditorContent).toMatchSnapshot();
+      expect(textEditorContent).toMatch('[web_stories_embed');
 
       await expect(page).toClick('#publish');
 
@@ -163,11 +206,13 @@ describe('Publishing Flow', () => {
       expect(postPermalink).not.toBeNull();
       expect(postPermalink).toStrictEqual(expect.any(String));
 
-      await Promise.all([page.goto(postPermalink), page.waitForNavigation()]);
+      await page.goto(postPermalink, {
+        waitUntil: 'networkidle2',
+      });
 
       await page.waitForSelector('amp-story-player');
       await expect(page).toMatchElement('amp-story-player');
-      await expect(page).toMatch('Publishing Flow Test');
+      await expect(page).toMatchTextContent('Publishing Flow Test');
     });
   });
 });

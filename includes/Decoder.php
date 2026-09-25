@@ -2,10 +2,10 @@
 /**
  * Class Decoder
  *
- * @package   Google\Web_Stories
+ * @link      https://github.com/googleforcreators/web-stories-wp
+ *
  * @copyright 2020 Google LLC
  * @license   https://www.apache.org/licenses/LICENSE-2.0 Apache License 2.0
- * @link      https://github.com/google/web-stories-wp
  */
 
 /**
@@ -24,14 +24,14 @@
  * limitations under the License.
  */
 
+declare(strict_types = 1);
+
 namespace Google\Web_Stories;
 
 /**
  * Decoder class.
  *
  * @since 1.1.0
- *
- * @package Google\Web_Stories
  */
 class Decoder {
 	/**
@@ -41,7 +41,7 @@ class Decoder {
 	 *
 	 * @return bool Whether decoding is supported.
 	 */
-	public function supports_decoding() {
+	public function supports_decoding(): bool {
 		/**
 		 * Filter whether the encoding requests.
 		 *
@@ -57,16 +57,16 @@ class Decoder {
 	 *
 	 * @since 1.1.0
 	 *
-	 * @param string $string String to decode.
+	 * @param string $content String to decode.
 	 * @return string Decoded string.
 	 */
-	public function base64_decode( $string ) {
-		if ( 0 === strpos( $string, '__WEB_STORIES_ENCODED__' ) ) {
-			$string = str_replace( '__WEB_STORIES_ENCODED__', '', $string );
+	public function base64_decode( string $content ): string {
+		if ( str_starts_with( $content, '__WEB_STORIES_ENCODED__' ) ) {
+			$content = str_replace( '__WEB_STORIES_ENCODED__', '', $content );
 
-			return urldecode( base64_decode( $string ) );
+			return urldecode( base64_decode( $content ) );
 		}
 
-		return $string;
+		return $content;
 	}
 }

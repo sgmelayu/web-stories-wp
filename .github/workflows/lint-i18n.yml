@@ -1,0 +1,133 @@
+name: Lint I18N
+
+on:
+  push:
+    paths:
+      - '**.js'
+      - '**.cjs'
+      - '**.ts'
+      - '**.tsx'
+      - '**/package.json'
+      - 'package-lock.json'
+      - 'web-stories.php'
+      - 'includes/**.php'
+      - '.github/workflows/lint-i18n.yml'
+    branches:
+      - main
+  pull_request:
+    paths:
+      - '**.js'
+      - '**.cjs'
+      - '**.ts'
+      - '**.tsx'
+      - '**/package.json'
+      - 'package-lock.json'
+      - 'web-stories.php'
+      - 'includes/**.php'
+      - '.github/workflows/lint-i18n.yml'
+
+permissions:
+  contents: read
+
+# Cancels all previous workflow runs for pull requests that have not completed.
+concurrency:
+  # The concurrency group contains the workflow name and the (target) branch name.
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@05e31511f85b41b11d1cf0ef85d0992719546e2c
+        with:
+          egress-policy: audit # TODO: change to 'egress-policy: block' after couple of runs
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240
+        with:
+          php-version: latest
+          coverage: none
+          tools: wp-cli
+
+      - name: Install latest version of i18n-command
+        run: wp package install wp-cli/i18n-command:@stable
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version-file: '.nvmrc'
+          cache: npm
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240
+        with:
+          php-version: latest
+          coverage: none
+          tools: composer
+
+      - name: Install dependencies
+        run: |
+          npm ci
+        env:
+          PUPPETEER_SKIP_DOWNLOAD: true
+
+      - name: Install PHP dependencies
+        uses: ramsey/composer-install@65e4f84970763564f46a70b8a54b90d033b3bdda
+        with:
+          composer-options: '--prefer-dist --no-progress --no-interaction'
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: latest
+
+      - name: Build plugin
+        run: bun run build:js
+
+      - name: Bundle regular version
+        run: bun run workflow:build-plugin
+
+      # Check if as many strings as expected were found.
+      # Fail job if `wp i18n make-pot` returns any warnings.
+      # Some false positive warnings are removed due to a bug in the string extraction.
+      # That's why this step is unfortunately a bit more complex.
+      # See https://github.com/wp-cli/i18n-command/issues/154
+      - name: Generate POT file
+        run: |
+          OUTPUT=$((wp i18n make-pot build/web-stories build/web-stories.pot) 2>&1 >/dev/null)
+
+          HAS_ERROR=false
+
+          EXPECTED_NUMBER_OF_STRINGS=1000
+          NUMBER_OF_FOUND_STRINGS=$(grep -o msgstr build/web-stories.pot | wc -l | xargs)
+
+          if (( "$NUMBER_OF_FOUND_STRINGS" < "$EXPECTED_NUMBER_OF_STRINGS" )); then
+          HAS_ERROR=true
+            echo "String extraction found only $NUMBER_OF_FOUND_STRINGS translatable strings. Expected at least $EXPECTED_NUMBER_OF_STRINGS."
+          fi
+
+          IFS=$'\n'
+          declare -a WARNINGS=($OUTPUT)
+          unset IFS
+
+          for WARNING in "${WARNINGS[@]}"; do
+            # Filter false positives.
+            if [[ $WARNING == *"translator comment"* ]] && [[ $WARNING != *"%s"* ]]; then
+              continue
+            fi
+
+            HAS_ERROR=true
+
+          	echo $WARNING
+          done
+
+          if [[ "$HAS_ERROR" = true ]]; then
+            exit 1
+          fi

@@ -2,10 +2,10 @@
 /**
  * Class Embed_Block.
  *
- * @package   Google\Web_Stories
+ * @link      https://github.com/googleforcreators/web-stories-wp
+ *
  * @copyright 2020 Google LLC
  * @license   https://www.apache.org/licenses/LICENSE-2.0 Apache License 2.0
- * @link      https://github.com/google/web-stories-wp
  */
 
 /**
@@ -24,63 +24,93 @@
  * limitations under the License.
  */
 
+declare(strict_types = 1);
+
 namespace Google\Web_Stories;
 
 use Google\Web_Stories\Model\Story;
-use Google\Web_Stories\Story_Renderer\Image;
-use Google\Web_Stories\Story_Renderer\Embed;
-use Google\Web_Stories\Traits\Assets;
+use Google\Web_Stories\Renderer\Story\Embed;
+use Google\Web_Stories\Renderer\Story\Image;
+use Google\Web_Stories\Renderer\Story\Singleton;
 
 /**
  * Embed block class.
  */
-class Embed_Base {
-	use Assets;
-
-	/**
-	 * Player script handle.
-	 *
-	 * @var string
-	 */
-	const STORY_PLAYER_HANDLE = 'standalone-amp-story-player';
-
+abstract class Embed_Base extends Service_Base {
 	/**
 	 * Script handle for frontend assets.
-	 *
-	 * @var string
 	 */
-	const SCRIPT_HANDLE = 'web-stories-embed';
+	public const SCRIPT_HANDLE = 'web-stories-embed';
+
+	/**
+	 * Assets instance.
+	 *
+	 * @var Assets Assets instance.
+	 */
+	protected Assets $assets;
+
+	/**
+	 * Context instance.
+	 *
+	 * @var Context Context instance.
+	 */
+	protected Context $context;
+
+	/**
+	 * Embed Base constructor.
+	 *
+	 * @since 1.8.0
+	 *
+	 * @param Assets  $assets  Assets instance.
+	 * @param Context $context Context instance.
+	 */
+	public function __construct( Assets $assets, Context $context ) {
+		$this->assets  = $assets;
+		$this->context = $context;
+	}
 
 	/**
 	 * Initializes the Web Stories embed block.
 	 *
 	 * @since 1.1.0
-	 *
-	 * @return void
 	 */
-	public function init() {
-		wp_register_script( self::STORY_PLAYER_HANDLE, 'https://cdn.ampproject.org/amp-story-player-v0.js', [], 'v0', false );
-		wp_register_style( self::STORY_PLAYER_HANDLE, 'https://cdn.ampproject.org/amp-story-player-v0.css', [], 'v0' );
-
-		$this->register_style( self::SCRIPT_HANDLE );
-		// Set a style without a `src` allows us to just use the inline style below
-		// without needing an external stylesheet.
-		wp_styles()->registered[ self::SCRIPT_HANDLE ]->src = false;
-
-		$path = WEBSTORIES_PLUGIN_DIR_PATH . 'assets/css/' . self::SCRIPT_HANDLE . '.css';
-		if ( is_rtl() ) {
-			$path = WEBSTORIES_PLUGIN_DIR_PATH . 'assets/css/' . self::SCRIPT_HANDLE . '-rtl.css';
+	public function register(): void {
+		if ( wp_style_is( self::SCRIPT_HANDLE, 'registered' ) ) {
+			return;
 		}
+
+		$this->assets->register_style_asset( self::SCRIPT_HANDLE );
+
+		if ( \defined( 'AMPFORWP_VERSION' ) ) {
+			add_action( 'amp_post_template_css', [ $this, 'add_amp_post_template_css' ] );
+		}
+
+		add_filter( 'wp_kses_allowed_html', [ $this, 'filter_kses_allowed_html' ] );
+	}
+
+	/**
+	 * Get the action priority to use for registering the service.
+	 *
+	 * @since 1.6.0
+	 *
+	 * @return int Registration action priority to use.
+	 */
+	public static function get_registration_action_priority(): int {
+		return 11;
+	}
+
+	/**
+	 * Prints required inline CSS when using the AMP for WP plugin.
+	 *
+	 * @since 1.13.0
+	 */
+	public function add_amp_post_template_css(): void {
+		$path = $this->assets->get_base_path( \sprintf( 'assets/css/%s%s.css', self::SCRIPT_HANDLE, is_rtl() ? '-rtl' : '' ) );
 
 		if ( is_readable( $path ) ) {
 			$css = file_get_contents( $path ); // phpcs:ignore WordPressVIPMinimum.Performance.FetchingRemoteData.FileGetContentsUnknown
-
-			if ( $css ) {
-				wp_add_inline_style( self::SCRIPT_HANDLE, $css );
-			}
+			echo $css; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 		}
-
-		add_filter( 'wp_kses_allowed_html', [ $this, 'filter_kses_allowed_html' ], 10, 2 );
 	}
 
 	/**
@@ -88,12 +118,15 @@ class Embed_Base {
 	 *
 	 * @since 1.0.0
 	 *
-	 * @param array|string $allowed_tags Allowed tags.
+	 * @param array<string, array<string,bool>>|mixed $allowed_tags Allowed tags.
+	 * @return array<string, array<string,bool>>|mixed Allowed tags.
 	 *
-	 * @return array|string Allowed tags.
+	 * @template T
+	 *
+	 * @phpstan-return ($allowed_tags is array<T> ? array<T> : mixed)
 	 */
 	public function filter_kses_allowed_html( $allowed_tags ) {
-		if ( ! is_array( $allowed_tags ) ) {
+		if ( ! \is_array( $allowed_tags ) ) {
 			return $allowed_tags;
 		}
 
@@ -107,30 +140,24 @@ class Embed_Base {
 	}
 
 	/**
-	 * Return an array of default attributes.
+	 * Renders a story with given attributes.
 	 *
-	 * @since 1.1.0
+	 * @since 1.30.0
 	 *
-	 * @return array
+	 * @param Story                     $story      Story instance.
+	 * @param array<string, string|int> $attributes Embed render attributes.
+	 * @return string Rendered embed output.
 	 */
-	protected function default_attrs() {
-		$attrs = [
-			'align'  => 'none',
-			'height' => 600,
-			'poster' => '',
-			'url'    => '',
-			'title'  => '',
-			'width'  => 360,
-		];
+	public function render_story( Story $story, array $attributes ): string {
+		if ( is_feed() ) {
+			$renderer = new Image( $story );
+		} elseif ( ! empty( $attributes['previewOnly'] ) ) {
+			$renderer = new Singleton( $story, $this->assets );
+		} else {
+			$renderer = new Embed( $story, $this->assets, $this->context );
+		}
 
-		/**
-		 * Filters settings passed to the web stories embed.
-		 *
-		 * @since 1.1.0
-		 *
-		 * @param array $attrs Array of settings passed to web stories embed.
-		 */
-		return apply_filters( 'web_stories_embed_default_attributes', $attrs );
+		return $renderer->render( $attributes );
 	}
 
 	/**
@@ -138,13 +165,12 @@ class Embed_Base {
 	 *
 	 * @since 1.1.0
 	 *
-	 * @param array $attributes Embed render attributes.
-	 *
+	 * @param array<string, string|int> $attributes Embed render attributes.
 	 * @return string Rendered embed output.
 	 */
-	public function render( array $attributes ) {
+	public function render( array $attributes ): string {
 		// The only mandatory attribute.
-		if ( empty( $attributes['url'] ) ) {
+		if ( empty( $attributes['url'] ) && empty( $attributes['previewOnly'] ) ) {
 			return '';
 		}
 
@@ -160,13 +186,34 @@ class Embed_Base {
 
 		$story = new Story( $data );
 
-		if ( is_feed() ) {
-			$renderer = new Image( $story );
-		} else {
-			$renderer = new Embed( $story );
-		}
-
-		return $renderer->render( $attributes );
+		return $this->render_story( $story, $attributes );
 	}
 
+	/**
+	 * Return an array of default attributes.
+	 *
+	 * @since 1.1.0
+	 *
+	 * @return array<string, string|int> Default attributes.
+	 */
+	protected function default_attrs(): array {
+		$attrs = [
+			'align'       => 'none',
+			'height'      => 600,
+			'poster'      => '',
+			'url'         => '',
+			'title'       => '',
+			'width'       => 360,
+			'previewOnly' => false,
+		];
+
+		/**
+		 * Filters settings passed to the web stories embed.
+		 *
+		 * @since 1.1.0
+		 *
+		 * @param array $attrs Array of settings passed to web stories embed.
+		 */
+		return apply_filters( 'web_stories_embed_default_attributes', $attrs );
+	}
 }

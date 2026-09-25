@@ -13,24 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 /**
  * Internal dependencies
  */
-import { visitDashboard } from './';
+import visitSettings from './visitSettings';
 
 async function setAnalyticsCode(code) {
-  await visitDashboard();
-
-  const dashboardNavigation = await expect(page).toMatchElement(
-    '[aria-label="Main dashboard navigation"]'
-  );
-
-  await expect(dashboardNavigation).toClick('a', {
-    text: 'Settings',
-  });
+  await visitSettings();
 
   const inputSelector =
-    'input[placeholder^="Enter your Google Analytics Tracking ID"]';
+    'input[placeholder^="Enter your Google Analytics Measurement ID"]';
 
   await expect(page).toMatchElement(inputSelector);
   await page.evaluate(() => {
@@ -48,7 +41,8 @@ async function setAnalyticsCode(code) {
 
   await expect(page).toClick('button', { text: 'Save' });
   // Wait for setting to save.
-  await page.waitForTimeout(1000);
+  // TODO: Remove and replace with waitForSelector or locator API.
+  await new Promise((r) => setTimeout(r, 1000));
 }
 
 export default setAnalyticsCode;

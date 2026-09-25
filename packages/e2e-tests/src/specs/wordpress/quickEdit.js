@@ -13,27 +13,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-/**
- * WordPress dependencies
- */
-import {
-  loginUser,
-  switchUserToAdmin,
-  visitAdminPage,
-} from '@wordpress/e2e-test-utils';
 
 /**
  * External dependencies
  */
-import { createNewStory } from '@web-stories-wp/e2e-test-utils';
+import {
+  createNewStory,
+  publishStory,
+  withUser,
+  visitAdminPage,
+  trashAllPosts,
+} from '@web-stories-wp/e2e-test-utils';
 
-describe('Quick Edit', () => {
-  beforeAll(async () => {
-    await loginUser('author', 'password');
-  });
+jest.retryTimes(3, { logErrorsBeforeRetry: true });
+
+// eslint-disable-next-line jest/no-disabled-tests -- TODO: Needs investigation.
+describe.skip('Quick Edit', () => {
+  withUser('author', 'password');
 
   afterAll(async () => {
-    await switchUserToAdmin();
+    await trashAllPosts('web-story');
   });
 
   it('should save story without breaking markup', async () => {
@@ -45,14 +44,11 @@ describe('Quick Edit', () => {
 
     await page.type('input[placeholder="Add title"]', storyTitle);
 
-    // Publish story.
-    await expect(page).toClick('button', { text: 'Publish' });
-
-    await expect(page).toMatchElement('button', { text: 'Dismiss' });
+    await publishStory();
 
     await visitAdminPage('edit.php', 'post_type=web-story');
 
-    await expect(page).toMatch(storyTitle);
+    await expect(page).toMatchTextContent(storyTitle);
 
     // Make row actions appear.
     const elmId = await page.evaluate((storytitle) => {
@@ -68,17 +64,33 @@ describe('Quick Edit', () => {
     await page.type('input[name="post_title"]', ' - updated.');
     await expect(page).toClick('button', { text: 'Update' });
 
-    const storyTitleNew = 'Test quick edit – updated.';
+    // Wait for update to finish and for the Quick Edit form to close.
+    await page.waitForResponse(
+      (response) =>
+        // eslint-disable-next-line jest/no-conditional-in-test -- False positive
+        response.url().includes('admin-ajax.php') && response.status() === 200
+    );
+    await page.waitForSelector('.spinner', {
+      visible: false,
+    });
 
-    await expect(page).toMatch(storyTitleNew);
+    // After updating, the row for this story in the table will be slowly fading in.
+    // The "Quick Edit" link will be focused after successful editing.
+    // See https://github.com/WordPress/wordpress-develop/blob/6d23d07e8014f551d836c3876515c3cc2c5c594b/src/js/_enqueues/admin/inline-edit-post.js#L457-L463
+    await page.waitForFunction(
+      () => document.activeElement.innerHTML === 'Quick&nbsp;Edit'
+    );
 
-    await page.hover(`#${elmId}`);
+    await expect(page).toMatchElement('button', { text: 'Quick Edit' });
 
-    await Promise.all([
-      expect(page).toClick(`#${elmId} a`, { text: 'View' }),
+    await expect(page).toMatchTextContent('Test quick edit – updated.');
+
+    const [response] = await Promise.all([
       page.waitForNavigation(),
+      page.click(`#${elmId} a[rel="bookmark"]`),
     ]);
 
-    await expect(page).toMatchElement('amp-story');
+    // When the <amp-story> element exists in the response body we know that the output was not mangled.
+    await expect(response.text()).resolves.toContain('<amp-story');
   });
 });

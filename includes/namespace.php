@@ -2,10 +2,10 @@
 /**
  * Plugin initialization file.
  *
- * @package   Google\Web_Stories
+ * @link      https://github.com/googleforcreators/web-stories-wp
+ *
  * @copyright 2020 Google LLC
  * @license   https://www.apache.org/licenses/LICENSE-2.0 Apache License 2.0
- * @link      https://github.com/google/web-stories-wp
  */
 
 /**
@@ -24,122 +24,138 @@
  * limitations under the License.
  */
 
+declare(strict_types = 1);
+
 namespace Google\Web_Stories;
 
-use WP_REST_Request;
 use WP_Error;
+use WP_REST_Request;
 use WP_Site;
-
-/**
- * Run logic to setup a new site with web stories.
- *
- * @since 1.2.0
- *
- * @return void
- */
-function setup_new_site() {
-	$story = new Story_Post_Type( new Experiments(), new Meta_Boxes() );
-	$story->init();
-	$story->add_caps_to_roles();
-	if ( ! defined( '\WPCOM_IS_VIP_ENV' ) || false === \WPCOM_IS_VIP_ENV ) {
-		flush_rewrite_rules( false ); // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.flush_rewrite_rules_flush_rewrite_rules
-	}
-
-	$database_upgrader = new Database_Upgrader();
-	$database_upgrader->init();
-}
 
 /**
  * Handles plugin activation.
  *
- * Throws an error if the site is running on PHP < 5.6
- *
- * @SuppressWarnings(PHPMD.BooleanArgumentFlag)
+ * @SuppressWarnings("PHPMD.BooleanArgumentFlag")
  *
  * @since 1.0.0
  *
  * @param bool $network_wide Whether to activate network-wide.
- *
- * @return void
  */
-function activate( $network_wide = false ) {
-	setup_new_site();
+function activate( ?bool $network_wide = false ): void {
+	$network_wide = (bool) $network_wide;
 
+	// Runs all PluginActivationAware services.
+	// This will also flush rewrite rules.
+	PluginFactory::create()->on_plugin_activation( $network_wide );
+
+	/**
+	 * Fires after plugin activation.
+	 *
+	 * @param bool $network_wide Whether to activate network-wide.
+	 */
 	do_action( 'web_stories_activation', $network_wide );
 }
 
+register_activation_hook( WEBSTORIES_PLUGIN_FILE, __NAMESPACE__ . '\activate' );
+
 /**
- * Hook into new site when they are created and run activation hook.
+ * Hook into new site creation on Multisite.
  *
  * @since 1.0.0
  *
  * @param int|WP_Site $site Site ID or object.
- *
- * @return void
  */
-function new_site( $site ) {
+function new_site( $site ): void {
 	if ( ! is_multisite() ) {
 		return;
 	}
+
 	$site = get_site( $site );
+
 	if ( ! $site ) {
 		return;
 	}
-	$site_id = (int) $site->blog_id;
-	switch_to_blog( $site_id );
-	setup_new_site();
-	restore_current_blog();
+
+	// Runs all SiteInitializationAware services.
+	// This will also flush rewrite rules.
+	PluginFactory::create()->on_site_initialization( $site );
 }
+
 add_action( 'wp_initialize_site', __NAMESPACE__ . '\new_site', PHP_INT_MAX );
 
-
 /**
- * Hook into delete site.
+ * Hook into site removal on Multisite.
  *
  * @since 1.1.0
  *
  * @param WP_Error    $error Unused.
  * @param int|WP_Site $site Site ID or object.
- *
- * @return void
  */
-function remove_site( $error, $site ) {
+function remove_site( WP_Error $error, $site ): void {
 	if ( ! is_multisite() ) {
 		return;
 	}
+
 	$site = get_site( $site );
+
 	if ( ! $site ) {
 		return;
 	}
-	$site_id = (int) $site->blog_id;
-	$story   = new Story_Post_Type( new Experiments(), new Meta_Boxes() );
-	switch_to_blog( $site_id );
-	$story->remove_caps_from_roles();
-	restore_current_blog();
+
+	PluginFactory::create()->on_site_removal( $site );
 }
+
 add_action( 'wp_validate_site_deletion', __NAMESPACE__ . '\remove_site', PHP_INT_MAX, 2 );
 
 /**
  * Handles plugin deactivation.
  *
+ * @SuppressWarnings("PHPMD.BooleanArgumentFlag")
+ *
  * @since 1.0.0
  *
  * @param bool $network_wide Whether to deactivate network-wide.
- *
- * @return void
  */
-function deactivate( $network_wide ) {
-	unregister_post_type( Story_Post_Type::POST_TYPE_SLUG );
-	if ( ! defined( '\WPCOM_IS_VIP_ENV' ) || false === \WPCOM_IS_VIP_ENV ) {
-		flush_rewrite_rules( false ); // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.flush_rewrite_rules_flush_rewrite_rules
-	}
+function deactivate( ?bool $network_wide = false ): void {
+	$network_wide = (bool) $network_wide;
 
+	// Runs all PluginDeactivationAware services.
+	// This will also flush rewrite rules.
+	PluginFactory::create()->on_plugin_deactivation( $network_wide );
+
+	/**
+	 * Fires after plugin deactivation.
+	 *
+	 * @param bool $network_wide Whether to deactivate network-wide.
+	 */
 	do_action( 'web_stories_deactivation', $network_wide );
 }
 
-register_activation_hook( WEBSTORIES_PLUGIN_FILE, __NAMESPACE__ . '\activate' );
 register_deactivation_hook( WEBSTORIES_PLUGIN_FILE, __NAMESPACE__ . '\deactivate' );
 
+/**
+ * Initializes functionality to improve compatibility with the AMP plugin.
+ *
+ * Loads a separate PHP file that allows defining functions in the global namespace.
+ *
+ * Runs on the 'wp' hook to ensure the WP environment has been fully set up,
+ */
+function load_amp_plugin_compat(): void {
+	require_once WEBSTORIES_PLUGIN_DIR_PATH . 'includes/compat/amp.php';
+}
+
+add_action( 'wp', __NAMESPACE__ . '\load_amp_plugin_compat' );
+
+/**
+ * Load functions for use by plugin developers.
+ *
+ * @todo Move to autoloader
+ */
+function load_functions(): void {
+	require_once WEBSTORIES_PLUGIN_DIR_PATH . 'includes/functions.php';
+}
+
+add_action( 'init', __NAMESPACE__ . '\load_functions' );
 
 /**
  * Append result of internal request to REST API for purpose of preloading data to be attached to a page.
@@ -147,57 +163,66 @@ register_deactivation_hook( WEBSTORIES_PLUGIN_FILE, __NAMESPACE__ . '\deactivate
  *
  * Like rest_preload_api_request() in core, but embeds links and removes trailing slashes.
  *
- * @link  https://core.trac.wordpress.org/ticket/51722
+ * @SuppressWarnings("PHPMD.NPathComplexity")
  *
  * @since 1.2.0
  *
- * @see   \rest_preload_api_request
- * @SuppressWarnings(PHPMD.NPathComplexity)
+ * @link https://core.trac.wordpress.org/ticket/51722
+ * @link https://core.trac.wordpress.org/ticket/51636
+ * @see \rest_preload_api_request
  *
- * @param array        $memo Reduce accumulator.
- * @param string|array $path REST API path to preload.
- *
- * @return array Modified reduce accumulator.
+ * @param array<string, array{body: string, headers: array<string,string>}|array<string, array{body: string, headers: array<string,string>}>> $memo Reduce accumulator.
+ * @param string|array<int, string>                                                                                                           $path REST API path to preload.
+ * @return array<string, array{body: string, headers: array<string,string>}|array<string, array{body: string, headers: array<string,string>}>> Modified reduce accumulator.
  */
-function rest_preload_api_request( $memo, $path ) {
-	// array_reduce() doesn't support passing an array in PHP 5.2,
-	// so we need to make sure we start with one.
-	if ( ! is_array( $memo ) ) {
-		$memo = [];
-	}
-
+function rest_preload_api_request( array $memo, $path ): array {
 	if ( empty( $path ) ) {
 		return $memo;
 	}
 
 	$method = 'GET';
-	if ( is_array( $path ) && 2 === count( $path ) ) {
-		$method = end( $path );
-		$path   = reset( $path );
+	if ( \is_array( $path ) ) {
+		if ( 2 !== \count( $path ) ) {
+			return $memo;
+		}
 
-		if ( ! in_array( $method, [ 'GET', 'OPTIONS' ], true ) ) {
+		$method = end( $path );
+		$path   = (string) reset( $path );
+
+		if ( ! \in_array( $method, [ 'GET', 'OPTIONS' ], true ) ) {
 			$method = 'GET';
 		}
 	}
 
-	$path_parts = wp_parse_url( $path );
-	if ( false === $path_parts ) {
+	/**
+	 * URL parts.
+	 *
+	 * @var array{path:string, query?: string}|false $path_parts
+	 */
+	$path_parts = wp_parse_url( (string) $path );
+	if ( ! \is_array( $path_parts ) ) {
 		return $memo;
 	}
 
+	// This line is different from code. Adds untrailingslashit. See https://core.trac.wordpress.org/ticket/57048.
 	$request = new WP_REST_Request( $method, untrailingslashit( $path_parts['path'] ) );
-	$embed   = false;
 	if ( ! empty( $path_parts['query'] ) ) {
 		$query_params = [];
 		parse_str( $path_parts['query'], $query_params );
-		$embed = isset( $query_params['_embed'] ) ? $query_params['_embed'] : false;
 		$request->set_query_params( $query_params );
 	}
 
 	$response = rest_do_request( $request );
 	if ( 200 === $response->status ) {
 		$server = rest_get_server();
-		$data   = $server->response_to_data( $response, $embed );
+		/**
+		 * Embed directive.
+		 *
+		 * @var string|string[] $embed
+		 */
+		$embed = $request['_embed'] ?? false;
+		$embed = $embed ? rest_parse_embed_param( $embed ) : false;
+		$data  = $server->response_to_data( $response, $embed );
 
 		if ( 'OPTIONS' === $method ) {
 			$response = rest_send_allow_header( $response, $server, $request );
@@ -217,17 +242,23 @@ function rest_preload_api_request( $memo, $path ) {
 	return $memo;
 }
 
-global $web_stories;
-
-$web_stories = new Plugin();
-$web_stories->register();
+/**
+ * Returns the Web stories plugin instance.
+ *
+ * Can be used by other plugins to integrate with the plugin
+ * or to simply detect whether the plugin is active.
+ */
+function get_plugin_instance(): Plugin {
+	return PluginFactory::create();
+}
 
 /**
- * Web stories Plugin Instance
+ * Bootstrap the plugin.
  *
- * @return Plugin
+ * @since 1.11.0
  */
-function get_plugin_instance() {
-	global $web_stories;
-	return $web_stories;
+function bootstrap_plugin(): void {
+	PluginFactory::create()->register();
 }
+
+add_action( 'plugins_loaded', __NAMESPACE__ . '\bootstrap_plugin' );

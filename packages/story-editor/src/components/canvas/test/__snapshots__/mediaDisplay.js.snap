@@ -1,0 +1,5 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`MediaDisplay should apply and reset transformations: empty style after 1`] = `{}`;
+
+exports[`MediaDisplay should apply and reset transformations: empty style before 1`] = `{}`;

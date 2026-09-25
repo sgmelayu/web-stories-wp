@@ -17,13 +17,14 @@
 /**
  * External dependencies
  */
-import { percySnapshot } from '@percy/puppeteer';
-import { createNewStory } from '@web-stories-wp/e2e-test-utils';
+import {
+  takeSnapshot,
+  createNewStory,
+  publishStory,
+  withPlugin,
+} from '@web-stories-wp/e2e-test-utils';
 
-/**
- * WordPress dependencies
- */
-import { activatePlugin, deactivatePlugin } from '@wordpress/e2e-test-utils';
+jest.retryTimes(3, { logErrorsBeforeRetry: true });
 
 describe('Custom Meta Boxes', () => {
   describe('Unavailable', () => {
@@ -37,13 +38,7 @@ describe('Custom Meta Boxes', () => {
   });
 
   describe('Available', () => {
-    beforeAll(async () => {
-      await activatePlugin('web-stories-test-plugin-meta-box');
-    });
-
-    afterAll(async () => {
-      await deactivatePlugin('web-stories-test-plugin-meta-box');
-    });
+    withPlugin('web-stories-test-plugin-meta-box');
 
     it('should display meta boxes and save their content', async () => {
       await createNewStory();
@@ -71,7 +66,7 @@ describe('Custom Meta Boxes', () => {
         'Meta Box Test Value'
       );
 
-      await percySnapshot(page, 'Custom Meta Boxes');
+      await takeSnapshot(page, 'Custom Meta Boxes');
 
       // Verify that collapsing works via postbox.js from WordPress.
 
@@ -85,10 +80,7 @@ describe('Custom Meta Boxes', () => {
         'button.handlediv[aria-expanded="true"]'
       );
 
-      // Publish story.
-      await expect(page).toClick('button', { text: 'Publish' });
-
-      await expect(page).toMatchElement('button', { text: 'Dismiss' });
+      await publishStory();
 
       // Refresh page to verify that the text has been persisted.
       await page.reload();
@@ -113,7 +105,7 @@ describe('Custom Meta Boxes', () => {
       const metaBoxValue = await page.evaluate(
         () => document.getElementById('web_stories_test_meta_box_field').value
       );
-      await expect(metaBoxValue).toStrictEqual('Meta Box Test Value');
+      await expect(metaBoxValue).toBe('Meta Box Test Value');
     });
   });
 });

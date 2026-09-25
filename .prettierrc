@@ -1,4 +1,5 @@
 {
+  "plugins": ["@prettier/plugin-xml"],
   "printWidth": 80,
   "singleQuote": true,
   "trailingComma": "es5",
@@ -12,7 +13,7 @@
       }
     },
     {
-      "files": [".eslintrc", ".imgbotconfig", ".prettierrc", ".stylelintrc", "*.json"],
+      "files": [".eslintrc", ".prettierrc", ".stylelintrc", "*.json"],
       "options": {
         "parser": "json"
       }

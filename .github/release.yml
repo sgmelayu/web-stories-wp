@@ -1,0 +1,23 @@
+changelog:
+  exclude:
+    authors:
+      - dependabot
+      - github-actions
+      - googleforcreators-bot
+  categories:
+    - title: '🚀 Features'
+      labels:
+        - 'Type: Enhancement'
+    - title: '🐛 Bug Fixes'
+      labels:
+        - 'Type: Bug'
+    - title: '🧰 Maintenance'
+      labels:
+        - 'Type: Infrastructure'
+        - 'Type: Code Quality'
+    - title: ':memo: Documentation'
+      labels:
+        - 'Type: Documentation'
+    - title: 'Other Changes'
+      labels:
+        - '*'

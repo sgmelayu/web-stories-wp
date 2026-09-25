@@ -17,16 +17,18 @@
 /**
  * External dependencies
  */
-const path = require('path');
-const glob = require('glob');
+const { readdirSync } = require('fs');
+const { resolve, parse } = require('path');
 const webpack = require('webpack');
-const HtmlWebpackPlugin = require('html-webpack-plugin');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
-const OptimizeCSSAssetsPlugin = require('optimize-css-assets-webpack-plugin');
+const CssMinimizerPlugin = require('css-minimizer-webpack-plugin');
 const RtlCssPlugin = require('rtlcss-webpack-plugin');
 const TerserPlugin = require('terser-webpack-plugin');
 const WebpackBar = require('webpackbar');
 const { BundleAnalyzerPlugin } = require('webpack-bundle-analyzer');
+const HtmlWebpackPlugin = require('html-webpack-plugin');
+const CircularDependencyPlugin = require('circular-dependency-plugin');
+const ReactRefreshWebpackPlugin = require('@pmmmwh/react-refresh-webpack-plugin');
 
 /**
  * WordPress dependencies
@@ -45,6 +47,10 @@ function requestToExternal(request) {
     return false;
   }
 
+  if (request.includes('react-refresh/runtime')) {
+    return false;
+  }
+
   return undefined;
 }
 
@@ -53,40 +59,72 @@ const isProduction = process.env.NODE_ENV === 'production';
 const mode = isProduction ? 'production' : 'development';
 
 const sharedConfig = {
+  resolve: {
+    // Fixes resolving packages in the monorepo so we use the "src" folder, not "dist".
+    exportsFields: ['customExports', 'exports'],
+    extensions: ['.ts', '.tsx', '.js', '.jsx', '.json', '.wasm'],
+    // To make loading mediainfo.js work.
+    fallback: {
+      fs: false,
+      path: false,
+      url: false,
+      module: false,
+      assert: false,
+      perf_hooks: false,
+      crypto: false,
+      worker_threads: false,
+    },
+  },
   mode,
   devtool: !isProduction ? 'source-map' : undefined,
   output: {
-    path: path.resolve(process.cwd(), 'assets', 'js'),
+    path: resolve(process.cwd(), 'assets', 'js'),
     filename: '[name].js',
-    chunkFilename: '[name]-[chunkhash].js',
-    publicPath: '',
-    /**
-     * If multiple webpack runtimes (from different compilations) are used on the same webpage,
-     * there is a risk of conflicts of on-demand chunks in the global namespace.
-     *
-     * @see (@link https://webpack.js.org/configuration/output/#outputjsonpfunction)
-     */
-    jsonpFunction: '__webStories_webpackJsonp',
+    chunkFilename: '[name].js?v=[chunkhash]',
   },
+  target: 'browserslist',
   module: {
     rules: [
       !isProduction && {
-        test: /\.js$/,
+        test: /\.m?js$/,
         use: ['source-map-loader'],
+        // html-to-image and react-blurhash reference source maps but don't currently ship with any.
+        exclude:
+          /node_modules\/html-to-image|node_modules\/react-blurhash|node_modules\/stylis-plugin-rtl/,
         enforce: 'pre',
+        resolve: {
+          fullySpecified: false,
+        },
       },
       {
-        test: /\.js$/,
+        test: /\.worker\.([jt])s$/,
         exclude: /node_modules/,
+        use: {
+          loader: 'worker-loader',
+          options: {
+            inline: 'fallback',
+          },
+        },
+      },
+      {
+        test: /\.([jt])sx?$/,
+        exclude: /node_modules/,
+        resolve: {
+          // Avoid having to provide full file extension for imports.
+          // See https://webpack.js.org/configuration/module/#resolvefullyspecified
+          fullySpecified: false,
+        },
         use: [
-          require.resolve('thread-loader'),
           {
-            loader: require.resolve('babel-loader'),
+            loader: 'babel-loader',
             options: {
               // Babel uses a directory within local node_modules
               // by default. Use the environment variable option
               // to enable more persistent caching.
               cacheDirectory: process.env.BABEL_CACHE_DIRECTORY || true,
+              plugins: [
+                !isProduction && require.resolve('react-refresh/babel'),
+              ].filter(Boolean),
             },
           },
         ],
@@ -94,85 +132,139 @@ const sharedConfig = {
       // These should be sync'd with the config in `.storybook/main.cjs`.
       {
         test: /\.svg$/,
-        use: [
+        // Use asset SVG and SVGR together.
+        // Not using resourceQuery because it doesn't work well with Rollup.
+        // https://react-svgr.com/docs/webpack/#use-svgr-and-asset-svg-in-the-same-project
+        oneOf: [
           {
-            loader: '@svgr/webpack',
-            options: {
-              titleProp: true,
-              svgo: true,
-              svgoConfig: {
-                plugins: [
-                  {
-                    removeViewBox: false,
-                    removeDimensions: true,
-                    convertColors: {
-                      currentColor: /^(?!url|none)/i,
-                    },
-                  },
-                ],
-              },
-            },
+            type: 'asset/inline',
+            include: [/inline-icons\/.*\.svg$/],
           },
-          'url-loader',
-        ],
-        exclude: [/images\/.*\.svg$/],
-      },
-      {
-        test: /\.svg$/,
-        use: [
           {
-            loader: '@svgr/webpack',
-            options: {
-              titleProp: true,
-              svgo: true,
-              svgoConfig: {
-                plugins: [
-                  {
-                    removeViewBox: false,
-                    removeDimensions: true,
-                    convertColors: {
-                      // See https://github.com/google/web-stories-wp/pull/6361
-                      currentColor: false,
-                    },
+            issuer: /\.[jt]sx?$/,
+            include: [/\/icons\/.*\.svg$/],
+            use: [
+              {
+                loader: '@svgr/webpack',
+                options: {
+                  titleProp: true,
+                  svgo: true,
+                  memo: true,
+                  svgoConfig: {
+                    plugins: [
+                      {
+                        name: 'preset-default',
+                        params: {
+                          overrides: {
+                            removeViewBox: false,
+                            convertColors: {
+                              currentColor: /^(?!url|none)/i,
+                            },
+                          },
+                        },
+                      },
+                      'removeDimensions',
+                    ],
                   },
-                ],
+                },
               },
-            },
+            ],
           },
-          'url-loader',
+          {
+            issuer: /\.[jt]sx?$/,
+            include: [/images\/.*\.svg$/],
+            use: [
+              {
+                loader: '@svgr/webpack',
+                options: {
+                  titleProp: true,
+                  svgo: true,
+                  memo: true,
+                  svgoConfig: {
+                    plugins: [
+                      {
+                        name: 'preset-default',
+                        params: {
+                          overrides: {
+                            removeViewBox: false,
+                            convertColors: {
+                              // See https://github.com/googleforcreators/web-stories-wp/pull/6361
+                              currentColor: false,
+                            },
+                          },
+                        },
+                      },
+                      'removeDimensions',
+                    ],
+                  },
+                },
+              },
+            ],
+          },
         ],
-        include: [/images\/.*\.svg$/],
       },
       {
         test: /\.css$/,
         use: [MiniCssExtractPlugin.loader, 'css-loader'],
         sideEffects: true,
       },
+      {
+        test: /\.(png|jpe?g|gif|webp)$/i,
+        type: 'asset/resource',
+        generator: {
+          filename: 'images/[hash][ext]',
+        },
+      },
     ].filter(Boolean),
   },
   plugins: [
-    process.env.BUNDLE_ANALYZER && new BundleAnalyzerPlugin(),
-    new DependencyExtractionWebpackPlugin({
-      requestToExternal,
-    }),
+    process.env.BUNDLE_ANALYZER &&
+      new BundleAnalyzerPlugin({
+        analyzerPort: 'auto',
+      }),
     new MiniCssExtractPlugin({
       filename: '../css/[name].css',
     }),
     new RtlCssPlugin({
       filename: `../css/[name]-rtl.css`,
     }),
-    new webpack.EnvironmentPlugin({
-      DISABLE_PREVENT: false,
-      DISABLE_ERROR_BOUNDARIES: false,
+    new webpack.DefinePlugin({
+      WEB_STORIES_CI: JSON.stringify(process.env.CI),
+      WEB_STORIES_ENV: JSON.stringify(process.env.NODE_ENV),
+      WEB_STORIES_DISABLE_ERROR_BOUNDARIES: JSON.stringify(
+        process.env.DISABLE_ERROR_BOUNDARIES
+      ),
+      WEB_STORIES_DISABLE_OPTIMIZED_RENDERING: JSON.stringify(
+        process.env.DISABLE_OPTIMIZED_RENDERING
+      ),
+      WEB_STORIES_DISABLE_PREVENT: JSON.stringify(process.env.DISABLE_PREVENT),
+      WEB_STORIES_DISABLE_QUICK_TIPS: JSON.stringify(
+        process.env.DISABLE_QUICK_TIPS
+      ),
     }),
+    new DependencyExtractionWebpackPlugin(),
+    !isProduction &&
+      new CircularDependencyPlugin({
+        // exclude detection of files based on a RegExp
+        include: /packages/,
+        // add errors to webpack instead of warnings
+        failOnError: true,
+        // allow import cycles that include an asynchronous import,
+        // e.g. via import(/* webpackMode: "weak" */ './file.js')
+        allowAsyncCycles: false,
+        // set the current working directory for displaying module paths
+        cwd: process.cwd(),
+      }),
   ].filter(Boolean),
   optimization: {
     sideEffects: true,
+    splitChunks: {
+      automaticNameDelimiter: '-',
+    },
+    mangleExports: false,
     minimizer: [
       new TerserPlugin({
         parallel: true,
-        sourceMap: false,
-        cache: true,
         terserOptions: {
           // We preserve function names that start with capital letters as
           // they're _likely_ component names, and these are useful to have
@@ -184,69 +276,117 @@ const sharedConfig = {
         },
         extractComments: false,
       }),
-      new OptimizeCSSAssetsPlugin({}),
+      new CssMinimizerPlugin(),
     ],
   },
 };
 
+const EDITOR_CHUNK = 'web-stories-editor';
+const DASHBOARD_CHUNK = 'web-stories-dashboard';
+
 // Template for html-webpack-plugin to generate JS/CSS chunk manifests in PHP.
-const templateContent = ({ htmlWebpackPlugin }) => {
+const templateContent = ({ htmlWebpackPlugin, chunkNames }) => {
   // Extract filename without extension from arrays of JS and CSS chunks.
   // E.g. "../css/some-chunk.css" -> "some-chunk"
   const filenameOf = (pathname) =>
     pathname.substr(pathname.lastIndexOf('/') + 1);
 
   const chunkName = htmlWebpackPlugin.options.chunks[0];
-  const omitPrimaryChunk = (f) => f != chunkName;
+  const omitPrimaryChunk = (f) => f !== chunkName;
+  const omitRightToLeftChunk = (f) => !f.endsWith('-rtl');
 
   const js = htmlWebpackPlugin.files.js
     .map((pathname) => {
       const f = filenameOf(pathname);
-      return f.substring(0, f.length - '.js'.length);
+      return f.split('.js')[0];
     })
     .filter(omitPrimaryChunk);
 
   const css = htmlWebpackPlugin.files.css
     .map((pathname) => {
       const f = filenameOf(pathname);
-      return f.substring(0, f.length - '.css'.length);
+      return f.split('.css')[0];
     })
-    .filter(omitPrimaryChunk);
+    .filter(omitPrimaryChunk)
+    .filter(omitRightToLeftChunk);
 
-  return `<?php return array(
-    'css' => ${JSON.stringify(css)},
-    'js' => ${JSON.stringify(js)});`;
+  // We're only interested in chunks from dynamic imports;
+  // ones that are not already in `js` and not primaries.
+  const chunks = chunkNames.filter(
+    (chunk) =>
+      !js.includes(chunk) && ![DASHBOARD_CHUNK, EDITOR_CHUNK].includes(chunk)
+  );
+
+  return `<?php
+  return [
+    'css'    => ${JSON.stringify(css)},
+    'js'     => ${JSON.stringify(js)},
+    'chunks' => ${JSON.stringify(chunks)},
+  ];`;
 };
+
+const templateParameters = (compilation, assets, assetTags, options) => ({
+  compilation,
+  webpackConfig: compilation.options,
+  htmlWebpackPlugin: {
+    tags: assetTags,
+    files: assets,
+    options,
+  },
+  // compilation.chunks is a Set.
+  chunkNames: [...compilation.chunks].map(({ name }) => name).filter(Boolean),
+});
 
 const editorAndDashboard = {
   ...sharedConfig,
+  devServer: !isProduction
+    ? {
+        devMiddleware: {
+          writeToDisk: true,
+        },
+        hot: true,
+        allowedHosts: 'all',
+        host: 'localhost',
+        port: 'auto',
+      }
+    : undefined,
   entry: {
-    'edit-story': './assets/src/edit-story/index.js',
-    'stories-dashboard': './assets/src/dashboard/index.js',
+    [EDITOR_CHUNK]: './packages/wp-story-editor/src/index.js',
+    [DASHBOARD_CHUNK]: './packages/wp-dashboard/src/index.js',
   },
   plugins: [
-    ...sharedConfig.plugins,
+    ...sharedConfig.plugins.filter(
+      (plugin) => !(plugin instanceof DependencyExtractionWebpackPlugin)
+    ),
+    // React Fast Refresh.
+    !isProduction && new ReactRefreshWebpackPlugin(),
+    new DependencyExtractionWebpackPlugin({
+      requestToExternal,
+    }),
     new WebpackBar({
       name: 'Editor & Dashboard',
     }),
     new HtmlWebpackPlugin({
-      filename: 'edit-story.chunks.php',
+      filename: `${EDITOR_CHUNK}.chunks.php`,
       inject: false, // Don't inject default <script> tags, etc.
       minify: false, // PHP not HTML so don't attempt to minify.
+      chunks: [EDITOR_CHUNK],
       templateContent,
-      chunks: ['edit-story'],
+      templateParameters,
     }),
     new HtmlWebpackPlugin({
-      filename: 'stories-dashboard.chunks.php',
+      filename: `${DASHBOARD_CHUNK}.chunks.php`,
       inject: false, // Don't inject default <script> tags, etc.
       minify: false, // PHP not HTML so don't attempt to minify.
+      chunks: [DASHBOARD_CHUNK],
       templateContent,
-      chunks: ['stories-dashboard'],
+      templateParameters,
     }),
-  ],
+  ].filter(Boolean),
   optimization: {
     ...sharedConfig.optimization,
     splitChunks: {
+      ...sharedConfig.optimization.splitChunks,
       chunks: 'all',
     },
   },
@@ -255,20 +395,10 @@ const editorAndDashboard = {
 const webStoriesScripts = {
   ...sharedConfig,
   entry: {
-    lightbox: './packages/stories-lightbox/src/index.js',
-    'carousel-view': './packages/stories-carousel/src/index.js',
+    'web-stories-carousel': './packages/stories-carousel/src/index.ts',
   },
   plugins: [
-    process.env.BUNDLE_ANALYZER && new BundleAnalyzerPlugin(),
-    new DependencyExtractionWebpackPlugin({
-      injectPolyfill: true,
-    }),
-    new MiniCssExtractPlugin({
-      filename: '../css/[name].css',
-    }),
-    new RtlCssPlugin({
-      filename: `../css/[name]-rtl.css`,
-    }),
+    ...sharedConfig.plugins,
     new WebpackBar({
       name: 'WP Frontend Scripts',
       color: '#EEE070',
@@ -277,17 +407,16 @@ const webStoriesScripts = {
 };
 
 // Collect all core themes style sheet paths.
-const coreThemesBlockStylesPaths = glob.sync(
-  './assets/src/web-stories-block/css/core-themes/*.css'
+const coreThemesBlockStylesPaths = readdirSync(
+  './packages/stories-block/src/css/core-themes'
 );
 
 // Build entry object for the Core Themes Styles.
 const coreThemeBlockStyles = coreThemesBlockStylesPaths.reduce((acc, curr) => {
-  const fileName = path.parse(curr).name;
-
+  const fileName = parse(curr).name;
   return {
     ...acc,
-    [`web-stories-theme-style-${fileName}`]: curr,
+    [`web-stories-theme-style-${fileName}`]: `./packages/stories-block/src/css/core-themes/${curr}`,
   };
 }, {});
 
@@ -295,54 +424,58 @@ const webStoriesBlock = {
   ...sharedConfig,
   entry: {
     'web-stories-block': [
-      './assets/src/web-stories-block/index.js',
-      './assets/src/web-stories-block/block/edit.css',
+      './packages/stories-block/src/index.js',
+      './packages/stories-block/src/block/edit.css',
     ],
-    'web-stories-list-styles': './assets/src/web-stories-block/css/style.css',
-    'web-stories-embed': './assets/src/web-stories-block/css/embed.css',
+    'web-stories-list-styles': './packages/stories-block/src/css/style.css',
+    'web-stories-embed': './packages/stories-block/src/css/embed.css',
     ...coreThemeBlockStyles,
   },
   plugins: [
     ...sharedConfig.plugins,
-    new DependencyExtractionWebpackPlugin({
-      injectPolyfill: true,
-    }),
+    // React Fast Refresh.
+    !isProduction && new ReactRefreshWebpackPlugin(),
     new WebpackBar({
       name: 'Web Stories Block',
       color: '#357BB5',
     }),
   ].filter(Boolean),
-  optimization: {
-    ...sharedConfig.optimization,
+};
+
+const webStoriesBlockView = {
+  ...sharedConfig,
+  output: { ...sharedConfig.output, module: true },
+  experiments: { outputModule: true },
+  entry: {
+    'web-stories-block-view': './packages/stories-block/src/view.ts',
   },
+  plugins: [
+    ...sharedConfig.plugins.filter(
+      (plugin) => !(plugin instanceof DependencyExtractionWebpackPlugin)
+    ),
+    new WebpackBar({
+      name: 'Web Stories Block View',
+      color: '#a9db14',
+    }),
+    new DependencyExtractionWebpackPlugin(),
+  ].filter(Boolean),
 };
 
 const activationNotice = {
   ...sharedConfig,
   entry: {
     'web-stories-activation-notice':
-      './packages/activation-notice/src/index.js',
+      './packages/activation-notice/src/index.tsx',
   },
   plugins: [
     ...sharedConfig.plugins,
+    // React Fast Refresh.
+    !isProduction && new ReactRefreshWebpackPlugin(),
     new WebpackBar({
       name: 'Activation Notice',
       color: '#fcd8ba',
     }),
-  ],
-  optimization: {
-    ...sharedConfig.optimization,
-    splitChunks: {
-      cacheGroups: {
-        stories: {
-          name: 'activation-notice',
-          test: /\.css$/,
-          chunks: 'all',
-          enforce: true,
-        },
-      },
-    },
-  },
+  ].filter(Boolean),
 };
 
 const widgetScript = {
@@ -351,32 +484,26 @@ const widgetScript = {
     'web-stories-widget': './packages/widget/src/index.js',
   },
   plugins: [
-    new DependencyExtractionWebpackPlugin({}),
-    new MiniCssExtractPlugin({
-      filename: '../css/[name].css',
-    }),
+    ...sharedConfig.plugins,
     new WebpackBar({
       name: 'WP Widget Script',
       color: '#F757A5',
     }),
-  ],
+  ].filter(Boolean),
 };
 
 const storiesMCEButton = {
   ...sharedConfig,
   entry: {
-    'tinymce-button': './packages/tinymce-button/src/index.js',
+    'web-stories-tinymce-button': './packages/tinymce-button/src/index.js',
   },
   plugins: [
-    new DependencyExtractionWebpackPlugin({}),
-    new MiniCssExtractPlugin({
-      filename: '../css/[name].css',
-    }),
+    ...sharedConfig.plugins,
     new WebpackBar({
       name: 'WP TinyMCE Button',
       color: '#4deaa2',
     }),
-  ],
+  ].filter(Boolean),
 };
 
 module.exports = [
@@ -386,4 +513,5 @@ module.exports = [
   webStoriesScripts,
   widgetScript,
   storiesMCEButton,
+  webStoriesBlockView,
 ];

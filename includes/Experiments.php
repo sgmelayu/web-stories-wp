@@ -2,10 +2,10 @@
 /**
  * Class Experiments
  *
- * @package   Google\Web_Stories
+ * @link      https://github.com/googleforcreators/web-stories-wp
+ *
  * @copyright 2020 Google LLC
  * @license   https://www.apache.org/licenses/LICENSE-2.0 Apache License 2.0
- * @link      https://github.com/google/web-stories-wp
  */
 
 /**
@@ -24,34 +24,54 @@
  * limitations under the License.
  */
 
+declare(strict_types = 1);
+
 namespace Google\Web_Stories;
+
+use Google\Web_Stories\Infrastructure\HasRequirements;
 
 /**
  * Experiments class.
  *
  * Allows turning flags on/off via the admin UI.
+ *
+ * @phpstan-type Experiment array{
+ *   name: string,
+ *   label: string,
+ *   description: string,
+ *   group: string,
+ *   default?: bool
+ * }
  */
-class Experiments {
+class Experiments extends Service_Base implements HasRequirements {
 	/**
 	 * Settings page name.
-	 *
-	 * @var string
 	 */
-	const PAGE_NAME = 'web-stories-experiments';
+	public const PAGE_NAME = 'web-stories-experiments';
 
 	/**
-	 * Admin page hook suffix.
+	 * Settings instance.
 	 *
-	 * @var string|false The experiments page's hook_suffix, or false if the user does not have the capability required.
+	 * @var Settings Settings instance.
 	 */
-	private $hook_suffix;
+	private Settings $settings;
+
+	/**
+	 * Experiments constructor.
+	 *
+	 * @since 1.12.0
+	 *
+	 * @param Settings $settings Settings instance.
+	 * @return void
+	 */
+	public function __construct( Settings $settings ) {
+		$this->settings = $settings;
+	}
 
 	/**
 	 * Initializes experiments
-	 *
-	 * @return void
 	 */
-	public function init() {
+	public function register(): void {
 		if ( WEBSTORIES_DEV_MODE ) {
 			add_action( 'admin_menu', [ $this, 'add_menu_page' ], 25 );
 			add_action( 'admin_init', [ $this, 'initialize_settings' ] );
@@ -59,14 +79,25 @@ class Experiments {
 	}
 
 	/**
+	 * Get the list of service IDs required for this service to be registered.
+	 *
+	 * Needed because settings needs to be registered first.
+	 *
+	 * @since 1.13.0
+	 *
+	 * @return string[] List of required services.
+	 */
+	public static function get_requirements(): array {
+		return [ 'settings' ];
+	}
+
+	/**
 	 * Registers the experiments admin menu page.
 	 *
 	 * @since 1.0.0
-	 *
-	 * @return void
 	 */
-	public function add_menu_page() {
-		$this->hook_suffix = add_submenu_page(
+	public function add_menu_page(): void {
+		add_submenu_page(
 			'edit.php?post_type=' . Story_Post_Type::POST_TYPE_SLUG,
 			__( 'Experiments', 'web-stories' ),
 			__( 'Experiments', 'web-stories' ),
@@ -81,10 +112,8 @@ class Experiments {
 	 * Renders the experiments page.
 	 *
 	 * @codeCoverageIgnore
-	 *
-	 * @return void
 	 */
-	public function render() {
+	public function render(): void {
 		require_once WEBSTORIES_PLUGIN_DIR_PATH . 'includes/templates/admin/experiments.php';
 	}
 
@@ -92,10 +121,8 @@ class Experiments {
 	 * Initializes the experiments settings page.
 	 *
 	 * @since 1.0.0
-	 *
-	 * @return void
 	 */
-	public function initialize_settings() {
+	public function initialize_settings(): void {
 		add_settings_section(
 			'web_stories_experiments_section',
 			// The empty string ensures the render function won't output a h2.
@@ -122,10 +149,11 @@ class Experiments {
 				[ $this, 'display_experiment_field' ],
 				self::PAGE_NAME,
 				$experiment['group'],
+				// @phpstan-ignore argument.type
 				[
 					'label'   => $experiment['description'],
 					'id'      => $experiment['name'],
-					'default' => array_key_exists( 'default', $experiment ) && $experiment['default'],
+					'default' => \array_key_exists( 'default', $experiment ) && $experiment['default'],
 				]
 			);
 		}
@@ -144,9 +172,9 @@ class Experiments {
 	 *     @type bool   $default Whether the experiment is enabled by default.
 	 * }
 	 *
-	 * @return void
+	 * @phpstan-param array{id: string, label: string, default: bool} $args
 	 */
-	public function display_experiment_field( $args ) {
+	public function display_experiment_field( array $args ): void {
 		$is_enabled_by_default = ! empty( $args['default'] );
 		$checked               = $is_enabled_by_default || $this->is_experiment_enabled( $args['id'] );
 		$disabled              = $is_enabled_by_default ? 'disabled' : '';
@@ -154,7 +182,7 @@ class Experiments {
 		<label for="<?php echo esc_attr( $args['id'] ); ?>">
 			<input
 				type="checkbox"
-				name="<?php echo esc_attr( sprintf( '%1$s[%2$s]', Settings::SETTING_NAME_EXPERIMENTS, $args['id'] ) ); ?>"
+				name="<?php echo esc_attr( \sprintf( '%1$s[%2$s]', $this->settings::SETTING_NAME_EXPERIMENTS, $args['id'] ) ); ?>"
 				id="<?php echo esc_attr( $args['id'] ); ?>"
 				value="1"
 				<?php echo esc_attr( $disabled ); ?>
@@ -169,10 +197,8 @@ class Experiments {
 	 * Display the experiments section.
 	 *
 	 * @codeCoverageIgnore
-	 *
-	 * @return void
 	 */
-	public function display_experiment_section() {
+	public function display_experiment_section(): void {
 		?>
 		<p>
 			<?php
@@ -187,9 +213,9 @@ class Experiments {
 	 *
 	 * @since 1.0.0
 	 *
-	 * @return array List of experiment groups
+	 * @return array<string,string> List of experiment groups
 	 */
-	public function get_experiment_groups() {
+	public function get_experiment_groups(): array {
 		return [
 			'general'   => __( 'General', 'web-stories' ),
 			'dashboard' => __( 'Dashboard', 'web-stories' ),
@@ -200,59 +226,16 @@ class Experiments {
 	/**
 	 * Returns a list of all experiments.
 	 *
-	 * @SuppressWarnings(PHPMD.ExcessiveMethodLength)
+	 * @SuppressWarnings("PHPMD.ExcessiveMethodLength")
 	 *
 	 * @since 1.0.0
 	 *
 	 * @return array List of experiments by group.
+	 *
+	 * @phpstan-return Experiment[]
 	 */
-	public function get_experiments() {
+	public function get_experiments(): array {
 		return [
-			/**
-			 * Author: @littlemilkstudio
-			 * Issue: 6379
-			 * Creation date: 2021-03-09
-			 */
-			[
-				'name'        => 'enableExperimentalAnimationEffects',
-				'label'       => __( 'Experimental Animation Effects', 'web-stories' ),
-				'description' => __( 'Enables any animation effects that are currently experimental', 'web-stories' ),
-				'group'       => 'editor',
-			],
-			/**
-			 * Author: @littlemilkstudio
-			 * Issue: 5880
-			 * Creation date: 2021-01-19
-			 */
-			[
-				'name'        => 'enableQuickTips',
-				'label'       => __( 'Quick Tips', 'web-stories' ),
-				'description' => __( 'Enable quick tips for first time user experience (FTUE)', 'web-stories' ),
-				'group'       => 'editor',
-				'default'     => true,
-			],
-			/**
-			 * Author: @carlos-kelly
-			 * Issue: 2081
-			 * Creation date: 2020-05-28
-			 */
-			[
-				'name'        => 'enableInProgressViews',
-				'label'       => __( 'Views', 'web-stories' ),
-				'description' => __( 'Enable in-progress views to be accessed', 'web-stories' ),
-				'group'       => 'dashboard',
-			],
-			/**
-			 * Author: @brittanyirl
-			 * Issue: 2344
-			 * Creation date: 2020-06-10
-			 */
-			[
-				'name'        => 'enableInProgressStoryActions',
-				'label'       => __( 'Actions', 'web-stories' ),
-				'description' => __( 'Enable in-progress story actions', 'web-stories' ),
-				'group'       => 'dashboard',
-			],
 			/**
 			 * Author: @brittanyirl
 			 * Issue: 2381
@@ -260,75 +243,9 @@ class Experiments {
 			 */
 			[
 				'name'        => 'enableInProgressTemplateActions',
-				'label'       => __( 'Template Actions', 'web-stories' ),
+				'label'       => __( 'Template actions', 'web-stories' ),
 				'description' => __( 'Enable in-progress template actions', 'web-stories' ),
 				'group'       => 'dashboard',
-			],
-			/**
-			 * Author: @brittanyirl
-			 * Issue: 2292
-			 * Creation date: 2020-06-11
-			 */
-			[
-				'name'        => 'enableBookmarkActions',
-				'label'       => __( 'Bookmarks', 'web-stories' ),
-				'description' => __( 'Enable bookmark actions', 'web-stories' ),
-				'group'       => 'dashboard',
-			],
-			/**
-			 * Author: @brittanyirl
-			 * Issue: 3390
-			 * Creation date: 2020-07-08
-			 */
-			[
-				'name'        => 'enableTemplatePreviews',
-				'label'       => __( 'Template Previews', 'web-stories' ),
-				'description' => __( 'Enable template preview functionality', 'web-stories' ),
-				'group'       => 'dashboard',
-			],
-			/**
-			 * Author: @brittanyirl
-			 * Issue: 3391
-			 * Creation date: 2020-08-06
-			 */
-			[
-				'name'        => 'enableStoryPreviews',
-				'label'       => __( 'Story Previews', 'web-stories' ),
-				'description' => __( 'Enable story preview functionality', 'web-stories' ),
-				'group'       => 'dashboard',
-			],
-			/**
-			 * Author: @dmmulroy
-			 * Issue: #2098
-			 * Creation date: 2020-06-04
-			 */
-			[
-				'name'        => 'showTextAndShapesSearchInput',
-				'label'       => __( 'Library Search', 'web-stories' ),
-				'description' => __( 'Enable search input on text and shapes tabs', 'web-stories' ),
-				'group'       => 'editor',
-			],
-			/**
-			 * Author: @diegovar
-			 * Issue: #2616
-			 * Creation date: 2020-06-23
-			 */
-			[
-				'name'        => 'showElementsTab',
-				'label'       => __( 'Elements tab', 'web-stories' ),
-				'description' => __( 'Enable elements tab', 'web-stories' ),
-				'group'       => 'editor',
-			],
-			/**
-			 * Author: @diegovar
-			 * Issue: #3206
-			 * Creation date: 2020-07-15
-			 */
-			[
-				'name'        => 'incrementalSearchDebounceMedia',
-				'label'       => __( 'Incremental Search', 'web-stories' ),
-				'description' => __( 'Enable incremental search in the Upload and Third-party media tabs.', 'web-stories' ),
-				'group'       => 'editor',
 			],
 			/**
 			 * Author: @spacedmonkey
@@ -342,38 +259,37 @@ class Experiments {
 				'group'       => 'general',
 			],
 			/**
-			 * Author: @swissspidy
-			 * Issue: #3134
-			 * Creation date: 2020-10-28
+			 * Author: @timarney
+			 * Issue: #12093
+			 * Creation date: 2022-08-18
 			 */
 			[
-				'name'        => 'customMetaBoxes',
-				'label'       => __( 'Custom Meta Boxes', 'web-stories' ),
-				'description' => __( 'Enable support for custom meta boxes', 'web-stories' ),
-				'group'       => 'editor',
-				'default'     => true,
-			],
-			/**
-			 * Author: @swissspidy
-			 * Issue: #4081
-			 * Creation date: 2020-10-28
-			 */
-			[
-				'name'        => 'eyeDropper',
-				'label'       => __( 'Eyedropper', 'web-stories' ),
-				'description' => __( 'Enable eyedropper in color picker', 'web-stories' ),
+				'name'        => 'offScreenVideoCropping',
+				'label'       => __( 'Crop off-screen video parts', 'web-stories' ),
+				'description' => __( 'Enable support for cropping cut off-screen parts of videos', 'web-stories' ),
 				'group'       => 'editor',
 			],
 			/**
-			 * Author: @swissspidy
-			 * Issue: #5669
-			 * Creation date: 2021-01-21
+			 * Author: @spacedmonkey
+			 * Issue: #12211
+			 * Creation date: 2022-09-07
 			 */
 			[
-				'name'        => 'videoOptimization',
-				'label'       => __( 'Video optimization', 'web-stories' ),
-				'description' => __( 'Transcode and optimize videos before upload', 'web-stories' ),
-				'group'       => 'general',
+				'name'        => 'videoVolume',
+				'label'       => __( 'Video Volume', 'web-stories' ),
+				'description' => __( 'Enable setting video volume', 'web-stories' ),
+				'group'       => 'editor',
+			],
+			/**
+			 * Author: @timarney
+			 * Issue: #12164
+			 * Creation date: 2022-09-19
+			 */
+			[
+				'name'        => 'segmentVideo',
+				'label'       => __( 'Segment video', 'web-stories' ),
+				'description' => __( 'Enable support for segmenting video files', 'web-stories' ),
+				'group'       => 'editor',
 			],
 		];
 	}
@@ -384,10 +300,14 @@ class Experiments {
 	 * @since 1.0.0
 	 *
 	 * @param string $group Experiments group name.
-	 *
-	 * @return array Experiment statuses with name as key and status as value.
+	 * @return array<string,bool> Experiment statuses with name as key and status as value.
 	 */
-	public function get_experiment_statuses( $group ) {
+	public function get_experiment_statuses( string $group ): array {
+		/**
+		 * List of experiments.
+		 *
+		 * @phpstan-var Experiment[]
+		 */
 		$experiments = wp_list_filter( $this->get_experiments(), [ 'group' => $group ] );
 
 		if ( empty( $experiments ) ) {
@@ -404,39 +324,31 @@ class Experiments {
 	}
 
 	/**
-	 * Returns an experiment by name.
-	 *
-	 * @since 1.3.0
-	 *
-	 * @param string $name Experiment name.
-	 * @return array|null Experiment if found, null otherwise.
-	 */
-	protected function get_experiment( $name ) {
-		$experiment = wp_list_filter( $this->get_experiments(), [ 'name' => $name ] );
-		return ! empty( $experiment ) ? array_shift( $experiment ) : null;
-	}
-
-	/**
 	 * Checks whether an experiment is enabled.
 	 *
 	 * @since 1.0.0
 	 *
 	 * @param string $name Experiment name.
-	 *
 	 * @return bool Whether the experiment is enabled.
 	 */
-	public function is_experiment_enabled( $name ) {
+	public function is_experiment_enabled( string $name ): bool {
 		$experiment = $this->get_experiment( $name );
 
 		if ( ! $experiment ) {
 			return false;
 		}
 
-		if ( array_key_exists( 'default', $experiment ) ) {
+		if ( \array_key_exists( 'default', $experiment ) ) {
 			return (bool) $experiment['default'];
 		}
 
-		$experiments = get_option( Settings::SETTING_NAME_EXPERIMENTS );
+		/**
+		 * List of enabled experiments.
+		 *
+		 * @var array<string, array> $experiments
+		 * @phpstan-var Experiment[]
+		 */
+		$experiments = $this->settings->get_setting( $this->settings::SETTING_NAME_EXPERIMENTS, [] );
 		return ! empty( $experiments[ $name ] );
 	}
 
@@ -445,14 +357,27 @@ class Experiments {
 	 *
 	 * @since 1.4.0
 	 *
-	 * @return array List of all enabled experiments.
+	 * @return string[] List of all enabled experiments.
 	 */
-	public function get_enabled_experiments() {
-		$experiments = array_filter(
+	public function get_enabled_experiments(): array {
+		return array_filter(
 			wp_list_pluck( $this->get_experiments(), 'name' ),
 			[ $this, 'is_experiment_enabled' ]
 		);
+	}
 
-		return $experiments;
+	/**
+	 * Returns an experiment by name.
+	 *
+	 * @since 1.3.0
+	 *
+	 * @param string $name Experiment name.
+	 * @return array|null Experiment if found, null otherwise.
+	 *
+	 * @phpstan-return Experiment|null
+	 */
+	protected function get_experiment( string $name ): ?array {
+		$experiment = wp_list_filter( $this->get_experiments(), [ 'name' => $name ] );
+		return ! empty( $experiment ) ? array_shift( $experiment ) : null;
 	}
 }

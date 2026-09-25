@@ -29,23 +29,25 @@ process.env.WP_PASSWORD = WP_PASSWORD;
 process.env.WP_BASE_URL = WP_BASE_URL;
 
 export default {
-  preset: 'jest-puppeteer',
-  transform: {
-    '^.+\\.[jt]sx?$': 'babel-jest',
-  },
-  testMatch: ['**/specs/**/*.[jt]s', '**/?(*.)spec.[jt]s'],
+  rootDir: '../../../',
+  resolver: '@web-stories-wp/jest-resolver',
+  preset: '<rootDir>/node_modules/jest-puppeteer',
+  testEnvironment: '<rootDir>/packages/e2e-tests/src/puppeteerEnvironment.js',
+  testMatch: ['**/specs/**/*.[jt]s'],
   testPathIgnorePatterns: [
     '<rootDir>/.git',
-    '<rootDir>/node_modules',
     '<rootDir>/build',
-    '<rootDir>/packages/e2e-tests/src/specs/edit-story',
+    '<rootDir>/node_modules',
+    '<rootDir>/vendor',
   ],
-  transformIgnorePatterns: ['node_modules'],
+  // Do not transform any node_modules except use-reduction
+  // See https://jestjs.io/docs/configuration#transformignorepatterns-arraystring
+  transformIgnorePatterns: ['/node_modules/(?!(use-reduction)/)'],
   setupFilesAfterEnv: [
-    '<rootDir>/config/bootstrap.js',
-    '@wordpress/jest-puppeteer-axe',
-    '@wordpress/jest-console',
-    'expect-puppeteer',
+    'jest-extended/all',
+    '<rootDir>/packages/e2e-tests/src/config/bootstrap.js',
+    '<rootDir>/node_modules/@wordpress/jest-console',
+    '<rootDir>/node_modules/expect-puppeteer',
   ],
-  reporters: [['jest-silent-reporter', { useDots: true, showWarnings: true }]],
+  modulePathIgnorePatterns: ['<rootDir>/build', '<rootDir>/vendor'],
 };

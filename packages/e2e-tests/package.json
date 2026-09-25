@@ -1,22 +1,42 @@
 {
   "name": "@web-stories-wp/e2e-tests",
+  "description": "E2E Tests for the WordPress Web Stories editor",
   "private": true,
+  "author": {
+    "name": "Google",
+    "url": "https://creators.google/"
+  },
+  "license": "Apache-2.0",
+  "keywords": [
+    "web-stories",
+    "wordpress"
+  ],
+  "homepage": "https://github.com/GoogleForCreators/web-stories-wp/blob/main/packages/e2e-tests/README.md",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/GoogleForCreators/web-stories-wp.git",
+    "directory": "packages/e2e-tests"
+  },
+  "bugs": {
+    "url": "https://github.com/googleforcreators/web-stories-wp/issues"
+  },
   "engines": {
-    "node": ">= 15",
-    "npm": "~7"
+    "node": ">= 20 || >= 22 || >= 24",
+    "npm": ">= 7.3"
   },
   "type": "module",
-  "devDependencies": {
+  "dependencies": {
     "@web-stories-wp/e2e-test-utils": "*",
     "@web-stories-wp/jest-puppeteer-amp": "*",
-    "@wordpress/jest-puppeteer-axe": "^3.0.1",
-    "@wordpress/e2e-test-utils": "^5.0.3",
-    "@wordpress/jest-console": "^4.0.1",
-    "@percy/puppeteer": "^1.1.0",
-    "expect-puppeteer": "^4.4.0",
-    "jest-extended": "^0.11.5",
-    "jest-puppeteer": "^4.4.0",
-    "puppeteer": "^5.3.1",
-    "babel-jest": "^26.6.3"
+    "@web-stories-wp/jest-resolver": "*",
+    "@wordpress/jest-console": "^8.43.0",
+    "babel-jest": "^30.3.0",
+    "expect-puppeteer": "^11.0.0",
+    "jest-extended": "^6.0.0",
+    "jest-json-schema": "^6.1.0",
+    "jest-puppeteer": "^11.0.0"
+  },
+  "peerDependencies": {
+    "puppeteer": "*"
   }
 }

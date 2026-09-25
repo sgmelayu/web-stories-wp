@@ -1,10 +1,16 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Common variables.
 DOCKER_COMPOSE_FILE_OPTIONS="-f $(dirname "$0")/docker-compose.yml"
+
+if [ -f "$(dirname "$0")/docker-compose.override.yml" ]; then
+  DOCKER_COMPOSE_FILE_OPTIONS="$DOCKER_COMPOSE_FILE_OPTIONS -f $(dirname "$0")/docker-compose.override.yml"
+fi
+
 # These are the containers and values for the development site.
 CLI='cli'
 CONTAINER='wordpress'
+DATABASE='mysql'
 SITE_TITLE='Web Stories Dev'
 
 ##
@@ -143,10 +149,10 @@ command_exists() {
 ##
 # Docker Compose helper
 #
-# Calls docker-compose with common options.
+# Calls docker compose with common options.
 ##
 dc() {
-	docker-compose $DOCKER_COMPOSE_FILE_OPTIONS "$@"
+	docker compose $DOCKER_COMPOSE_FILE_OPTIONS "$@"
 }
 
 ##
@@ -155,7 +161,16 @@ dc() {
 # Executes a WP CLI request in the CLI container.
 ##
 wp() {
-	dc exec -T -u xfs $CLI wp "$@"
+	dc exec -T -u 33:33 $CLI wp "$@"
+}
+
+##
+# MySQL CLI.
+#
+# Executes the given MySQL client command in the database container.
+##
+mysql() {
+	dc exec -T -e MYSQL_PWD=example $DATABASE mariadb "$@"
 }
 
 ##

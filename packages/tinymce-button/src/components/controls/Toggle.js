@@ -33,11 +33,10 @@ import { updateViewSettings } from '../../utils';
  * Toggle component for TinyMCE popup.
  *
  * @param {Object} props Component props.
- *
  * @return {*} React component.
  */
-const TinyMCEToggle = (props) => {
-  const { fieldObj, field } = props;
+const TinyMceToggle = (props) => {
+  const { fieldObj = {}, field } = props;
   const { show, hidden, label } = fieldObj;
 
   if (hidden) {
@@ -55,11 +54,12 @@ const TinyMCEToggle = (props) => {
           hidden,
         });
       }}
+      __nextHasNoMarginBottom
     />
   );
 };
 
-TinyMCEToggle.propTypes = {
+TinyMceToggle.propTypes = {
   fieldObj: PropTypes.shape({
     show: PropTypes.bool,
     label: PropTypes.string,
@@ -68,4 +68,4 @@ TinyMCEToggle.propTypes = {
   field: PropTypes.string,
 };
 
-export default TinyMCEToggle;
+export default TinyMceToggle;

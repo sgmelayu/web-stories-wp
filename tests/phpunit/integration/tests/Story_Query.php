@@ -1,0 +1,133 @@
+<?php
+
+declare(strict_types = 1);
+
+/**
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+namespace Google\Web_Stories\Tests\Integration;
+
+use Google\Web_Stories\Renderer\Stories\Carousel_Renderer;
+use Google\Web_Stories\Story_Post_Type as Story_CPT;
+use Google\Web_Stories\Story_Query as Testee;
+use WP_UnitTest_Factory;
+
+/**
+ * @coversDefaultClass \Google\Web_Stories\Story_Query
+ */
+class Story_Query extends TestCase {
+
+	/**
+	 * Class in test.
+	 */
+	private static Testee $testee;
+
+	/**
+	 * Story ID.
+	 */
+	private static int $story_id;
+
+	/**
+	 * Default story arguments.
+	 *
+	 * @var array<string, mixed>
+	 */
+	private static array $default_story_args;
+
+	/**
+	 * Runs once before any test in the class run.
+	 *
+	 * @param WP_UnitTest_Factory $factory Factory class object.
+	 */
+	public static function wpSetUpBeforeClass( WP_UnitTest_Factory $factory ): void {
+		self::$testee = new Testee();
+
+		self::$story_id = $factory->post->create(
+			[
+				'post_type'    => Story_CPT::POST_TYPE_SLUG,
+				'post_title'   => 'Example title',
+				'post_status'  => 'publish',
+				'post_content' => 'Example content',
+			]
+		);
+
+		self::$default_story_args = [
+			'view_type'          => 'circles',
+			'number_of_columns'  => 2,
+			'show_title'         => false,
+			'show_author'        => false,
+			'show_date'          => false,
+			'show_excerpt'       => false,
+			'show_archive_link'  => false,
+			'sharp_corners'      => false,
+			'archive_link_label' => 'View all stories',
+			'image_alignment'    => 'left',
+			'class'              => '',
+			'circle_size'        => 150,
+		];
+	}
+
+	/**
+	 * Test the instance.
+	 *
+	 * @covers ::render
+	 */
+	public function test_render(): void {
+		$this->assertInstanceOf( Carousel_Renderer::class, self::$testee->get_renderer() );
+	}
+
+	/**
+	 * Test that get_stories method returns valid story.
+	 *
+	 * @covers ::get_stories
+	 */
+	public function test_get_stories_returns_valid_story(): void {
+
+		$story_posts = self::$testee->get_stories();
+		$this->assertSame( self::$story_id, $story_posts[0]->ID );
+	}
+
+	/**
+	 * Test count of number of stories.
+	 */
+	public function test_get_stories_count(): void {
+		$story_posts = self::$testee->get_stories();
+		$this->assertCount( 1, $story_posts );
+	}
+
+	/**
+	 * Test that get_stories method returns valid story.
+	 *
+	 * @covers ::get_stories
+	 */
+	public function test_get_stories_returns_empty_array(): void {
+
+		$stories_obj = new Testee( [], [ 'post_type' => 'draft' ] );
+		$story_posts = $stories_obj->get_stories();
+		$this->assertEmpty( $story_posts );
+	}
+
+	/**
+	 * Test story arguments are equal.
+	 *
+	 * @covers ::get_story_attributes
+	 */
+	public function test_default_story_args_equality(): void {
+
+		$story_args = self::$testee->get_story_attributes();
+		$this->assertEqualSetsWithIndex( self::$default_story_args, $story_args );
+	}
+}

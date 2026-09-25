@@ -1,21 +1,48 @@
 {
-  "name": "@web-stories-wp/date",
-  "private": true,
+  "name": "@googleforcreators/date",
+  "description": "Date-handling package, a tiny wrapper around date-fns.",
+  "private": false,
+  "version": "0.1.202410011217",
+  "author": {
+    "name": "Google",
+    "url": "https://creators.google/"
+  },
+  "license": "Apache-2.0",
+  "keywords": [
+    "web stories",
+    "datetime"
+  ],
+  "homepage": "https://github.com/GoogleForCreators/web-stories-wp/blob/main/packages/date/README.md",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/GoogleForCreators/web-stories-wp.git",
+    "directory": "packages/date"
+  },
+  "bugs": {
+    "url": "https://github.com/googleforcreators/web-stories-wp/issues"
+  },
   "engines": {
-    "node": ">= 15",
-    "npm": "~7"
+    "node": ">= 20 || >= 22 || >= 24",
+    "npm": ">= 7.3"
   },
-  "exports": {
-    "default": "./src/index.js"
+  "customExports": {
+    ".": {
+      "default": "./src/index.ts"
+    }
   },
-  "main": "./src/index.js",
-  "type": "module",
+  "main": "dist/index.js",
+  "module": "dist-module/index.js",
+  "types": "dist-types/index.d.ts",
+  "source": "src/index.ts",
+  "publishConfig": {
+    "access": "public"
+  },
   "dependencies": {
-    "@web-stories-wp/i18n": "*",
-    "date-fns": "^2.17.0",
-    "date-fns-tz": "^1.0.12"
+    "@googleforcreators/i18n": "*",
+    "date-fns": "^2.30.0",
+    "date-fns-tz": "^2.0.0"
   },
   "devDependencies": {
-    "mockdate": "^3.0.2"
+    "mockdate": "^3.0.5"
   }
 }

@@ -20,9 +20,13 @@
 
 // Extend Jest matchers.
 // See https://github.com/testing-library/jest-dom.
-import 'jest-extended';
 import '@testing-library/jest-dom';
 import 'jest-axe/extend-expect';
+
+// Improve snapshot testing for styled components.
+// Also provides a `toHaveStyleRule()` matcher.
+import 'jest-styled-components';
+
 import {
   toBeValidAMP,
   toBeValidAMPStoryElement,
@@ -34,3 +38,8 @@ expect.extend({
   toBeValidAMPStoryElement,
   toBeValidAMPStoryPage,
 });
+
+// Retry flaky tests  on CI.
+if ('true' === process.env.CI) {
+  jest.retryTimes(2);
+}

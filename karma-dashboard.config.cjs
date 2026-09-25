@@ -19,7 +19,7 @@
 /**
  * External dependencies
  */
-const { readFileSync } = require('fs');
+const { readFileSync, existsSync } = require('fs');
 
 /**
  * Internal dependencies
@@ -28,7 +28,10 @@ const getWebpackConfig = require('./webpack.config.test.cjs');
 
 module.exports = function (config) {
   let specsToRetry;
-  if (config.retryFailed) {
+  if (
+    config.retryFailed &&
+    existsSync('build/karma-dashboard-failed-tests.txt')
+  ) {
     // Loads names of failed specs and prepares them for use in a regex.
     specsToRetry = readFileSync(
       'build/karma-dashboard-failed-tests.txt',
@@ -47,22 +50,24 @@ module.exports = function (config) {
       'karma-jasmine',
       'karma-sourcemap-loader',
       'karma-webpack',
-      'karma-spec-reporter',
       'karma-coverage-istanbul-reporter',
-      require('./packages/karma-puppeteer-launcher/src/index.cjs'),
-      require('./packages/karma-puppeteer-client/src/index.cjs'),
-      require('./packages/karma-cuj-reporter/src/index.cjs'),
-      require('./packages/karma-failed-tests-reporter/src/index.cjs'),
+      require('@web-stories-wp/karma-puppeteer-launcher'),
+      require('@web-stories-wp/karma-puppeteer-client'),
+      require('@web-stories-wp/karma-failed-tests-reporter'),
     ],
 
     // Frameworks to use.
     // Available frameworks: https://npmjs.org/browse/keyword/karma-adapter
-    frameworks: ['jasmine', 'karma-puppeteer-client'],
+    frameworks: [
+      'jasmine',
+      '@web-stories-wp/karma-puppeteer-client',
+      'webpack',
+    ],
 
     // list of files / patterns to load in the browser
     files: [
-      { pattern: 'assets/src/dashboard/karma-tests.cjs', watched: false },
-      { pattern: 'assets/src/karma-fixture/init.js', watched: false },
+      { pattern: 'packages/dashboard/src/**/karma/**/*.js', watched: false },
+      { pattern: 'packages/karma-fixture/src/init.js', watched: false },
       {
         pattern: '__static__/**/*',
         watched: false,
@@ -79,14 +84,14 @@ module.exports = function (config) {
     // preprocess matching files before serving them to the browser
     // available preprocessors: https://npmjs.org/browse/keyword/karma-preprocessor
     preprocessors: {
-      'assets/src/dashboard/karma-tests.cjs': ['webpack', 'sourcemap'],
+      'packages/dashboard/src/**/karma/**/*.js': ['webpack', 'sourcemap'],
     },
 
     proxies: {
       '/__static__/': '/base/__static__/',
     },
 
-    webpack: getWebpackConfig('stories-dashboard', config),
+    webpack: getWebpackConfig('web-stories-dashboard', config),
 
     webpackMiddleware: {
       // webpack-dev-middleware configuration
@@ -102,9 +107,8 @@ module.exports = function (config) {
     // possible values: 'dots', 'progress'
     // available reporters: https://npmjs.org/browse/keyword/karma-reporter
     reporters: [
-      'spec',
-      'failed-tests',
-      config.coverage && 'cuj',
+      'dots',
+      '@web-stories-wp/karma-failed-tests-reporter',
       config.coverage && 'coverage-istanbul',
     ].filter(Boolean),
 
@@ -123,25 +127,24 @@ module.exports = function (config) {
 
     // start these browsers
     // available browser launchers: https://npmjs.org/browse/keyword/karma-launcher
-    browsers: ['puppeteer'],
+    browsers: ['karma-puppeteer-launcher'], // @web-stories-wp/karma-puppeteer-launcher package
 
     puppeteerLauncher: {
       puppeteer: {
-        headless: config.headless || false,
+        headless: Boolean(config.headless),
         slowMo: config.slowMo || 0,
         devtools: config.devtools || false,
         snapshots: config.snapshots || false,
         defaultViewport: getViewport(config.viewport),
       },
     },
-
     client: {
       args: [
         specsToRetry && '--grep',
         specsToRetry && `/${specsToRetry}/`,
       ].filter(Boolean),
       jasmine: {
-        timeoutInterval: 10000,
+        timeoutInterval: 20000,
       },
       useIframe: false,
       runInParent: true,
@@ -150,10 +153,6 @@ module.exports = function (config) {
     coverageIstanbulReporter: {
       dir: 'build/logs/karma-coverage/dashboard',
       reports: ['text-summary', 'lcovonly'],
-    },
-
-    cujReporter: {
-      outputFile: 'build/cuj-coverage-dashboard.md',
     },
 
     failedTestsReporter: {
@@ -184,7 +183,7 @@ module.exports = function (config) {
 
     // Custom context file.
     customClientContextFile:
-      'assets/src/karma-fixture/client_with_context.html',
+      'packages/karma-fixture/src/client_with_context.html',
   });
 };
 

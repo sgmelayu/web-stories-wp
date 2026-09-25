@@ -2,10 +2,10 @@
 /**
  * Class Optimization
  *
- * @package   Google\Web_Stories
+ * @link      https://github.com/googleforcreators/web-stories-wp
+ *
  * @copyright 2020 Google LLC
  * @license   https://www.apache.org/licenses/LICENSE-2.0 Apache License 2.0
- * @link      https://github.com/google/web-stories-wp
  */
 
 /**
@@ -24,17 +24,26 @@
  * limitations under the License.
  */
 
+declare(strict_types = 1);
+
 namespace Google\Web_Stories\AMP;
 
 use Google\Web_Stories_Dependencies\AmpProject\AmpWP\RemoteRequest\CachedRemoteGetRequest;
 use Google\Web_Stories_Dependencies\AmpProject\AmpWP\RemoteRequest\WpHttpRemoteGetRequest;
 use Google\Web_Stories_Dependencies\AmpProject\Dom\Document;
 use Google\Web_Stories_Dependencies\AmpProject\Optimizer\Configuration;
+use Google\Web_Stories_Dependencies\AmpProject\Optimizer\Configuration\AmpStoryCssOptimizerConfiguration;
+use Google\Web_Stories_Dependencies\AmpProject\Optimizer\DefaultConfiguration;
 use Google\Web_Stories_Dependencies\AmpProject\Optimizer\Error;
 use Google\Web_Stories_Dependencies\AmpProject\Optimizer\ErrorCollection;
 use Google\Web_Stories_Dependencies\AmpProject\Optimizer\LocalFallback;
 use Google\Web_Stories_Dependencies\AmpProject\Optimizer\TransformationEngine;
 use Google\Web_Stories_Dependencies\AmpProject\Optimizer\Transformer\AmpRuntimeCss;
+use Google\Web_Stories_Dependencies\AmpProject\Optimizer\Transformer\AmpStoryCssOptimizer;
+use Google\Web_Stories_Dependencies\AmpProject\Optimizer\Transformer\MinifyHtml;
+use Google\Web_Stories_Dependencies\AmpProject\Optimizer\Transformer\OptimizeAmpBind;
+use Google\Web_Stories_Dependencies\AmpProject\Optimizer\Transformer\OptimizeHeroImages;
+use Google\Web_Stories_Dependencies\AmpProject\Optimizer\Transformer\RewriteAmpUrls;
 use Google\Web_Stories_Dependencies\AmpProject\Optimizer\Transformer\ServerSideRendering;
 use Google\Web_Stories_Dependencies\AmpProject\Optimizer\Transformer\TransformedIdentifier;
 use Google\Web_Stories_Dependencies\AmpProject\RemoteRequest\FallbackRemoteGetRequest;
@@ -52,17 +61,21 @@ class Optimization {
 	 * @since 1.1.0
 	 *
 	 * @param Document $document Document instance.
-	 *
-	 * @return void
 	 */
-	public function optimize_document( Document $document ) {
+	public function optimize_document( Document $document ): void {
 		$errors = new ErrorCollection();
 		$this->get_optimizer()->optimizeDom( $document, $errors );
+		if ( \count( $errors ) > 0 ) {
+			/**
+			 * Error list.
+			 *
+			 * @var Error[] $errors_array Error list.
+			 */
+			$errors_array = iterator_to_array( $errors );
 
-		if ( count( $errors ) > 0 ) {
 			$error_messages = array_filter(
 				array_map(
-					static function( Error $error ) {
+					static function ( Error $error ) {
 						// Hidden because amp-story is a render-delaying extension.
 						if ( 'CannotRemoveBoilerplate' === $error->getCode() ) {
 							return '';
@@ -70,7 +83,7 @@ class Optimization {
 
 						return ' - ' . $error->getCode() . ': ' . $error->getMessage();
 					},
-					iterator_to_array( $errors )
+					$errors_array
 				)
 			);
 
@@ -87,12 +100,12 @@ class Optimization {
 	 *
 	 * @since 1.1.0
 	 *
-	 * @see AMP_Theme_Support::get_optimizer
 	 * @link https://github.com/ampproject/amp-wp/blob/8856284d90fc8558c30acc029becd352ae26e4e1/includes/class-amp-theme-support.php#L2235-L2255
+	 * @see AMP_Theme_Support::get_optimizer
 	 *
 	 * @return TransformationEngine Optimizer transformation engine to use.
 	 */
-	private function get_optimizer() {
+	private function get_optimizer(): TransformationEngine {
 		$configuration = self::get_optimizer_configuration();
 
 		$fallback_remote_request_pipeline = new FallbackRemoteGetRequest(
@@ -113,13 +126,15 @@ class Optimization {
 	 *
 	 * @since 1.1.0
 	 *
-	 * @see AMP_Theme_Support::get_optimizer_configuration()
-	 * @link https://github.com/ampproject/amp-wp/blob/8856284d90fc8558c30acc029becd352ae26e4e1/includes/class-amp-theme-support.php#L2257-L2315
+	 * @link https://github.com/ampproject/amp-wp/blob/5405daa38e65f0ec16ffc920014d0110b03ee773/src/Optimizer/AmpWPConfiguration.php#L43-L78
+	 * @see AmpWPConfiguration::apply_filters()
 	 *
 	 * @return Configuration Optimizer configuration to use.
 	 */
-	private static function get_optimizer_configuration() {
+	private static function get_optimizer_configuration(): Configuration {
 		$transformers = Configuration::DEFAULT_TRANSFORMERS;
+
+		$transformers[] = AmpStoryCssOptimizer::class;
 
 		/**
 		 * Filter whether the AMP Optimizer should use server-side rendering or not.
@@ -136,14 +151,25 @@ class Optimization {
 				$transformers,
 				[
 					AmpRuntimeCss::class,
+					OptimizeHeroImages::class,
+					OptimizeAmpBind::class,
+					RewriteAmpUrls::class,
 					ServerSideRendering::class,
 					TransformedIdentifier::class,
+					AmpStoryCssOptimizer::class,
 				]
 			);
 		}
 
 		$configuration = [
 			Configuration::KEY_TRANSFORMERS => $transformers,
+			AmpStoryCssOptimizer::class     => [
+				AmpStoryCssOptimizerConfiguration::OPTIMIZE_AMP_STORY => true,
+			],
+			MinifyHtml::class               => [
+				// Prevents issues with rounding floats, relevant for things like shopping (product prices).
+				Configuration\MinifyHtmlConfiguration::MINIFY_JSON => false,
+			],
 		];
 
 		/**
@@ -155,6 +181,6 @@ class Optimization {
 		 */
 		$configuration = apply_filters( 'web_stories_amp_optimizer_config', $configuration );
 
-		return new Configuration( $configuration );
+		return new DefaultConfiguration( $configuration );
 	}
 }

@@ -1,0 +1,51 @@
+name: Update browserslist db
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 12 1 * *'
+
+permissions:
+  contents: read
+
+env:
+  GIT_AUTHOR_EMAIL: 94923726+googleforcreators-bot@users.noreply.github.com
+  GIT_AUTHOR_NAME: googleforcreators-bot
+  GIT_COMMITTER_EMAIL: 94923726+googleforcreators-bot@users.noreply.github.com
+  GIT_COMMITTER_NAME: googleforcreators-bot
+
+jobs:
+  update-browserslist-db:
+    name: Update browserslist db
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@05e31511f85b41b11d1cf0ef85d0992719546e2c
+        with:
+          egress-policy: audit # TODO: change to 'egress-policy: block' after couple of runs
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          token: ${{ secrets.GOOGLEFORCREATORS_BOT_TOKEN }}
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version-file: '.nvmrc'
+          cache: npm
+
+      - name: Update db
+        run: npx update-browserslist-db@latest
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1
+        with:
+          token: ${{ secrets.GOOGLEFORCREATORS_BOT_TOKEN }}
+          commit-message: Update browserslist db
+          title: Update browserslist db
+          body: Updates `caniuse-lite` to use the latest browser’s versions and statistics.
+          branch: update/browserslist-db
+          labels: Dependencies

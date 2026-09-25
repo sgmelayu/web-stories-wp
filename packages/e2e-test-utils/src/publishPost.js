@@ -14,13 +14,22 @@
  * limitations under the License.
  */
 
-/**
- * WordPress dependencies
- */
-import {
-  arePrePublishChecksEnabled,
-  openPublishPanel,
-} from '@wordpress/e2e-test-utils';
+async function openPublishPanel() {
+  const publishPanelToggle = await page.waitForSelector(
+    '.editor-post-publish-panel__toggle:not([aria-disabled="true"])'
+  );
+  const isEntityPublishToggle = await publishPanelToggle.evaluate((element) =>
+    element.classList.contains('has-changes-dot')
+  );
+  await page.click('.editor-post-publish-panel__toggle');
+
+  // Wait for either the entity save button or the post publish button.
+  if (isEntityPublishToggle) {
+    await page.waitForSelector('.editor-entities-saved-states__save-button');
+  } else {
+    await page.waitForSelector('.editor-post-publish-button');
+  }
+}
 
 /**
  * Custom helper function to publish posts in Gutenberg.
@@ -36,26 +45,56 @@ import {
  * Instead, we wait to receive the post's updated permalink.
  *
  * @see https://github.com/WordPress/gutenberg/blob/f96bd6b6fdfca02d47edce8c2f0d68dccf3a37be/packages/e2e-test-utils/src/toggle-screen-option.js#L20-L23
- *
  * @return {Promise<string>} The post's permalink.
  */
 async function publishPost() {
-  // Increase timeout to stop publishing post failing this test.
-  await page.setDefaultTimeout(10000);
-  const prePublishChecksEnabled = await arePrePublishChecksEnabled();
+  const prePublishChecksEnabled = await page.evaluate(() =>
+    wp.data.select('core/editor').isPublishSidebarEnabled()
+  );
 
   if (prePublishChecksEnabled) {
     await openPublishPanel();
+
+    // Wait for the panel to fully slide in.
+    // TODO: Remove and replace with waitForSelector or locator API.
+    await new Promise((r) => setTimeout(r, 500));
   }
 
   // Publish the post
   await page.click('.editor-post-publish-button');
 
   // Wait until the selector returns a truthy value.
-  await page.waitForFunction(() =>
-    wp.data.select('core/editor').getPermalink()
+  await page.waitForFunction(
+    () =>
+      wp.data.select('core/editor').getEditedPostAttribute('status') ===
+        'publish' &&
+      (document.querySelector(
+        '.editor-post-publish-button[aria-disabled="true"]'
+      ).textContent === 'Update' ||
+        document.querySelector(
+          '.editor-post-publish-button[aria-disabled="true"]'
+        ).textContent === 'Save')
   );
-  await page.setDefaultTimeout(3000);
+
+  // The first time around the selector might return undefined.
+  await page.waitForFunction(() =>
+    wp.data
+      .select('core')
+      .getPostType(wp.data.select('core/editor').getCurrentPostType())
+  );
+
+  // "View Post" or "View Page", depending on post type,
+  // but always "View Post" on older WordPress versions.
+  const linkText = await page.evaluate(
+    () =>
+      wp.data
+        .select('core')
+        .getPostType(wp.data.select('core/editor').getCurrentPostType()).labels
+        .view_item
+  );
+  const linkTextRegex = new RegExp(`^(${linkText}|View Post)`);
+
+  await expect(page).toMatchElement('a', { text: linkTextRegex });
 
   return page.evaluate(() => wp.data.select('core/editor').getPermalink());
 }

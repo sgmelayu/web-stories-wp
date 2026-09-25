@@ -2,10 +2,10 @@
 /**
  * Class Stories_Autosaves_Controller
  *
- * @package   Google\Web_Stories
+ * @link      https://github.com/googleforcreators/web-stories-wp
+ *
  * @copyright 2020 Google LLC
  * @license   https://www.apache.org/licenses/LICENSE-2.0 Apache License 2.0
- * @link      https://github.com/google/web-stories-wp
  */
 
 /**
@@ -24,14 +24,13 @@
  * limitations under the License.
  */
 
+declare(strict_types = 1);
+
 namespace Google\Web_Stories\REST_API;
 
-use Google\Web_Stories\Media;
-use WP_Error;
 use WP_Post;
 use WP_REST_Autosaves_Controller;
 use WP_REST_Controller;
-use WP_REST_Posts_Controller;
 use WP_REST_Request;
 use WP_REST_Response;
 use WP_REST_Server;
@@ -39,29 +38,19 @@ use WP_REST_Server;
 /**
  * Stories_Autosaves_Controller class.
  *
- * Override the WP_REST_Autosaves_Controller class.
+ * @phpstan-import-type Schema from \Google\Web_Stories\REST_API\Stories_Base_Controller
  */
 class Stories_Autosaves_Controller extends WP_REST_Autosaves_Controller {
+
 	/**
 	 * Parent post controller.
-	 *
-	 * @var WP_REST_Controller
 	 */
-	private $parent_controller;
+	protected WP_REST_Controller $parent_controller;
 
 	/**
 	 * The base of the parent controller's route.
-	 *
-	 * @var string
 	 */
-	private $parent_base;
-
-	/**
-	 * The base namespace.
-	 *
-	 * @var string
-	 */
-	protected $rest_namespace;
+	protected string $parent_base;
 
 	/**
 	 * Constructor.
@@ -70,24 +59,26 @@ class Stories_Autosaves_Controller extends WP_REST_Autosaves_Controller {
 	 *
 	 * @param string $parent_post_type Post type of the parent.
 	 */
-	public function __construct( $parent_post_type ) {
+	public function __construct( string $parent_post_type ) {
 		parent::__construct( $parent_post_type );
 
-		$post_type_object  = get_post_type_object( $parent_post_type );
-		$this->parent_base = $parent_post_type;
-		$parent_controller = null;
+		/**
+		 * Post type instance.
+		 *
+		 * @var \WP_Post_Type $post_type_object
+		 */
+		$post_type_object = get_post_type_object( $parent_post_type );
 
-		if ( $post_type_object instanceof \WP_Post_Type ) {
-			$parent_controller = $post_type_object->get_rest_controller();
-			$this->parent_base = ! empty( $post_type_object->rest_base ) ? (string) $post_type_object->rest_base : $post_type_object->name;
-		}
-
-		if ( ! $parent_controller ) {
-			$parent_controller = new WP_REST_Posts_Controller( $parent_post_type );
-		}
+		/**
+		 * Parent controller instance.
+		 *
+		 * @var WP_REST_Controller $parent_controller
+		 */
+		$parent_controller = $post_type_object->get_rest_controller();
 
 		$this->parent_controller = $parent_controller;
-		$this->rest_namespace    = 'web-stories/v1';
+		$this->parent_base       = ! empty( $post_type_object->rest_base ) ? (string) $post_type_object->rest_base : $post_type_object->name;
+		$this->namespace         = ! empty( $post_type_object->rest_namespace ) ? (string) $post_type_object->rest_namespace : 'wp/v2';
 	}
 
 	/**
@@ -95,16 +86,17 @@ class Stories_Autosaves_Controller extends WP_REST_Autosaves_Controller {
 	 *
 	 * Used to override the create_item() callback.
 	 *
-	 * @see register_rest_route()
+	 * @since 1.0.0
 	 *
-	 * @return void
+	 * @see register_rest_route()
 	 */
-	public function register_routes() {
+	public function register_routes(): void {
 		parent::register_routes();
 
 		register_rest_route(
-			$this->rest_namespace,
-			'/' . $this->parent_base . '/(?P<id>[\d]+)/autosaves',
+			// @phpstan-ignore argument.type
+			$this->namespace,
+			'/' . $this->parent_base . '/(?P<id>[\d]+)/' . $this->rest_base,
 			[
 				'args'   => [
 					'parent' => [
@@ -139,23 +131,24 @@ class Stories_Autosaves_Controller extends WP_REST_Autosaves_Controller {
 	 *
 	 * @param WP_Post         $post Post object.
 	 * @param WP_REST_Request $request Request object.
-	 *
 	 * @return WP_REST_Response Response object.
+	 * @phpstan-param WP_REST_Request<array{context: string}> $request
 	 */
-	public function prepare_item_for_response( $post, $request ) {
+	public function prepare_item_for_response( $post, $request ): WP_REST_Response {
 		$response = parent::prepare_item_for_response( $post, $request );
 		$fields   = $this->get_fields_for_response( $request );
-		$data     = $response->get_data();
 		$schema   = $this->get_item_schema();
 
-		if ( in_array( 'story_data', $fields, true ) ) {
+		/**
+		 * Response data.
+		 *
+		 * @var array<string,mixed> $data
+		 */
+		$data = $response->get_data();
+
+		if ( ! empty( $schema['properties']['story_data'] ) && rest_is_field_included( 'story_data', $fields ) ) {
 			$post_story_data    = json_decode( $post->post_content_filtered, true );
 			$data['story_data'] = rest_sanitize_value_from_schema( $post_story_data, $schema['properties']['story_data'] );
-		}
-
-		if ( in_array( 'featured_media_url', $fields, true ) ) {
-			$image                      = get_the_post_thumbnail_url( $post, Media::POSTER_PORTRAIT_IMAGE_SIZE );
-			$data['featured_media_url'] = ! empty( $image ) ? $image : $schema['properties']['featured_media_url']['default'];
 		}
 
 		$context = ! empty( $request['context'] ) ? $request['context'] : 'view';
@@ -170,7 +163,7 @@ class Stories_Autosaves_Controller extends WP_REST_Autosaves_Controller {
 			}
 		}
 
-		/* This filter is documented in wp-includes/rest-api/endpoints/class-wp-rest-autosaves-controller.php */
+		/** This filter is documented in wp-includes/rest-api/endpoints/class-wp-rest-autosaves-controller.php */
 		return apply_filters( 'rest_prepare_autosave', $response, $post, $request );
 	}
 
@@ -179,11 +172,19 @@ class Stories_Autosaves_Controller extends WP_REST_Autosaves_Controller {
 	 *
 	 * @since 1.0.0
 	 *
-	 * @return array Item schema as an array.
+	 * @return array Item schema data.
+	 *
+	 * @phpstan-return Schema
 	 */
-	public function get_item_schema() {
+	public function get_item_schema(): array {
 		if ( $this->schema ) {
-			return $this->add_additional_fields_schema( $this->schema );
+			/**
+			 * Schema.
+			 *
+			 * @phpstan-var Schema $schema
+			 */
+			$schema = $this->add_additional_fields_schema( $this->schema );
+			return $schema;
 		}
 
 		$autosaves_schema = parent::get_item_schema();
@@ -193,6 +194,12 @@ class Stories_Autosaves_Controller extends WP_REST_Autosaves_Controller {
 
 		$this->schema = $autosaves_schema;
 
-		return $this->add_additional_fields_schema( $this->schema );
+		/**
+		 * Schema.
+		 *
+		 * @phpstan-var Schema $schema
+		 */
+		$schema = $this->add_additional_fields_schema( $this->schema );
+		return $schema;
 	}
 }

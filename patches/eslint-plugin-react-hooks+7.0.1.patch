@@ -1,0 +1,87 @@
+diff --git a/node_modules/eslint-plugin-react-hooks/cjs/eslint-plugin-react-hooks.development.js b/node_modules/eslint-plugin-react-hooks/cjs/eslint-plugin-react-hooks.development.js
+index ec5280f..9844d96 100644
+--- a/node_modules/eslint-plugin-react-hooks/cjs/eslint-plugin-react-hooks.development.js
++++ b/node_modules/eslint-plugin-react-hooks/cjs/eslint-plugin-react-hooks.development.js
+@@ -50,7 +50,26 @@ const rule$1 = {
+                 enableDangerousAutofixThisMayCauseInfiniteLoops: false,
+                 properties: {
+                     additionalHooks: {
+-                        type: 'string',
++                        anyOf: [
++                           // An abbreviated form with a single RegExp with the implicit
++                           // callback index == 0.
++                           { type: 'string' },
++                           // An expanded form: an array with RegExp and callback index
++                           // values.
++                           {
++                               type: 'array',
++                               items: {
++                                   type: 'object',
++                                       additionalProperties: false,
++                                       properties: {
++                                           // The RegExp string.
++                                           test: {type: 'string'},
++                                           // The callback index.
++                                           callbackIndex: {type: 'number'},
++                                       },
++                               },
++                           },
++                       ],
+                     },
+                     enableDangerousAutofixThisMayCauseInfiniteLoops: {
+                         type: 'boolean',
+@@ -72,7 +91,7 @@ const rule$1 = {
+         const rawOptions = context.options && context.options[0];
+         const settings = context.settings || {};
+         const additionalHooks = rawOptions && rawOptions.additionalHooks
+-            ? new RegExp(rawOptions.additionalHooks)
++            ? parseAdditionalHooks(rawOptions.additionalHooks)
+             : getAdditionalEffectHooksFromSettings(settings);
+         const enableDangerousAutofixThisMayCauseInfiniteLoops = (rawOptions &&
+             rawOptions.enableDangerousAutofixThisMayCauseInfiniteLoops) ||
+@@ -1374,13 +1393,44 @@ function getReactiveHookCallbackIndex(calleeNode, options) {
+                         throw error;
+                     }
+                 }
+-                return options.additionalHooks.test(name) ? 0 : -1;
++                const found = options.additionalHooks.find(({test}) => test.test(name));
++                return found ? found.callbackIndex : -1;
+             }
+             else {
+                 return -1;
+             }
+     }
+ }
++/**
++ * Parses the `additionalHooks` configuration. It can be in one of the two
++ * formats:
++ * - a single string that indicates the RegExp and implicit callback index of 0;
++ * - an array of `{ test: string, callbackIndex: number }` objects.
++ *
++ * Returns the normalized form of this configuration object in the shape of
++ * `{  test: RegExp, callbackIndex: number }`.
++ *
++ * See `additionalHooks` schema definition for more info.
++*/
++function parseAdditionalHooks(additionalHooksConfig) {
++  if (!additionalHooksConfig) {
++    return undefined;
++  }
++
++  // A single string format.
++  if (typeof additionalHooksConfig === 'string') {
++    return [{test: new RegExp(additionalHooksConfig), callbackIndex: 0}];
++  }
++
++  // An array format.
++  if (Array.isArray(additionalHooksConfig)) {
++    return additionalHooksConfig.map(({test, callbackIndex}) => ({
++        test: new RegExp(test),
++        callbackIndex,
++      }));
++  }
++  throw new Error('Unknown format of additionalHooks');
++}
+ function fastFindReferenceWithParent(start, target) {
+     const queue = [start];
+     let item;

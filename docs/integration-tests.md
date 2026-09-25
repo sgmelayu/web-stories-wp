@@ -9,7 +9,7 @@ More details can be found in the `/karma` folder and the corresponding `README`s
 To run the full test suite, you can use the following commands:
 
 ```bash
-npm run test:karma:edit-story -- --headless --viewport=1600:1000
+npm run test:karma:story-editor -- --headless --viewport=1600:1000
 npm run test:karma:dashboard -- --headless --viewport=1600:1000
 ```
 
@@ -44,6 +44,7 @@ There are a few custom matchers inspired by Jest and `jest-dom`:
 * `toBeEmpty`
 * `toHaveFocus`
 * `toHaveStyle`
+* `toHaveTextContent`
 * `toHaveProperty`
 * `toBeOneOf`
 
@@ -52,6 +53,30 @@ Plus another custom async matcher inspired by [`jest-axe`](https://github.com/ni
 * `toHaveNoViolations`
 
 ## Writing Tests
+
+There will be times when test must wait for an async function or process. The `waitFor` util from react test library may be used to wait for a condition to be satisfied before running the next part of the test.
+
+When an `expect` or any other function within the `waitFor` block throws an error, this util will wait `50ms` before trying again. The `waitFor` helper needs to receive an error in order for it to re-poll.
+
+`waitFor` will continue to re-poll until the timeout limit is reached. By default, the timeout is `1000ms`. `timeout`, `interval` and other `waitFor` options are customizable. [More configuration options](https://testing-library.com/docs/dom-testing-library/api-async/);
+
+The `findBy` query method is preferred, when applicable, since `findBy` is a combination of the `getBy` query and the `waitFor` util. `findBy` accepts the `waitFor` options as the last argument.
+
+If `findBy` doesn’t fit your use case, throw an error in the body of `waitFor` while waiting for a condition to be met.
+Examples
+
+```javascript
+  const dialogs = await fixture.screen.findAllByRole('dialog', { timeout: 2000 });
+```
+
+```javascript
+await waitFor(() => {
+  if (!node) {
+    throw new Error('this will make it so that the waitFor polls until no error is thrown');
+  }
+  expect(node).toBeTruthy();
+});
+```
 
 ### Useful Resources
 
@@ -96,3 +121,25 @@ See [Puppeteer issue 4752](https://github.com/puppeteer/puppeteer/issues/4752).
 ```sh
 sudo codesign --force --deep --sign - ./node_modules/puppeteer/.local-chromium/mac-*/chrome-mac/Chromium.app
 ```
+
+### Test failure: ResizeObserver loop limit exceeded
+
+See [ResizeObserver#observe() firing the callback immediately results in an infinite loop](https://github.com/WICG/resize-observer/issues/38#issuecomment-422126006).
+
+If you are creating a new `observe()` event using the `resize-observer-polyfill` package, wrapping the body of the function which is provided to the `ResizeObserver` constructor with `window.requestAnimationFrame` will prevent the `ResizeObserver loop limit exceeded` error.
+
+e.g.
+
+```javascript
+      const observer = new ResizeObserver(() => {
+        // requestAnimationFrame prevents the 'ResizeObserver loop limit exceeded' error
+        // https://stackoverflow.com/a/58701523/13078978
+        window.requestAnimationFrame(() => {
+          // handle resize observation
+        });
+      });
+
+      observer.observe(node);
+```
+
+There is also a `design-system` util called `useResizeEffect` which takes a node ref and a handler function which should be sufficient for resize observation requirements.

@@ -110,7 +110,7 @@ class DndClientBinding {
   constructor(context) {
     this._context = context;
 
-    // Start client intialization right away.
+    // Start client initialization right away.
     this._whenClientReady();
   }
 
@@ -133,7 +133,7 @@ class DndClientBinding {
 
           document.addEventListener(
             'dragstart',
-            function (e) {
+            (e) => {
               if (e.isTrusted) {
                 e.preventDefault();
                 e.stopPropagation();

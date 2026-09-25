@@ -15,9 +15,9 @@
  */
 
 /**
- * WordPress dependencies
+ * Internal dependencies
  */
-import { visitAdminPage } from '@wordpress/e2e-test-utils';
+import visitAdminPage from './visitAdminPage';
 
 /**
  * Toggle experiments state.
@@ -47,8 +47,6 @@ async function toggleToolbarProfileOption(enable) {
  * for the duration of the grouped test block.
  */
 export default function withDisabledToolbarOnFrontend() {
-  /* eslint-disable jest/require-top-level-describe */
   beforeAll(() => toggleToolbarProfileOption(false));
   afterAll(() => toggleToolbarProfileOption(true));
-  /* eslint-enable jest/require-top-level-describe */
 }

@@ -17,12 +17,14 @@
 /**
  * External dependencies
  */
-import { percySnapshot } from '@percy/puppeteer';
 import {
+  takeSnapshot,
   createNewStory,
-  deactivateRTL,
-  activateRTL,
+  toggleVideoOptimization,
+  withRTL,
 } from '@web-stories-wp/e2e-test-utils';
+
+jest.retryTimes(3, { logErrorsBeforeRetry: true });
 
 describe('Story Editor', () => {
   it('should be able to create a blank story', async () => {
@@ -30,16 +32,38 @@ describe('Story Editor', () => {
 
     await expect(page).toMatchElement('input[placeholder="Add title"]');
 
-    await percySnapshot(page, 'Empty Editor');
+    await takeSnapshot(page, 'Empty Editor');
   });
 
-  it('should be able to create a blank story on RTL', async () => {
-    await activateRTL();
+  describe('RTL', () => {
+    withRTL();
+
+    it('should be able to create a blank story on RTL', async () => {
+      await createNewStory();
+
+      await expect(page).toMatchElement('input[placeholder="Add title"]');
+
+      await takeSnapshot(page, 'Empty Editor on RTL');
+    });
+  });
+
+  it('should have cross-origin isolation enabled', async () => {
     await createNewStory();
 
-    await expect(page).toMatchElement('input[placeholder="Add title"]');
+    const crossOriginIsolated = await page.evaluate(
+      () => window.crossOriginIsolated
+    );
+    expect(crossOriginIsolated).toBeTrue();
+  });
 
-    await percySnapshot(page, 'Empty Editor on RTL');
-    await deactivateRTL();
+  it('should have cross-origin isolation disabled', async () => {
+    await toggleVideoOptimization();
+    await createNewStory();
+
+    const crossOriginIsolated = await page.evaluate(
+      () => window.crossOriginIsolated
+    );
+    expect(crossOriginIsolated).toBeFalse();
+    await toggleVideoOptimization();
   });
 });

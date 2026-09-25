@@ -17,14 +17,14 @@
 /**
  * External dependencies
  */
-import { __setMockFiles, readFileSync } from 'fs';
+import { __setMockFiles, readFileSync } from 'node:fs';
 
 /**
  * Internal dependencies
  */
 import updateCdnUrl from '../updateCdnUrl';
 
-jest.mock('fs');
+jest.mock('node:fs');
 
 const PLUGIN_FILE_CONTENT = `
 <?php
@@ -33,7 +33,7 @@ const PLUGIN_FILE_CONTENT = `
 
  * Plugin Name: Web Stories
  * Description: Visual storytelling for WordPress.
- * Plugin URI: https://github.com/google/web-stories-wp
+ * Plugin URI: https://github.com/googleforcreators/web-stories-wp
  * Author: Google
  * Author URI: https://opensource.google.com/
  * Version: 1.0.0-alpha

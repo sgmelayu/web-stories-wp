@@ -2,10 +2,10 @@
 /**
  * Class AdSense
  *
- * @package   Google\Web_Stories
+ * @link      https://github.com/googleforcreators/web-stories-wp
+ *
  * @copyright 2020 Google LLC
  * @license   https://www.apache.org/licenses/LICENSE-2.0 Apache License 2.0
- * @link      https://github.com/google/web-stories-wp
  */
 
 /**
@@ -24,64 +24,63 @@
  * limitations under the License.
  */
 
+declare(strict_types = 1);
+
 namespace Google\Web_Stories;
+
+use Google\Web_Stories\Infrastructure\HasRequirements;
 
 /**
  * Class AdSense
  */
-class AdSense {
+class AdSense extends Service_Base implements HasRequirements {
+	/**
+	 * Settings instance.
+	 *
+	 * @var Settings Settings instance.
+	 */
+	private Settings $settings;
+
+	/**
+	 * Analytics constructor.
+	 *
+	 * @since 1.12.0
+	 *
+	 * @param Settings $settings Settings instance.
+	 * @return void
+	 */
+	public function __construct( Settings $settings ) {
+		$this->settings = $settings;
+	}
+
 	/**
 	 * Initializes all hooks.
 	 *
 	 * @since 1.3.0
-	 *
-	 * @return void
 	 */
-	public function init() {
+	public function register(): void {
 		add_action( 'web_stories_print_analytics', [ $this, 'print_adsense_tag' ] );
 	}
 
 	/**
-	 * Returns the Google AdSense publisher ID.
+	 * Get the list of service IDs required for this service to be registered.
 	 *
-	 * @since 1.3.0
+	 * Needed because settings needs to be registered first.
 	 *
-	 * @return string Publisher ID.
+	 * @since 1.13.0
+	 *
+	 * @return string[] List of required services.
 	 */
-	private function get_publisher_id() {
-		return (string) get_option( Settings::SETTING_NAME_ADSENSE_PUBLISHER_ID );
-	}
-
-	/**
-	 * Returns the Google AdSense slot ID.
-	 *
-	 * @since 1.3.0
-	 *
-	 * @return string Slot ID.
-	 */
-	private function get_slot_id() {
-		return (string) get_option( Settings::SETTING_NAME_ADSENSE_SLOT_ID );
-	}
-
-	/**
-	 * Returns if Google AdSense is enabled.
-	 *
-	 * @since 1.3.0
-	 *
-	 * @return bool
-	 */
-	private function is_enabled() {
-		return ( 'adsense' === (string) get_option( Settings::SETTING_NAME_AD_NETWORK, 'none' ) );
+	public static function get_requirements(): array {
+		return [ 'settings' ];
 	}
 
 	/**
 	 * Prints the <amp-story-auto-ads> tag for single stories.
 	 *
 	 * @since 1.3.0
-	 *
-	 * @return void
 	 */
-	public function print_adsense_tag() {
+	public function print_adsense_tag(): void {
 		$publisher = $this->get_publisher_id();
 		$slot      = $this->get_slot_id();
 		$enabled   = $this->is_enabled();
@@ -102,5 +101,47 @@ class AdSense {
 			</script>
 		</amp-story-auto-ads>
 		<?php
+	}
+
+	/**
+	 * Returns the Google AdSense publisher ID.
+	 *
+	 * @since 1.3.0
+	 *
+	 * @return string Publisher ID.
+	 */
+	private function get_publisher_id(): string {
+		/**
+		 * Publisher ID.
+		 *
+		 * @var string $publisher_id
+		 */
+		$publisher_id = $this->settings->get_setting( $this->settings::SETTING_NAME_ADSENSE_PUBLISHER_ID );
+		return $publisher_id;
+	}
+
+	/**
+	 * Returns the Google AdSense slot ID.
+	 *
+	 * @since 1.3.0
+	 *
+	 * @return string Slot ID.
+	 */
+	private function get_slot_id(): string {
+		/**
+		 * Slot ID.
+		 *
+		 * @var string
+		 */
+		return $this->settings->get_setting( $this->settings::SETTING_NAME_ADSENSE_SLOT_ID );
+	}
+
+	/**
+	 * Returns if Google AdSense is enabled.
+	 *
+	 * @since 1.3.0
+	 */
+	private function is_enabled(): bool {
+		return ( 'adsense' === $this->settings->get_setting( $this->settings::SETTING_NAME_AD_NETWORK, 'none' ) );
 	}
 }

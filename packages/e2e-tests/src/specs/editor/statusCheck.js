@@ -17,32 +17,20 @@
 /**
  * External dependencies
  */
-import {
-  addRequestInterception,
-  createNewStory,
-} from '@web-stories-wp/e2e-test-utils';
+import { createNewStory, withPlugin } from '@web-stories-wp/e2e-test-utils';
+
 /**
  * Internal dependencies
  */
 import { addAllowedErrorMessage } from '../../config/bootstrap';
 
-async function interceptStatusCheck(status, body) {
-  await page.setRequestInterception(true);
-  return addRequestInterception((request) => {
-    if (request.url().includes('/web-stories/v1/status-check/')) {
-      request.respond({
-        status,
-        body,
-      });
-      return;
-    }
+jest.retryTimes(3, { logErrorsBeforeRetry: true });
 
-    request.continue();
-  });
-}
-
+// TODO: Use request interception instead of WP plugins once supported in Firefox.
+// See https://bugzilla.mozilla.org/show_bug.cgi?id=1587857
 describe('Status Check', () => {
   let removeErrorMessage;
+
   beforeAll(() => {
     removeErrorMessage = addAllowedErrorMessage(
       'the server responded with a status of'
@@ -57,64 +45,37 @@ describe('Status Check', () => {
     it('should not display error dialog', async () => {
       await createNewStory();
 
-      await expect(page).not.toMatch('Unable to save your story');
+      await expect(page).not.toMatchTextContent('Unable to save your story');
     });
   });
 
   describe('Invalid JSON response', () => {
-    let stopRequestInterception;
-
-    beforeAll(async () => {
-      stopRequestInterception = await interceptStatusCheck(
-        200,
-        'This is some unexpected content before the actual response.{"success":true}'
-      );
-    });
-
-    afterAll(async () => {
-      await page.setRequestInterception(false);
-      stopRequestInterception();
-    });
+    withPlugin('web-stories-test-plugin-status-check-200-invalid');
 
     it('should display error dialog', async () => {
       await createNewStory();
-      await expect(page).toMatch('Unable to save your story');
+
+      await expect(page).toMatchTextContent('Unable to save your story');
     });
   });
 
   describe('403 Forbidden (WAF)', () => {
-    let stopRequestInterception;
-
-    beforeAll(async () => {
-      stopRequestInterception = await interceptStatusCheck(403, 'Forbidden');
-    });
-
-    afterAll(async () => {
-      await page.setRequestInterception(false);
-      stopRequestInterception();
-    });
+    withPlugin('web-stories-test-plugin-status-check-403');
 
     it('should display error dialog', async () => {
       await createNewStory();
-      await expect(page).toMatch('Unable to save your story');
+
+      await expect(page).toMatchTextContent('Unable to save your story');
     });
   });
 
   describe('500 Internal Server Error', () => {
-    let stopRequestInterception;
-
-    beforeAll(async () => {
-      stopRequestInterception = await interceptStatusCheck(500, 'Forbidden');
-    });
-
-    afterAll(async () => {
-      await page.setRequestInterception(false);
-      stopRequestInterception();
-    });
+    withPlugin('web-stories-test-plugin-status-check-500');
 
     it('should display error dialog', async () => {
       await createNewStory();
-      await expect(page).toMatch('Unable to save your story');
+
+      await expect(page).toMatchTextContent('Unable to save your story');
     });
   });
 });

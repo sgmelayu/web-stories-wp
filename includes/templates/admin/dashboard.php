@@ -2,11 +2,14 @@
 /**
  * Stories dashboard.
  *
- * @package   Google\Web_Stories
+ * @link      https://github.com/googleforcreators/web-stories-wp
+ *
  * @copyright 2020 Google LLC
  * @license   https://www.apache.org/licenses/LICENSE-2.0 Apache License 2.0
- * @link      https://github.com/google/web-stories-wp
  */
+
+use Google\Web_Stories\Admin\Dashboard;
+use Google\Web_Stories\Services;
 
 /**
  * Copyright 2020 Google LLC
@@ -28,6 +31,18 @@
 if ( ! defined( 'ABSPATH' ) ) {
 	die( '-1' );
 }
+
+$dashboard_settings = Services::get( 'dashboard' )->get_dashboard_settings();
+
+$init_script = <<<'JS'
+	wp.domReady( function() {
+	  webStories.initializeStoryDashboard( 'web-stories-dashboard', %s );
+	} );
+JS;
+
+$script = sprintf( $init_script, wp_json_encode( $dashboard_settings ) );
+
+wp_add_inline_script( Dashboard::SCRIPT_HANDLE, $script );
 
 ?>
 

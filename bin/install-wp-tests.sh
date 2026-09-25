@@ -33,7 +33,9 @@ SKIP_DB_CREATE=${6-false}
 TMPDIR=${TMPDIR-/tmp}
 TMPDIR=$(echo $TMPDIR | sed -e "s/\/$//")
 WP_TESTS_DIR=${WP_TESTS_DIR-$TMPDIR/wordpress-tests-lib}
+WP_TESTS_FILE="$WP_TESTS_DIR"/includes/functions.php
 WP_CORE_DIR=${WP_CORE_DIR-$TMPDIR/wordpress/}
+WP_CORE_FILE="$WP_CORE_DIR"/wp-settings.php
 
 download() {
     if [ `which curl` ]; then
@@ -75,10 +77,11 @@ set -ex
 
 install_wp() {
 
-	if [ -d $WP_CORE_DIR ]; then
+	if [ -f $WP_CORE_FILE ]; then
 		return;
 	fi
 
+	rm -rf $WP_CORE_DIR
 	mkdir -p $WP_CORE_DIR
 
 	if [[ $WP_VERSION == 'nightly' || $WP_VERSION == 'trunk' ]]; then
@@ -122,9 +125,10 @@ install_test_suite() {
 		local ioption='-i'
 	fi
 
-	# set up testing suite if it doesn't yet exist
-	if [ ! -d $WP_TESTS_DIR ]; then
+	# set up testing suite if it doesn't yet exist or only partially exists
+	if [ ! -f $WP_TESTS_FILE ]; then
 		# set up testing suite
+		rm -rf $WP_TESTS_DIR
 		mkdir -p $WP_TESTS_DIR
 		svn export --quiet --ignore-externals https://develop.svn.wordpress.org/${WP_TESTS_TAG}/tests/phpunit/includes/ $WP_TESTS_DIR/includes
 		svn export --quiet --ignore-externals https://develop.svn.wordpress.org/${WP_TESTS_TAG}/tests/phpunit/data/ $WP_TESTS_DIR/data
@@ -166,7 +170,8 @@ install_db() {
 	fi
 
 	# create database
-	mysqladmin create $DB_NAME --user="$DB_USER" --password="$DB_PASS"$EXTRA
+	mariadb-admin create $DB_NAME --user="$DB_USER" --password="$DB_PASS"$EXTRA || \
+		mysqladmin create $DB_NAME --user="$DB_USER" --password="$DB_PASS"$EXTRA
 }
 
 install_wp

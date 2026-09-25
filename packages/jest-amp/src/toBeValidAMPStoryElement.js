@@ -17,7 +17,7 @@
 /**
  * External dependencies
  */
-import { renderToStaticMarkup } from 'react-dom/server';
+import { renderToStaticMarkup } from '@googleforcreators/react';
 
 /**
  * Internal dependencies
@@ -34,7 +34,7 @@ import {
 
 /**
  * @param {string|ReactElement} stringOrComponent String containing HTML markup or a component.
- * @param {boolean} [optimize=true] Whether to use AMP Optimizer on the input string.
+ * @param {boolean} [optimize] Whether to use AMP Optimizer on the input string.
  * @return {CustomMatcherResult} Matcher result.
  */
 async function toBeValidAMPStoryElement(stringOrComponent, optimize = true) {

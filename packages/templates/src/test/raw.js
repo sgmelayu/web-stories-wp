@@ -18,67 +18,219 @@
  * External dependencies
  */
 import { readdirSync, readFileSync } from 'fs';
-import { resolve, basename } from 'path';
+import { resolve } from 'path';
+import stickers from '@googleforcreators/stickers';
+import { isValid } from '@googleforcreators/date';
 
-describe('Raw template files', () => {
+describe('raw template files', () => {
   const templates = readdirSync(
     resolve(process.cwd(), 'packages/templates/src/raw')
   );
 
-  // @see https://github.com/google/web-stories-wp/issues/2473#issuecomment-651509687
-  it.each(templates)(
-    '%s template should not contain invisible characters',
-    (template) => {
+  describe.each(templates)('%s template', (template) => {
+    let templateData;
+
+    beforeAll(async () => {
+      const { default: _templateData } = await import(
+        /* webpackChunkName: "chunk-web-stories-template-[index]" */ `../raw/${template}`
+      );
+
+      templateData = _templateData;
+    });
+
+    // @see https://github.com/googleforcreators/web-stories-wp/issues/2473#issuecomment-651509687
+    it('should not contain invisible characters', () => {
       const templateContent = readFileSync(
-        resolve(process.cwd(), `packages/templates/src/raw/${template}`),
+        resolve(
+          process.cwd(),
+          `packages/templates/src/raw/${template}/template.json`
+        ),
         'utf8'
       );
 
       expect(templateContent).not.toContain('\u2028');
-    }
-  );
+    });
 
-  // @see https://github.com/google/web-stories-wp/pull/4516
-  // @see https://github.com/google/web-stories-wp/pull/6159
-  it.each(templates)(
-    '%s template should contain replaceable URLs',
-    (template) => {
-      const templateName = basename(template, '.json');
-      const templateContent = readFileSync(
-        resolve(process.cwd(), `packages/templates/src/raw/${template}`),
-        'utf8'
-      );
-      const templateData = JSON.parse(templateContent);
+    // @see https://github.com/googleforcreators/web-stories-wp/issues/11648
+    it('should not contain first page animations', () => {
+      const { pages } = templateData;
+      const firstPage = pages[0];
+      const { animations = [] } = firstPage;
+      expect(animations).toHaveLength(0);
+    });
 
+    // @see https://github.com/googleforcreators/web-stories-wp/pull/4516
+    // @see https://github.com/googleforcreators/web-stories-wp/pull/6159
+    it('should contain replaceable URLs', () => {
       for (const { elements } of templateData.pages) {
         for (const element of elements) {
-          if (element?.resource?.src) {
-            expect(element?.resource?.src).toStartWith(
-              `__WEB_STORIES_TEMPLATE_BASE_URL__/images/templates/${templateName}`
-            );
+          // eslint-disable-next-line jest/no-conditional-in-test
+          if (!element?.resource?.src) {
+            continue;
           }
+
+          expect(element?.resource?.src).toStartWith(
+            `__WEB_STORIES_TEMPLATE_BASE_URL__/images/templates/${template}`
+          );
         }
       }
-    }
-  );
+    });
 
-  // @see https://github.com/google/web-stories-wp/pull/5889
-  it.each(templates)(
-    '%s template should contain pageLayoutType',
-    (template) => {
-      const templateContent = readFileSync(
-        resolve(process.cwd(), `packages/templates/src/raw/${template}`),
-        'utf8'
-      );
-      const templateData = JSON.parse(templateContent);
+    it('should contain replaceable poster URLs', () => {
+      for (const { elements } of templateData.pages) {
+        for (const element of elements) {
+          // eslint-disable-next-line jest/no-conditional-in-test
+          if (element?.type !== 'video') {
+            continue;
+          }
 
+          expect(element?.resource?.poster).toStartWith(
+            `__WEB_STORIES_TEMPLATE_BASE_URL__/images/templates/${template}`
+          );
+        }
+      }
+    });
+
+    // @see https://github.com/googleforcreators/web-stories-wp/pull/7944#pullrequestreview-686071526
+    it('images and video ids should default to 0', () => {
+      for (const { elements } of templateData.pages) {
+        for (const element of elements) {
+          // eslint-disable-next-line jest/no-conditional-in-test
+          if (!['image', 'video', 'gif'].includes(element?.type)) {
+            continue;
+          }
+
+          expect(element?.resource?.id).toBe(0);
+
+          // eslint-disable-next-line jest/no-conditional-in-test
+          if ('image' === element?.type) {
+            continue;
+          }
+
+          expect(element?.resource?.posterId).toBe(0);
+        }
+      }
+    });
+
+    // @see https://github.com/googleforcreators/web-stories-wp/pull/5889
+    it('should contain pageTemplateType', () => {
       for (const page of templateData.pages) {
         expect(page).toStrictEqual(
           expect.objectContaining({
-            pageLayoutType: expect.any(String),
+            pageTemplateType: expect.toBeOneOf([
+              null,
+              'cover',
+              'editorial',
+              'list',
+              'quote',
+              'section',
+              'table',
+              'steps',
+            ]),
           })
         );
       }
-    }
-  );
+    });
+
+    // @see https://github.com/googleforcreators/web-stories-wp/issues/7227
+    it('should not contain extraneous properties', () => {
+      expect(templateData.current).toBeUndefined();
+      expect(templateData.selection).toBeUndefined();
+      expect(templateData.story).toBeUndefined();
+    });
+
+    it('should only contain videos marked as optimized', () => {
+      for (const { elements } of templateData.pages) {
+        for (const element of elements) {
+          // eslint-disable-next-line jest/no-conditional-in-test
+          if (element?.type !== 'video' || !element?.resource?.src) {
+            continue;
+          }
+
+          expect(element?.resource?.isOptimized).toBeTrue();
+        }
+      }
+    });
+
+    it('should only contain videos have isMuted attribute', () => {
+      for (const { elements } of templateData.pages) {
+        for (const element of elements) {
+          // eslint-disable-next-line jest/no-conditional-in-test
+          if (element?.type !== 'video' || !element?.resource?.src) {
+            continue;
+          }
+
+          expect(element?.resource?.isMuted).toBeDefined();
+          expect(element?.resource?.isMuted).toBeBoolean();
+        }
+      }
+    });
+
+    it('images and videos should have baseColor', () => {
+      for (const { elements } of templateData.pages) {
+        for (const element of elements) {
+          // eslint-disable-next-line jest/no-conditional-in-test
+          if (!['image', 'video', 'gif'].includes(element?.type)) {
+            continue;
+          }
+
+          expect(element?.resource?.baseColor).toStrictEqual(
+            expect.stringMatching(/^#(?:[0-9a-fA-F]{3}){1,2}$/)
+          );
+        }
+      }
+    });
+
+    it('should contain only valid stickers', () => {
+      for (const { elements } of templateData.pages) {
+        for (const element of elements) {
+          // eslint-disable-next-line jest/no-conditional-in-test
+          if (element?.type !== 'sticker' || !element?.sticker?.type) {
+            continue;
+          }
+
+          expect(stickers).toStrictEqual(
+            expect.objectContaining({
+              [element?.sticker?.type]: expect.any(Object),
+            })
+          );
+        }
+      }
+    });
+
+    // @see https://github.com/googleforcreators/web-stories-wp/pull/8692
+    it('should contain a slug for screenshot referencing', () => {
+      expect(templateData.slug).toBeString();
+    });
+
+    it('should contain a valid createdDate', async () => {
+      const { default: metaData } = await import(
+        /* webpackChunkName: "chunk-web-stories-template-[index]-metaData" */ `../raw/${template}/metaData`
+      );
+
+      expect(isValid(new Date(metaData.creationDate))).toBeTrue();
+      expect(isValid(new Date(templateData.creationDate))).toBeTrue();
+    });
+
+    it('should contain fonts from global fonts list', () => {
+      const fonts = JSON.parse(
+        readFileSync(
+          resolve(process.cwd(), 'packages/fonts/src/fonts.json'),
+          'utf8'
+        )
+      );
+      const fontNames = fonts.map(({ family }) => family);
+
+      for (const { elements } of templateData.pages) {
+        for (const element of elements) {
+          // eslint-disable-next-line jest/no-conditional-in-test
+          if (!['text'].includes(element?.type)) {
+            continue;
+          }
+
+          expect(fontNames).toContain(element.font.family);
+        }
+      }
+    });
+  });
 });

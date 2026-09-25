@@ -1,0 +1,25 @@
+{
+  "extends": "../../tsconfig.shared.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "declarationDir": "dist-types"
+  },
+  "references": [
+    { "path": "../date" },
+    { "path": "../elements" },
+    { "path": "../i18n" },
+    { "path": "../migration" },
+    { "path": "../stickers" },
+    { "path": "../tracking" }
+  ],
+  "include": ["src/**/*"],
+  "exclude": [
+    "packages/*/dist-*/**",
+    "packages/*/dist/**",
+    "**/karma/**",
+    "**/stories/**",
+    "**/test/**",
+    "**/testUtils/**",
+    "src/raw/**/template.json"
+  ]
+}

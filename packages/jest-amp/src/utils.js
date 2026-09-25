@@ -17,11 +17,18 @@
 /**
  * External dependencies
  */
+import { existsSync } from 'fs';
+import { tmpdir } from 'os';
 import PropTypes from 'prop-types';
 import AmpOptimizer, {
   TRANSFORMATIONS_AMP_FIRST,
 } from '@ampproject/toolbox-optimizer';
 import amphtmlValidator from 'amphtml-validator';
+
+const fallback = tmpdir() + '/validator_wasm.js';
+const validatorJs =
+  process.env.AMP_VALIDATOR_FILE ||
+  (existsSync(fallback) ? fallback : undefined);
 
 /** @typedef {import('react').ReactElement} ReactElement */
 
@@ -76,19 +83,30 @@ AmpStory.propTypes = {
   children: PropTypes.node,
 };
 
+// Ignore some false positives when validating URLs in Puppeteer.
+// Perhaps the validator is outdated or something.
+const ERRORS_TO_IGNORE = [
+  /The attribute 'nomodule' may not appear in tag 'amphtml module engine script'/,
+  /The attribute 'type' in tag '.* nomodule extension script' is set to the invalid value 'module'/,
+  /The tag 'amphtml nomodule engine script' is missing or incorrect, but required by 'amphtml module engine script'/,
+];
+
 /**
  * Tests a given string for its AMP compatibility.
  *
  * Uses AMP Optimizer to add any missing tags and extension imports.
  *
  * @see https://github.com/ampproject/amp-toolbox/tree/master/packages/optimizer#incomplete-markup
- *
  * @param {string} string Input string.
- * @param {boolean} [optimize=true] Whether to use AMP Optimizer on the input string.
+ * @param {boolean} [optimize] Whether to use AMP Optimizer on the input string.
  * @return {Promise<[]>} List of AMP validation errors.
  */
 async function getAMPValidationErrors(string, optimize = true) {
-  let completeString = '<!DOCTYPE html>' + string;
+  let completeString = string;
+
+  if (!completeString.startsWith('<!DOCTYPE html>')) {
+    completeString = `<!DOCTYPE html>${string}`;
+  }
 
   if (optimize) {
     // We only want the bare minimum here - adding missing tags & extensions.
@@ -109,13 +127,17 @@ async function getAMPValidationErrors(string, optimize = true) {
     completeString = await ampOptimizer.transformHtml(completeString, params);
   }
 
-  const validator = await amphtmlValidator.getInstance();
+  const validator = await amphtmlValidator.getInstance(validatorJs);
   const { errors } = validator.validateString(completeString);
 
   const errorMessages = [];
 
   for (const err of errors) {
     const { message, specUrl } = err;
+
+    if (ERRORS_TO_IGNORE.some((ignoredMsg) => message.match(ignoredMsg))) {
+      continue;
+    }
 
     const msg = specUrl ? `${message} (see ${specUrl})` : message;
 

@@ -6,10 +6,14 @@ on:
     paths:
       - '**.js'
       - '**.cjs'
+      - '**.ts'
+      - '**.tsx'
       - '**.css'
+      - 'docs/**/*.md'
       - 'packages/**/*.md'
       - '.eslint*'
       - '.markdownlint*'
+      - '.npmpackagejsonlintrc.json'
       - '.nvmrc'
       - '.prettier*'
       - '.stylelint*'
@@ -23,57 +27,70 @@ on:
     paths:
       - '**.js'
       - '**.cjs'
+      - '**.ts'
+      - '**.tsx'
       - '**.css'
+      - 'docs/**/*.md'
       - 'packages/**/*.md'
       - '.eslint*'
       - '.markdownlint*'
+      - '.npmpackagejsonlintrc.json'
       - '.nvmrc'
       - '.prettier*'
       - '.stylelint*'
       - '**/package.json'
       - 'package-lock.json'
 
+# Cancels all previous workflow runs for pull requests that have not completed.
+concurrency:
+  # The concurrency group contains the workflow name and the (target) branch name.
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
 jobs:
   lint:
     name: Lint
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    permissions:
+      checks: write # for ataylorme/eslint-annotate-action to create checks
+      contents: read # for actions/checkout to fetch code
+      pull-requests: read # for ataylorme/eslint-annotate-action to get changed PR files
+    timeout-minutes: 20
     steps:
-      - name: Cancel previous
-        uses: styfle/cancel-workflow-action@0.8.0
+      - name: Harden Runner
+        uses: step-security/harden-runner@05e31511f85b41b11d1cf0ef85d0992719546e2c
         with:
-          access_token: ${{ github.token }}
+          disable-sudo: true
+          disable-file-monitoring: true
+          egress-policy: block
+          allowed-endpoints: >
+            api.github.com:443
+            github.com:443
+            registry.npmjs.org:443
+            bun.sh:443
+            54.185.253.63:443
 
       - name: Checkout
-        uses: actions/checkout@v2
-
-      - name: Read .nvmrc
-        run: echo "##[set-output name=NVMRC;]$(cat .nvmrc)"
-        id: nvm
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
 
       - name: Setup Node
-        uses: actions/setup-node@v2.1.5
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with:
-          node-version: '${{ steps.nvm.outputs.NVMRC }}'
-
-      - name: Cache node modules
-        uses: pat-s/always-upload-cache@v2.1.3
-        with:
-          # npm cache files are stored in `~/.npm` on Linux/macOS
-          path: ~/.npm
-          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-build-${{ env.cache-name }}-
-            ${{ runner.os }}-build-
-            ${{ runner.os }}-
-        env:
-          cache-name: cache-node-modules
+          node-version-file: '.nvmrc'
+          cache: npm
 
       - name: Install dependencies
         run: npm ci
         env:
-          CI: true
-          PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: true
+          PUPPETEER_SKIP_DOWNLOAD: true
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: latest
 
       - name: Markdown Lint
         run: npm run lint:md
@@ -81,12 +98,41 @@ jobs:
       - name: CSS Lint
         run: npm run lint:css
 
+      - name: package.json Lint
+        run: npm run lint:package-json
+
+      # Do this first so that the types are available to ESLint,
+      # particularly the more sophisticated `@typescript/eslint` rules.
+      - name: Type checking
+        run: npm run workflow:bundle-packages:types
+
       - name: JS Lint
+        run: npm run lint:js
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
+        if: >
+          github.event.pull_request.head.repo.fork == true ||
+          github.event.pull_request.user.login == 'dependabot[bot]'
+
+      - name: JS Lint Report
         run: npm run lint:js:report
         continue-on-error: true
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
+        # Prevent generating the ESLint report if PR is from a fork or authored by Dependabot.
+        if: >
+          github.event.pull_request.head.repo.fork == false &&
+          github.event.pull_request.user.login != 'dependabot[bot]'
 
       - name: Annotate JS Lint Results
-        uses: ataylorme/eslint-annotate-action@1.1.2
+        uses: ataylorme/eslint-annotate-action@4.0.0
         with:
           repo-token: '${{ secrets.GITHUB_TOKEN }}'
           report-json: 'build/lint-js-report.json'
+        # The action cannot annotate the PR when run from a PR fork or authored by Dependabot.
+        if: >
+          github.event.pull_request.head.repo.fork == false &&
+          github.event.pull_request.user.login != 'dependabot[bot]'
+
+      - name: JSON Schema validation
+        run: npm run test:schema

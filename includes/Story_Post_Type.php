@@ -2,10 +2,10 @@
 /**
  * Class Story_Post_Type.
  *
- * @package   Google\Web_Stories
+ * @link      https://github.com/googleforcreators/web-stories-wp
+ *
  * @copyright 2020 Google LLC
  * @license   https://www.apache.org/licenses/LICENSE-2.0 Apache License 2.0
- * @link      https://github.com/google/web-stories-wp
  */
 
 /**
@@ -24,619 +24,164 @@
  * limitations under the License.
  */
 
+declare(strict_types = 1);
+
 namespace Google\Web_Stories;
 
-use Google\Web_Stories\Model\Story;
+use Google\Web_Stories\Infrastructure\HasMeta;
+use Google\Web_Stories\Infrastructure\HasRequirements;
+use Google\Web_Stories\REST_API\Stories_Autosaves_Controller;
 use Google\Web_Stories\REST_API\Stories_Controller;
-use Google\Web_Stories\Story_Renderer\Embed;
-use Google\Web_Stories\Story_Renderer\Image;
-use Google\Web_Stories\Traits\Assets;
-use Google\Web_Stories\Traits\Publisher;
-use Google\Web_Stories\Traits\Types;
 use WP_Post;
-use WP_Role;
-use WP_Post_Type;
-use WP_Screen;
 
 /**
  * Class Story_Post_Type.
  *
- * @SuppressWarnings(PHPMD.ExcessivePublicCount)
- * @SuppressWarnings(PHPMD.ExcessiveClassComplexity)
- * @SuppressWarnings(PHPMD.ExcessiveClassLength)
- * @SuppressWarnings(PHPMD.TooManyFields)
- * @SuppressWarnings(PHPMD.TooManyPublicMethods)
+ * @phpstan-import-type PostTypeArgs from \Google\Web_Stories\Post_Type_Base
  */
-class Story_Post_Type {
-	use Publisher;
-	use Types;
-	use Assets;
+class Story_Post_Type extends Post_Type_Base implements HasRequirements, HasMeta {
 
 	/**
 	 * The slug of the stories post type.
-	 *
-	 * @var string
 	 */
-	const POST_TYPE_SLUG = 'web-story';
-
-	/**
-	 * Web Stories editor script handle.
-	 *
-	 * @var string
-	 */
-	const WEB_STORIES_SCRIPT_HANDLE = 'edit-story';
+	public const POST_TYPE_SLUG = 'web-story';
 
 	/**
 	 * The rewrite slug for this post type.
-	 *
-	 * @var string
 	 */
-	const REWRITE_SLUG = 'web-stories';
+	public const REWRITE_SLUG = 'web-stories';
 
 	/**
 	 * Style Present options name.
-	 *
-	 * @var string
 	 */
-	const STYLE_PRESETS_OPTION = 'web_stories_style_presets';
+	public const STYLE_PRESETS_OPTION = 'web_stories_style_presets';
 
 	/**
-	 * Experiments instance.
-	 *
-	 * @var Experiments Experiments instance.
+	 * Publisher logo meta key.
 	 */
-	private $experiments;
+	public const PUBLISHER_LOGO_META_KEY = 'web_stories_publisher_logo';
 
 	/**
-	 * Decoder instance.
-	 *
-	 * @var Decoder Decoder instance.
+	 * Poster meta key.
 	 */
-	private $decoder;
+	public const POSTER_META_KEY = 'web_stories_poster';
 
 	/**
-	 * Meta boxes instance.
+	 * Settings instance.
 	 *
-	 * @var Meta_Boxes
+	 * @var Settings Settings instance.
 	 */
-	private $meta_boxes;
+	private Settings $settings;
+
 
 	/**
-	 * Dashboard constructor.
+	 * Story post type constructor.
 	 *
-	 * @since 1.0.0
+	 * @since 1.12.0
 	 *
-	 * @param Experiments $experiments Experiments instance.
-	 * @param Meta_Boxes  $meta_boxes Meta_Boxes instance.
+	 * @param Settings $settings Settings instance.
+	 * @return void
 	 */
-	public function __construct( Experiments $experiments, Meta_Boxes $meta_boxes ) {
-		$this->experiments = $experiments;
-		$this->meta_boxes  = $meta_boxes;
-		$this->decoder     = new Decoder();
+	public function __construct( Settings $settings ) {
+		$this->settings = $settings;
 	}
 
 	/**
 	 * Registers the post type for stories.
 	 *
-	 * @todo refactor
-	 *
-	 * @SuppressWarnings(PHPMD.ExcessiveMethodLength)
-	 *
 	 * @since 1.0.0
 	 *
-	 * @return void
+	 * @todo  refactor
 	 */
-	public function init() {
-		register_post_type(
-			self::POST_TYPE_SLUG,
+	public function register(): void {
+		$this->register_post_type();
+		$this->register_meta();
+
+		add_filter( 'wp_insert_post_data', [ $this, 'change_default_title' ] );
+		add_filter( 'wp_insert_post_empty_content', [ $this, 'filter_empty_content' ], 10, 2 );
+		add_filter( 'bulk_post_updated_messages', [ $this, 'bulk_post_updated_messages' ], 10, 2 );
+		add_action( 'clean_post_cache', [ $this, 'clear_user_posts_count' ], 10, 2 );
+	}
+
+	/**
+	 * Get the list of service IDs required for this service to be registered.
+	 *
+	 * Needed because settings needs to be registered first.
+	 *
+	 * @since 1.13.0
+	 *
+	 * @return string[] List of required services.
+	 */
+	public static function get_requirements(): array {
+		return [ 'settings' ];
+	}
+
+	/**
+	 * Get post type slug.
+	 *
+	 * @since 1.14.0
+	 */
+	public function get_slug(): string {
+		return self::POST_TYPE_SLUG;
+	}
+
+	/**
+	 * Register post meta.
+	 *
+	 * @since 1.12.0
+	 */
+	public function register_meta(): void {
+		$active_publisher_logo_id = absint( $this->settings->get_setting( $this->settings::SETTING_NAME_ACTIVE_PUBLISHER_LOGO, 0 ) );
+
+		register_post_meta(
+			$this->get_slug(),
+			self::PUBLISHER_LOGO_META_KEY,
 			[
-				'labels'                => [
-					'name'                     => _x( 'Stories', 'post type general name', 'web-stories' ),
-					'singular_name'            => _x( 'Story', 'post type singular name', 'web-stories' ),
-					'add_new'                  => _x( 'Add New', 'story', 'web-stories' ),
-					'add_new_item'             => __( 'Add New Story', 'web-stories' ),
-					'edit_item'                => __( 'Edit Story', 'web-stories' ),
-					'new_item'                 => __( 'New Story', 'web-stories' ),
-					'view_item'                => __( 'View Story', 'web-stories' ),
-					'view_items'               => __( 'View Stories', 'web-stories' ),
-					'search_items'             => __( 'Search Stories', 'web-stories' ),
-					'not_found'                => __( 'No stories found.', 'web-stories' ),
-					'not_found_in_trash'       => __( 'No stories found in Trash.', 'web-stories' ),
-					'all_items'                => __( 'All Stories', 'web-stories' ),
-					'archives'                 => __( 'Story Archives', 'web-stories' ),
-					'attributes'               => __( 'Story Attributes', 'web-stories' ),
-					'insert_into_item'         => __( 'Insert into story', 'web-stories' ),
-					'uploaded_to_this_item'    => __( 'Uploaded to this story', 'web-stories' ),
-					'featured_image'           => __( 'Featured Image', 'web-stories' ),
-					'set_featured_image'       => __( 'Set featured image', 'web-stories' ),
-					'remove_featured_image'    => __( 'Remove featured image', 'web-stories' ),
-					'use_featured_image'       => __( 'Use as featured image', 'web-stories' ),
-					'filter_items_list'        => __( 'Filter stories list', 'web-stories' ),
-					'items_list_navigation'    => __( 'Stories list navigation', 'web-stories' ),
-					'items_list'               => __( 'Stories list', 'web-stories' ),
-					'item_published'           => __( 'Story published.', 'web-stories' ),
-					'item_published_privately' => __( 'Story published privately.', 'web-stories' ),
-					'item_reverted_to_draft'   => __( 'Story reverted to draft.', 'web-stories' ),
-					'item_scheduled'           => __( 'Story scheduled', 'web-stories' ),
-					'item_updated'             => __( 'Story updated.', 'web-stories' ),
-					'menu_name'                => _x( 'Stories', 'admin menu', 'web-stories' ),
-					'name_admin_bar'           => _x( 'Story', 'add new on admin bar', 'web-stories' ),
-				],
-				'menu_icon'             => $this->get_post_type_icon(),
-				'supports'              => [
-					'title', // Used for amp-story[title].
-					'author',
-					'editor',
-					'excerpt',
-					'thumbnail', // Used for poster images.
-					'revisions', // Without this, the REST API will return 404 for an autosave request.
-				],
-				'rewrite'               => [
-					'slug'       => self::REWRITE_SLUG,
-					'with_front' => false,
-				],
-				'public'                => true,
-				'has_archive'           => true,
-				'exclude_from_search'   => true,
-				'show_ui'               => true,
-				'show_in_rest'          => true,
-				'rest_controller_class' => Stories_Controller::class,
-				'capability_type'       => [ 'web-story', 'web-stories' ],
-				'map_meta_cap'          => true,
+				'sanitize_callback' => 'absint',
+				'type'              => 'integer',
+				'description'       => __( 'Publisher logo ID.', 'web-stories' ),
+				'show_in_rest'      => true,
+				'default'           => $active_publisher_logo_id,
+				'single'            => true,
+				'revisions_enabled' => true,
 			]
 		);
 
-		add_action( 'admin_enqueue_scripts', [ $this, 'admin_enqueue_scripts' ] );
-		add_filter( 'show_admin_bar', [ $this, 'show_admin_bar' ] ); // phpcs:ignore WordPressVIPMinimum.UserExperience.AdminBarRemoval.RemovalDetected
-		add_filter( 'replace_editor', [ $this, 'replace_editor' ], 10, 2 );
-		add_filter( 'use_block_editor_for_post_type', [ $this, 'filter_use_block_editor_for_post_type' ], 10, 2 );
-
-		// Custom Meta Boxes Support.
-		$metabox = new Meta_Boxes();
-		$metabox->init();
-
-		add_filter( 'rest_' . self::POST_TYPE_SLUG . '_collection_params', [ $this, 'filter_rest_collection_params' ], 10, 2 );
-
-		// Select the single-web-story.php template for Stories.
-		add_filter( 'template_include', [ $this, 'filter_template_include' ], PHP_INT_MAX );
-		add_filter( 'pre_handle_404', [ $this, 'redirect_post_type_archive_urls' ], 10, 2 );
-
-		add_filter( '_wp_post_revision_fields', [ $this, 'filter_revision_fields' ], 10, 2 );
-
-		// Filter RSS content fields.
-		add_filter( 'the_content_feed', [ $this, 'embed_image' ] );
-		add_filter( 'the_excerpt_rss', [ $this, 'embed_image' ] );
-
-		// Filter content and excerpt for search and post type archive.
-		add_filter( 'the_content', [ $this, 'embed_player' ], PHP_INT_MAX );
-		add_filter( 'the_excerpt', [ $this, 'embed_player' ], PHP_INT_MAX );
-
-		add_filter( 'wp_insert_post_data', [ $this, 'change_default_title' ] );
-
-		add_filter( 'bulk_post_updated_messages', [ $this, 'bulk_post_updated_messages' ], 10, 2 );
-		add_filter( 'site_option_upload_filetypes', [ $this, 'filter_list_of_allowed_filetypes' ] );
-	}
-
-	/**
-	 * Adds story capabilities to default user roles.
-	 *
-	 * This gives WordPress site owners more granular control over story management,
-	 * as they can customize this to their liking.
-	 *
-	 * @since 1.0.0
-	 *
-	 * @return void
-	 */
-	public function add_caps_to_roles() {
-		$post_type_object = get_post_type_object( self::POST_TYPE_SLUG );
-
-		if ( ! $post_type_object ) {
-			return;
-		}
-
-		$all_capabilities = array_values( (array) $post_type_object->cap );
-
-		$administrator = get_role( 'administrator' );
-		$editor        = get_role( 'editor' );
-		$author        = get_role( 'author' );
-		$contributor   = get_role( 'contributor' );
-
-		if ( $administrator instanceof WP_Role ) {
-			foreach ( $all_capabilities as $cap ) {
-				$administrator->add_cap( $cap );
-			}
-		}
-
-		if ( $editor instanceof WP_Role ) {
-			foreach ( $all_capabilities as $cap ) {
-				$editor->add_cap( $cap );
-			}
-		}
-
-		if ( $author instanceof WP_Role ) {
-			$author->add_cap( 'edit_web-stories' );
-			$author->add_cap( 'edit_published_web-stories' );
-			$author->add_cap( 'delete_web-stories' );
-			$author->add_cap( 'delete_published_web-stories' );
-			$author->add_cap( 'publish_web-stories' );
-		}
-
-		if ( $contributor instanceof WP_Role ) {
-			$contributor->add_cap( 'edit_web-stories' );
-			$contributor->add_cap( 'delete_web-stories' );
-		}
-
-		/**
-		 * Fires when adding the custom capabilities to existing roles.
-		 *
-		 * Can be used to add the capabilities to other, custom roles.
-		 *
-		 * @since 1.0.0
-		 *
-		 * @param array $all_capabilities List of all post type capabilities, for reference.
-		 */
-		do_action( 'web_stories_add_capabilities', $all_capabilities );
-	}
-
-	/**
-	 * Removes story capabilities from all user roles.
-	 *
-	 * @since 1.0.0
-	 *
-	 * @return void
-	 */
-	public function remove_caps_from_roles() {
-		$post_type_object = get_post_type_object( self::POST_TYPE_SLUG );
-
-		if ( ! $post_type_object ) {
-			return;
-		}
-
-		$all_capabilities = array_values( (array) $post_type_object->cap );
-		$all_roles        = wp_roles();
-		$roles            = array_values( (array) $all_roles->role_objects );
-		foreach ( $roles as $role ) {
-			if ( $role instanceof WP_Role ) {
-				foreach ( $all_capabilities as $cap ) {
-					$role->remove_cap( $cap );
-				}
-			}
-		}
-
-		/**
-		 * Fires when removing the custom capabilities from existing roles.
-		 *
-		 * Can be used to remove the capabilities from other, custom roles.
-		 *
-		 * @since 1.0.0
-		 *
-		 * @param array $all_capabilities List of all post type capabilities, for reference.
-		 */
-		do_action( 'web_stories_remove_capabilities', $all_capabilities );
-	}
-
-	/**
-	 * Base64 encoded svg icon.
-	 *
-	 * @since 1.0.0
-	 *
-	 * @return string Base64-encoded SVG icon.
-	 */
-	protected function get_post_type_icon() {
-		return 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik0xMCAyMGM1LjUyMyAwIDEwLTQuNDc3IDEwLTEwUzE1LjUyMyAwIDEwIDAgMCA0LjQ3NyAwIDEwczQuNDc3IDEwIDEwIDEwek01LjUgNmExIDEgMCAwMTEtMUgxMWExIDEgMCAwMTEgMXY4YTEgMSAwIDAxLTEgMUg2LjVhMSAxIDAgMDEtMS0xVjZ6TTEzIDZhMSAxIDAgMDExIDF2NmExIDEgMCAwMS0xIDFWNnptMi43NSAxLjc1QS43NS43NSAwIDAwMTUgN3Y2YS43NS43NSAwIDAwLjc1LS43NXYtNC41eiIgZmlsbD0iI2EwYTVhYSIvPjwvc3ZnPg==';
-	}
-
-	/**
-	 * Add story_author as allowed orderby value for REST API.
-	 *
-	 * @since 1.0.0
-	 *
-	 * @param array        $query_params Array of allowed query params.
-	 * @param WP_Post_Type $post_type Post type.
-	 *
-	 * @return array Array of query params.
-	 */
-	public function filter_rest_collection_params( $query_params, $post_type ) {
-		if ( self::POST_TYPE_SLUG !== $post_type->name ) {
-			return $query_params;
-		}
-
-		if ( empty( $query_params['orderby'] ) ) {
-			return $query_params;
-		}
-		$query_params['orderby']['enum'][] = 'story_author';
-		return $query_params;
-	}
-
-	/**
-	 * Filters the revision fields to ensure that JSON representation gets saved to Story revisions.
-	 *
-	 * @since 1.0.0
-	 *
-	 * @param array $fields Array of allowed revision fields.
-	 * @param array $story Story post array.
-	 *
-	 * @return array Array of allowed fields.
-	 */
-	public function filter_revision_fields( $fields, $story ) {
-		if ( self::POST_TYPE_SLUG === $story['post_type'] ) {
-			$fields['post_content_filtered'] = __( 'Story data', 'web-stories' );
-		}
-		return $fields;
-	}
-
-	/**
-	 * Filter if show admin bar on single post type.
-	 *
-	 * @since 1.0.0
-	 *
-	 * @param boolean $show Current value of filter.
-	 *
-	 * @return bool
-	 */
-	public function show_admin_bar( $show ) {
-		if ( is_singular( self::POST_TYPE_SLUG ) ) {
-			$show = false;
-		}
-
-		return $show;
-	}
-
-	/**
-	 * Replace default post editor with our own implementation.
-	 *
-	 * @codeCoverageIgnore
-	 *
-	 * @since 1.0.0
-	 *
-	 * @param bool    $replace Bool if to replace editor or not.
-	 * @param WP_Post $post    Current post object.
-	 *
-	 * @return bool Whether the editor has been replaced.
-	 */
-	public function replace_editor( $replace, $post ) {
-		if ( self::POST_TYPE_SLUG === get_post_type( $post ) ) {
-
-			// Since the 'replace_editor' filter can be run multiple times, only load the
-			// custom editor after the 'current_screen' action and when we can be certain the
-			// $post_type, $post_type_object, $post globals are all set by WordPress.
-			if ( isset( $GLOBALS['post'] ) && $post === $GLOBALS['post'] && did_action( 'current_screen' ) ) {
-				require_once WEBSTORIES_PLUGIN_DIR_PATH . 'includes/templates/admin/edit-story.php';
-			}
-
-			return true;
-		}
-
-		return $replace;
-	}
-
-	/**
-	 * Filters whether post type supports the block editor.
-	 *
-	 * Disables the block editor and associated logic (like enqueueing assets)
-	 * for the story post type.
-	 *
-	 * @since 1.0.0
-	 *
-	 * @param bool   $use_block_editor  Whether the post type can be edited or not. Default true.
-	 * @param string $post_type         The post type being checked.
-	 *
-	 * @return bool Whether to use the block editor.
-	 */
-	public function filter_use_block_editor_for_post_type( $use_block_editor, $post_type ) {
-		if ( self::POST_TYPE_SLUG === $post_type ) {
-			return false;
-		}
-
-		return $use_block_editor;
-	}
-
-	/**
-	 *
-	 * Enqueue scripts for the element editor.
-	 *
-	 * @since 1.0.0
-	 *
-	 * @param string $hook The current admin page.
-	 *
-	 * @return void
-	 */
-	public function admin_enqueue_scripts( $hook ) {
-		$screen = get_current_screen();
-
-		if ( ! $screen instanceof WP_Screen ) {
-			return;
-		}
-
-		if ( self::POST_TYPE_SLUG !== $screen->post_type ) {
-			return;
-		}
-
-		// Only output scripts and styles where in edit screens.
-		if ( ! in_array( $hook, [ 'post.php', 'post-new.php' ], true ) ) {
-			return;
-		}
-
-		// Force media model to load.
-		wp_enqueue_media();
-
-		wp_register_style(
-			'roboto',
-			'https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&display=swap',
-			[],
-			WEBSTORIES_VERSION
+		register_post_meta(
+			$this->get_slug(),
+			self::POSTER_META_KEY,
+			[
+				'type'              => 'object',
+				'description'       => __( 'Poster object', 'web-stories' ),
+				'show_in_rest'      => [
+					'schema' => [
+						'type'       => 'object',
+						'properties' => [
+							'needsProxy' => [
+								'description' => __( 'If poster needs to be proxied', 'web-stories' ),
+								'type'        => 'boolean',
+							],
+							'height'     => [
+								'type'        => 'integer',
+								'description' => __( 'Poster height', 'web-stories' ),
+							],
+							'url'        => [
+								'description' => __( 'Poster URL.', 'web-stories' ),
+								'type'        => 'string',
+								'format'      => 'uri',
+							],
+							'width'      => [
+								'description' => __( 'Poster width.', 'web-stories' ),
+								'type'        => 'integer',
+							],
+						],
+					],
+				],
+				'default'           => [],
+				'single'            => true,
+				'revisions_enabled' => true,
+			]
 		);
-
-		$script_dependencies = [ Tracking::SCRIPT_HANDLE ];
-
-		if ( $this->experiments->is_experiment_enabled( 'customMetaBoxes' ) ) {
-			$script_dependencies[] = 'postbox';
-		}
-
-		$this->enqueue_script( self::WEB_STORIES_SCRIPT_HANDLE, $script_dependencies );
-		$this->enqueue_style( self::WEB_STORIES_SCRIPT_HANDLE, [ 'roboto' ] );
-
-		wp_localize_script(
-			self::WEB_STORIES_SCRIPT_HANDLE,
-			'webStoriesEditorSettings',
-			$this->get_editor_settings()
-		);
-
-		// Dequeue forms.css, see https://github.com/google/web-stories-wp/issues/349 .
-		$this->remove_admin_style( [ 'forms' ] );
-	}
-
-	/**
-	 * Get editor settings as an array.
-	 *
-	 * @since 1.0.0
-	 *
-	 * @return array
-	 */
-	public function get_editor_settings() {
-		$post                     = get_post();
-		$story_id                 = ( $post ) ? $post->ID : null;
-		$rest_base                = self::POST_TYPE_SLUG;
-		$has_publish_action       = false;
-		$has_assign_author_action = false;
-		$has_upload_media_action  = current_user_can( 'upload_files' );
-		$post_type_object         = get_post_type_object( self::POST_TYPE_SLUG );
-
-		if ( $post_type_object instanceof WP_Post_Type ) {
-			$rest_base = ! empty( $post_type_object->rest_base ) ? $post_type_object->rest_base : $post_type_object->name;
-			if ( property_exists( $post_type_object->cap, 'publish_posts' ) ) {
-				$has_publish_action = current_user_can( $post_type_object->cap->publish_posts );
-			}
-			if ( property_exists( $post_type_object->cap, 'edit_others_posts' ) ) {
-				$has_assign_author_action = current_user_can( $post_type_object->cap->edit_others_posts );
-			}
-		}
-
-		// Media settings.
-		$max_upload_size = wp_max_upload_size();
-		if ( ! $max_upload_size ) {
-			$max_upload_size = 0;
-		}
-
-		$is_demo = ( isset( $_GET['web-stories-demo'] ) && (bool) $_GET['web-stories-demo'] ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-
-		$settings = [
-			'id'         => 'web-stories-editor',
-			'config'     => [
-				'autoSaveInterval'      => defined( 'AUTOSAVE_INTERVAL' ) ? AUTOSAVE_INTERVAL : null,
-				'isRTL'                 => is_rtl(),
-				'locale'                => ( new Locale() )->get_locale_settings(),
-				'allowedFileTypes'      => $this->get_allowed_file_types(),
-				'allowedImageMimeTypes' => $this->get_allowed_image_mime_types(),
-				'allowedMimeTypes'      => $this->get_allowed_mime_types(),
-				'postType'              => self::POST_TYPE_SLUG,
-				'storyId'               => $story_id,
-				'assetsURL'             => trailingslashit( WEBSTORIES_ASSETS_URL ),
-				'cdnURL'                => trailingslashit( WEBSTORIES_CDN_URL ),
-				'maxUpload'             => $max_upload_size,
-				'isDemo'                => $is_demo,
-				'capabilities'          => [
-					'hasPublishAction'      => $has_publish_action,
-					'hasAssignAuthorAction' => $has_assign_author_action,
-					'hasUploadMediaAction'  => $has_upload_media_action,
-				],
-				'api'                   => [
-					'users'       => '/web-stories/v1/users/',
-					'currentUser' => '/web-stories/v1/users/me/',
-					'stories'     => sprintf( '/web-stories/v1/%s/', $rest_base ),
-					'media'       => '/web-stories/v1/media/',
-					'link'        => '/web-stories/v1/link/',
-					'statusCheck' => '/web-stories/v1/status-check/',
-					'metaBoxes'   => $this->meta_boxes->get_meta_box_url( (int) $story_id ),
-				],
-				'metadata'              => [
-					'publisher' => $this->get_publisher_data(),
-				],
-				'version'               => WEBSTORIES_VERSION,
-				'encodeMarkup'          => $this->decoder->supports_decoding(),
-				'metaBoxes'             => $this->meta_boxes->get_meta_boxes_per_location(),
-				'ffmpegCoreUrl'         => trailingslashit( WEBSTORIES_CDN_URL ) . 'js/@ffmpeg/core@0.8.5/dist/ffmpeg-core.js',
-			],
-			'flags'      => array_merge(
-				$this->experiments->get_experiment_statuses( 'general' ),
-				$this->experiments->get_experiment_statuses( 'editor' )
-			),
-			'publicPath' => WEBSTORIES_PLUGIN_DIR_URL . 'assets/js/',
-		];
-
-		/**
-		 * Filters settings passed to the web stories editor.
-		 *
-		 * @since 1.0.0
-		 *
-		 * @param array $settings Array of settings passed to web stories editor.
-		 */
-		return apply_filters( 'web_stories_editor_settings', $settings );
-	}
-
-	/**
-	 * Set template for web-story post type.
-	 *
-	 * @since 1.0.0
-	 *
-	 * @param string $template Template.
-	 *
-	 * @return string Template.
-	 */
-	public function filter_template_include( $template ) {
-		if ( is_singular( self::POST_TYPE_SLUG ) && ! is_embed() ) {
-			$template = WEBSTORIES_PLUGIN_DIR_PATH . 'includes/templates/frontend/single-web-story.php';
-		}
-
-		return $template;
-	}
-
-	/**
-	 * Handles redirects to the post type archive.
-	 *
-	 * Redirects requests to `/stories` (old) to `/web-stories` (new).
-	 * Redirects requests to `/stories/1234` (old) to `/web-stories/1234` (new).
-	 *
-	 * @since 1.0.0
-	 *
-	 * @param bool      $bypass Pass-through of the pre_handle_404 filter value.
-	 * @param \WP_Query $query The WP_Query object.
-	 * @return bool Whether to pass-through or not.
-	 */
-	public function redirect_post_type_archive_urls( $bypass, $query ) {
-		global $wp_rewrite;
-
-		// If a plugin has already utilized the pre_handle_404 function, return without action to avoid conflicts.
-		if ( $bypass ) {
-			return $bypass;
-		}
-
-		if ( ! $wp_rewrite instanceof \WP_Rewrite || ! $wp_rewrite->using_permalinks() ) {
-			return $bypass;
-		}
-		// 'pagename' is for most permalink types, name is for when the %postname% is used as a top-level field.
-		if ( isset( $query->query['pagename'] ) && 'stories' === $query->query['pagename'] && ( 'stories' === $query->get( 'pagename' ) || 'stories' === $query->get( 'name' ) ) ) {
-			$redirect_url = get_post_type_archive_link( self::POST_TYPE_SLUG );
-			if (
-				$query->get( 'page' ) &&
-				is_numeric( $query->get( 'page' ) ) &&
-				self::POST_TYPE_SLUG === get_post_type( absint( $query->get( 'page' ) ) )
-			) {
-				$redirect_url = get_permalink( absint( $query->get( 'page' ) ) );
-			} elseif ( $query->get( 'feed' ) ) {
-				$feed         = ( 'feed ' === $query->get( 'feed' ) ) ? $query->get( 'feed' ) : '';
-				$redirect_url = get_post_type_archive_feed_link( self::POST_TYPE_SLUG, $feed );
-			}
-
-			if ( ! $redirect_url ) {
-				return $bypass;
-			}
-
-			wp_safe_redirect( $redirect_url, 301 );
-			exit;
-		}
-
-		return $bypass;
 	}
 
 	/**
@@ -644,17 +189,24 @@ class Story_Post_Type {
 	 *
 	 * @since 1.1.0
 	 *
-	 * @param array[] $bulk_messages Arrays of messages, each keyed by the corresponding post type. Messages are
-	 *                               keyed with 'updated', 'locked', 'deleted', 'trashed', and 'untrashed'.
-	 * @param int[]   $bulk_counts   Array of item counts for each message, used to build internationalized strings.
+	 * @param array[]|mixed     $bulk_messages Arrays of messages, each keyed by the corresponding post type. Messages are
+	 *                                         keyed with 'updated', 'locked', 'deleted', 'trashed', and 'untrashed'.
+	 * @param array<string,int> $bulk_counts   Array of item counts for each message, used to build internationalized
+	 *                                         strings.
+	 * @return array|mixed Bulk counts.
 	 *
-	 * @return array Bulk counts.
+	 * @template T
+	 *
+	 * @phpstan-return ($bulk_messages is array<T> ? array<T> : mixed)
 	 */
-	public function bulk_post_updated_messages( array $bulk_messages, $bulk_counts ) {
-		$bulk_messages[ self::POST_TYPE_SLUG ] = [
+	public function bulk_post_updated_messages( $bulk_messages, array $bulk_counts ) {
+		if ( ! \is_array( $bulk_messages ) ) {
+			return $bulk_messages;
+		}
+		$bulk_messages[ $this->get_slug() ] = [
 			/* translators: %s: Number of stories. */
 			'updated'   => _n( '%s story updated.', '%s stories updated.', $bulk_counts['updated'], 'web-stories' ),
-			'locked'    => ( 1 === $bulk_counts['locked'] ) ? __( '1 story not updated, somebody is editing it.', 'web-stories' ) :
+			'locked'    => 1 === $bulk_counts['locked'] ? __( 'Story not updated, somebody is editing it.', 'web-stories' ) :
 				/* translators: %s: Number of stories. */
 				_n( '%s story not updated, somebody is editing it.', '%s stories not updated, somebody is editing them.', $bulk_counts['locked'], 'web-stories' ),
 			/* translators: %s: Number of stories. */
@@ -669,89 +221,189 @@ class Story_Post_Type {
 	}
 
 	/**
-	 * Filter feed content for stories to render as an image.
-	 *
-	 * @since 1.0.0
-	 *
-	 * @param string $content Feed content.
-	 *
-	 * @return string
-	 */
-	public function embed_image( $content ) {
-		$post = get_post();
-
-		if ( $post instanceof WP_Post && self::POST_TYPE_SLUG === $post->post_type ) {
-			$story = new Story();
-			$story->load_from_post( $post );
-
-			$image   = new Image( $story );
-			$content = $image->render();
-		}
-
-		return $content;
-	}
-
-	/**
-	 * Change the content to an embedded player
-	 *
-	 * @since 1.0.0
-	 *
-	 * @param string $content Current content of filter.
-	 *
-	 * @return string
-	 */
-	public function embed_player( $content ) {
-		$post = get_post();
-
-		if ( is_feed() ) {
-			return $content;
-		}
-
-		if ( ! is_search() && ! is_post_type_archive( self::POST_TYPE_SLUG ) ) {
-			return $content;
-		}
-
-		if ( $post instanceof WP_Post && self::POST_TYPE_SLUG === $post->post_type ) {
-			$story = new Story();
-			$story->load_from_post( $post );
-
-			$embed   = new Embed( $story );
-			$content = $embed->render();
-		}
-
-		return $content;
-	}
-
-
-	/**
 	 * Reset default title to empty string for auto-drafts.
 	 *
 	 * @since 1.0.0
 	 *
-	 * @param array $data Array of data to save.
+	 * @param array|mixed $data Array of data to save.
+	 * @return array|mixed
 	 *
-	 * @return array
+	 * @template T
+	 *
+	 * @phpstan-return ($data is array<T> ? array<T> : mixed)
 	 */
 	public function change_default_title( $data ) {
-		if ( self::POST_TYPE_SLUG === $data['post_type'] && 'auto-draft' === $data['post_status'] ) {
+		if ( ! \is_array( $data ) ) {
+			return $data;
+		}
+		if ( $this->get_slug() === $data['post_type'] && 'auto-draft' === $data['post_status'] ) {
 			$data['post_title'] = '';
 		}
+
 		return $data;
 	}
 
 	/**
-	 * Add VTT file type to allow file in multisite.
+	 * Filters whether the post should be considered "empty".
 	 *
-	 * @param string $value List of allowed file types.
-	 * @return string List of allowed file types.
+	 * Takes into account post_content_filtered for stories.
+	 *
+	 * @since 1.25.1
+	 *
+	 * @param bool|mixed $maybe_empty Whether the post should be considered "empty".
+	 * @param array      $data        Array of post data.
+	 * @return bool Whether the post should be considered "empty".
+	 *
+	 * @phpstan-param array{post_type: string, post_content_filtered: string} $data
 	 */
-	public function filter_list_of_allowed_filetypes( $value ) {
-		$filetypes = explode( ' ', $value );
-		if ( ! in_array( 'vtt', $filetypes, true ) ) {
-			$filetypes[] = 'vtt';
-			$value       = implode( ' ', $filetypes );
+	public function filter_empty_content( $maybe_empty, array $data ): bool {
+		if ( $this->get_slug() === $data['post_type'] ) {
+			return $maybe_empty && ! $data['post_content_filtered'];
 		}
 
-		return $value;
+		return (bool) $maybe_empty;
+	}
+
+	/**
+	 * Invalid cache.
+	 *
+	 * @since 1.10.0
+	 *
+	 * @param int     $post_id Post ID.
+	 * @param WP_Post $post    Post object.
+	 */
+	public function clear_user_posts_count( int $post_id, WP_Post $post ): void {
+		if ( $this->get_slug() !== $post->post_type ) {
+			return;
+		}
+
+		$cache_key   = "count_user_{$post->post_type}_{$post->post_author}";
+		$cache_group = 'user_posts_count';
+		wp_cache_delete( $cache_key, $cache_group );
+	}
+
+	/**
+	 * Determines whether the post type should have an archive or not.
+	 *
+	 * @since 1.12.0
+	 *
+	 * @return bool|string Whether the post type should have an archive, or archive slug.
+	 */
+	public function get_has_archive() {
+		$archive_page_option = $this->settings->get_setting( $this->settings::SETTING_NAME_ARCHIVE );
+		$has_archive         = true;
+
+		if ( 'disabled' === $archive_page_option ) {
+			$has_archive = false;
+		} elseif ( 'custom' === $archive_page_option ) {
+			$custom_archive_page_id = (int) $this->settings->get_setting( $this->settings::SETTING_NAME_ARCHIVE_PAGE_ID );
+			if ( $custom_archive_page_id && 'publish' === get_post_status( $custom_archive_page_id ) ) {
+				$uri = get_page_uri( $custom_archive_page_id );
+				if ( $uri ) {
+					$has_archive = urldecode( $uri );
+				}
+			}
+		}
+
+		return $has_archive;
+	}
+
+	/**
+	 * Act on plugin uninstall.
+	 *
+	 * @since 1.26.0
+	 */
+	public function on_plugin_uninstall(): void {
+		delete_post_meta_by_key( self::POSTER_META_KEY );
+		delete_post_meta_by_key( self::PUBLISHER_LOGO_META_KEY );
+
+		delete_option( self::STYLE_PRESETS_OPTION );
+		parent::on_plugin_uninstall();
+	}
+
+	/**
+	 * Register post type.
+	 *
+	 * @since 1.12.0
+	 *
+	 * @return array<string, mixed> Post type args.
+	 *
+	 * @phpstan-return PostTypeArgs
+	 */
+	protected function get_args(): array {
+		return [
+			'labels'                         => [
+				'name'                     => _x( 'Stories', 'post type general name', 'web-stories' ),
+				'singular_name'            => _x( 'Story', 'post type singular name', 'web-stories' ),
+				'add_new'                  => __( 'Add New Story', 'web-stories' ),
+				'add_new_item'             => __( 'Add New Story', 'web-stories' ),
+				'edit_item'                => __( 'Edit Story', 'web-stories' ),
+				'new_item'                 => __( 'New Story', 'web-stories' ),
+				'view_item'                => __( 'View Story', 'web-stories' ),
+				'view_items'               => __( 'View Stories', 'web-stories' ),
+				'search_items'             => __( 'Search Stories', 'web-stories' ),
+				'not_found'                => __( 'No stories found.', 'web-stories' ),
+				'not_found_in_trash'       => __( 'No stories found in Trash.', 'web-stories' ),
+				'all_items'                => __( 'All Stories', 'web-stories' ),
+				'archives'                 => __( 'Story Archives', 'web-stories' ),
+				'attributes'               => __( 'Story Attributes', 'web-stories' ),
+				'insert_into_item'         => __( 'Insert into story', 'web-stories' ),
+				'uploaded_to_this_item'    => __( 'Uploaded to this story', 'web-stories' ),
+				'featured_image'           => _x( 'Featured Image', 'story', 'web-stories' ),
+				'set_featured_image'       => _x( 'Set featured image', 'story', 'web-stories' ),
+				'remove_featured_image'    => _x( 'Remove featured image', 'story', 'web-stories' ),
+				'use_featured_image'       => _x( 'Use as featured image', 'story', 'web-stories' ),
+				'filter_items_list'        => __( 'Filter stories list', 'web-stories' ),
+				'filter_by_date'           => __( 'Filter by date', 'web-stories' ),
+				'items_list_navigation'    => __( 'Stories list navigation', 'web-stories' ),
+				'items_list'               => __( 'Stories list', 'web-stories' ),
+				'item_published'           => __( 'Story published.', 'web-stories' ),
+				'item_published_privately' => __( 'Story published privately.', 'web-stories' ),
+				'item_reverted_to_draft'   => __( 'Story reverted to draft.', 'web-stories' ),
+				'item_scheduled'           => __( 'Story scheduled', 'web-stories' ),
+				'item_updated'             => __( 'Story updated.', 'web-stories' ),
+				'menu_name'                => _x( 'Stories', 'admin menu', 'web-stories' ),
+				'name_admin_bar'           => _x( 'Story', 'add new on admin bar', 'web-stories' ),
+				'item_link'                => _x( 'Story Link', 'navigation link block title', 'web-stories' ),
+				'item_link_description'    => _x( 'A link to a story.', 'navigation link block description', 'web-stories' ),
+				'item_trashed'             => __( 'Story trashed.', 'web-stories' ),
+			],
+			'menu_icon'                      => $this->get_post_type_icon(),
+			'supports'                       => [
+				'title', // Used for amp-story[title].
+				'author',
+				'editor',
+				'excerpt',
+				'thumbnail', // Used for poster images.
+				'revisions', // Without this, the REST API will return 404 for an autosave request.
+				'custom-fields',
+			],
+			'rewrite'                        => [
+				'slug'       => self::REWRITE_SLUG,
+				'with_front' => false,
+				'feeds'      => true,
+			],
+			'public'                         => true,
+			'has_archive'                    => $this->get_has_archive(),
+			'exclude_from_search'            => true,
+			'show_ui'                        => true,
+			'show_in_rest'                   => true,
+			'rest_namespace'                 => self::REST_NAMESPACE,
+			'rest_controller_class'          => Stories_Controller::class,
+			'autosave_rest_controller_class' => Stories_Autosaves_Controller::class,
+			'capability_type'                => [ 'web-story', 'web-stories' ],
+			'map_meta_cap'                   => true,
+		];
+	}
+
+	/**
+	 * Base64 encoded svg icon.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @return string Base64-encoded SVG icon.
+	 */
+	protected function get_post_type_icon(): string {
+		return 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik0xMCAyMGM1LjUyMyAwIDEwLTQuNDc3IDEwLTEwUzE1LjUyMyAwIDEwIDAgMCA0LjQ3NyAwIDEwczQuNDc3IDEwIDEwIDEwek01LjUgNmExIDEgMCAwMTEtMUgxMWExIDEgMCAwMTEgMXY4YTEgMSAwIDAxLTEgMUg2LjVhMSAxIDAgMDEtMS0xVjZ6TTEzIDZhMSAxIDAgMDExIDF2NmExIDEgMCAwMS0xIDFWNnptMi43NSAxLjc1QS43NS43NSAwIDAwMTUgN3Y2YS43NS43NSAwIDAwLjc1LS43NXYtNC41eiIgZmlsbD0iI2EwYTVhYSIvPjwvc3ZnPg==';
 	}
 }

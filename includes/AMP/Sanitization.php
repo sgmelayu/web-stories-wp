@@ -2,10 +2,10 @@
 /**
  * Class Sanitization
  *
- * @package   Google\Web_Stories
+ * @link      https://github.com/googleforcreators/web-stories-wp
+ *
  * @copyright 2020 Google LLC
  * @license   https://www.apache.org/licenses/LICENSE-2.0 Apache License 2.0
- * @link      https://github.com/google/web-stories-wp
  */
 
 /**
@@ -24,21 +24,27 @@
  * limitations under the License.
  */
 
+declare(strict_types = 1);
+
 namespace Google\Web_Stories\AMP;
 
+use DOMElement;
+use DOMNode;
+use Google\Web_Stories\Model\Story;
+use Google\Web_Stories\Settings;
+use Google\Web_Stories\Story_Post_Type;
 use Google\Web_Stories_Dependencies\AMP_Allowed_Tags_Generated;
 use Google\Web_Stories_Dependencies\AMP_Content_Sanitizer;
+use Google\Web_Stories_Dependencies\AMP_Dev_Mode_Sanitizer;
 use Google\Web_Stories_Dependencies\AMP_DOM_Utils;
 use Google\Web_Stories_Dependencies\AMP_Layout_Sanitizer;
 use Google\Web_Stories_Dependencies\AMP_Script_Sanitizer;
 use Google\Web_Stories_Dependencies\AMP_Style_Sanitizer;
-use Google\Web_Stories_Dependencies\AMP_Tag_And_Attribute_Sanitizer;
 use Google\Web_Stories_Dependencies\AmpProject\Amp;
-use Google\Web_Stories_Dependencies\AmpProject\Attribute;
 use Google\Web_Stories_Dependencies\AmpProject\Dom\Document;
 use Google\Web_Stories_Dependencies\AmpProject\Extension;
-use Google\Web_Stories_Dependencies\AmpProject\Tag;
-use DOMElement;
+use Google\Web_Stories_Dependencies\AmpProject\Html\Attribute;
+use Google\Web_Stories_Dependencies\AmpProject\Html\Tag;
 
 /**
  * Sanitization class.
@@ -51,15 +57,32 @@ use DOMElement;
  */
 class Sanitization {
 	/**
+	 * Settings instance.
+	 *
+	 * @var Settings Settings instance.
+	 */
+	private Settings $settings;
+
+	/**
+	 * Analytics constructor.
+	 *
+	 * @since 1.12.0
+	 *
+	 * @param Settings $settings    Settings instance.
+	 * @return void
+	 */
+	public function __construct( Settings $settings ) {
+		$this->settings = $settings;
+	}
+
+	/**
 	 * Sanitizes a document.
 	 *
 	 * @since 1.1.0
 	 *
 	 * @param Document $document Document instance.
-	 *
-	 * @return void
 	 */
-	public function sanitize_document( Document $document ) {
+	public function sanitize_document( Document $document ): void {
 		$sanitizers = $this->get_sanitizers();
 
 		$result = AMP_Content_Sanitizer::sanitize_document( $document, $sanitizers, [] );
@@ -68,22 +91,59 @@ class Sanitization {
 	}
 
 	/**
-	 * Adds missing scripts.
-	 *
-	 * @SuppressWarnings(PHPMD)
+	 * Validation error callback.
 	 *
 	 * @since 1.1.0
 	 *
-	 * @see \AMP_Theme_Support::ensure_required_markup
-	 * @link https://github.com/ampproject/amp-wp/blob/8856284d90fc8558c30acc029becd352ae26e4e1/includes/class-amp-theme-support.php#L1543-L1770
+	 * @see AMP_Validation_Error_Taxonomy::get_validation_error_sanitization
 	 *
-	 * @param Document $document Document instance.
-	 * @param array    $scripts List of found scripts.
-	 *
-	 * @return void
+	 * @param array{code: string}              $error Error info, especially code.
+	 * @param array{node?: DOMElement|DOMNode} $data Additional data, including the node.
+	 * @return bool Whether the validation error should be sanitized.
 	 */
-	protected function ensure_required_markup( $document, $scripts ) {
-		// Gather all links.
+	public function validation_error_callback( array $error, array $data = [] ): bool { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.FoundAfterLastUsed
+		/**
+		 * Filters whether the validation error should be sanitized.
+		 *
+		 * Returning true this indicates that the validation error is acceptable
+		 * and should not be considered a blocker to render AMP. Returning null
+		 * means that the default status should be used.
+		 *
+		 * Note that the $node is not passed here to ensure that the filter can be
+		 * applied on validation errors that have been stored. Likewise, the $sources
+		 * are also omitted because these are only available during an explicit
+		 * validation request and so they are not suitable for plugins to vary
+		 * sanitization by.
+		 *
+		 * @since 1.1.0
+		 *
+		 * @see AMP_Validation_Manager::is_sanitization_auto_accepted() Which controls whether an error is initially accepted or rejected for sanitization.
+		 *
+		 * @param bool $sanitized Whether the validation error should be sanitized.
+		 * @param array $error Validation error being sanitized.
+		 */
+		return apply_filters( 'web_stories_amp_validation_error_sanitized', true, $error );
+	}
+
+	/**
+	 * Adds missing scripts.
+	 *
+	 * @SuppressWarnings("PHPMD")
+	 *
+	 * @since 1.1.0
+	 *
+	 * @link https://github.com/ampproject/amp-wp/blob/2.1.3/includes/class-amp-theme-support.php#L1381-L1594
+	 * @see \AMP_Theme_Support::ensure_required_markup
+	 *
+	 * @param Document             $document Document instance.
+	 * @param array<string,string> $scripts  List of found scripts.
+	 */
+	protected function ensure_required_markup( Document $document, array $scripts ): void { // phpcs:ignore SlevomatCodingStandard.Complexity.Cognitive.ComplexityTooHigh
+		/**
+		 * Link elements.
+		 *
+		 * @var array{preconnect?: \DOMElement[]|null,dns-prefetch?: \DOMElement[]|null,preload?: \DOMElement[]|null, prerender?: \DOMElement[]|null, prefetch?: \DOMElement[]|null }
+		 */
 		$links = [
 			Attribute::REL_PRECONNECT => [
 				// Include preconnect link for AMP CDN for browsers that don't support preload.
@@ -116,11 +176,11 @@ class Sanitization {
 		foreach ( $head_scripts as $script ) {
 			$src = $script->getAttribute( Attribute::SRC );
 
-			if ( ! $src || 0 !== strpos( $src, 'https://cdn.ampproject.org/' ) ) {
+			if ( ! $src || ! str_starts_with( $src, 'https://cdn.ampproject.org/' ) ) {
 				continue;
 			}
 
-			if ( 'v0.js' === substr( $src, - strlen( 'v0.js' ) ) ) {
+			if ( 'v0.js' === substr( $src, - \strlen( 'v0.js' ) ) ) {
 				$amp_scripts[ Amp::RUNTIME ] = $script;
 			} elseif ( $script->hasAttribute( Attribute::CUSTOM_ELEMENT ) ) {
 				$amp_scripts[ $script->getAttribute( Attribute::CUSTOM_ELEMENT ) ] = $script;
@@ -153,7 +213,7 @@ class Sanitization {
 		$extension_specs            = AMP_Allowed_Tags_Generated::get_extension_specs();
 		$superfluous_script_handles = array_diff(
 			array_keys( $amp_scripts ),
-			array_merge( array_keys( $scripts ), [ Amp::RUNTIME ] )
+			[ ...array_keys( $scripts ), Amp::RUNTIME ]
 		);
 
 		foreach ( $superfluous_script_handles as $superfluous_script_handle ) {
@@ -190,10 +250,6 @@ class Sanitization {
 		 */
 		$amp_script_handles = array_keys( $amp_scripts );
 		foreach ( array_intersect( Amp::RENDER_DELAYING_EXTENSIONS, $amp_script_handles ) as $script_handle ) {
-			if ( ! in_array( $script_handle, Amp::RENDER_DELAYING_EXTENSIONS, true ) ) {
-				continue;
-			}
-
 			/**
 			 * AMP script element.
 			 *
@@ -293,30 +349,22 @@ class Sanitization {
 	 *
 	 * @since 1.1.0
 	 *
+	 * @link https://github.com/ampproject/amp-wp/blob/2.1.3/includes/amp-helper-functions.php#L876-L941
 	 * @see amp_register_default_scripts
-	 * @link https://github.com/ampproject/amp-wp/blob/d96052ed76a92f43b70e0a52cf8e952cf46301af/includes/amp-helper-functions.php#L1011-L1074
 	 *
-	 * @return array List of extensions and their URLs.
+	 * @return array<string,string> List of extensions and their URLs.
 	 */
-	protected function get_extension_sources() {
+	protected function get_extension_sources(): array {
 		$specs = [];
 		// Register all AMP components as defined in the spec.
 		foreach ( AMP_Allowed_Tags_Generated::get_extension_specs() as $extension_name => $extension_spec ) {
-			$src = sprintf(
+			$src = \sprintf(
 				'https://cdn.ampproject.org/v0/%s-%s.js',
 				$extension_name,
-				end( $extension_spec['version'] )
+				$extension_spec['latest']
 			);
 
 			$specs[ $extension_name ] = $src;
-		}
-
-		if ( isset( $specs['amp-experiment'] ) ) {
-			/*
-			 * Version 1.0 of amp-experiment is still experimental and requires the user to enable it.
-			 * @todo Revisit once amp-experiment is no longer experimental.
-			 */
-			$specs['amp-experiment'] = 'https://cdn.ampproject.org/v0/amp-experiment-0.1.js';
 		}
 
 		return $specs;
@@ -331,12 +379,12 @@ class Sanitization {
 	 *
 	 * @since 1.1.0
 	 *
+	 * @link https://github.com/ampproject/amp-wp/blob/2.1.3/includes/amp-helper-functions.php#L1296-L1330
 	 * @see amp_is_dev_mode
-	 * @link https://github.com/ampproject/amp-wp/blob/d96052ed76a92f43b70e0a52cf8e952cf46301af/includes/amp-helper-functions.php#L1429-L1463
 	 *
 	 * @return bool Whether AMP dev mode is enabled.
 	 */
-	protected function is_amp_dev_mode() {
+	protected function is_amp_dev_mode(): bool {
 		// For the few sites that forcibly show the admin bar even when the user is logged out, only enable dev
 		// mode if the user is actually logged in. This prevents the dev mode from being served to crawlers
 		// when they index the AMP version.
@@ -351,7 +399,7 @@ class Sanitization {
 		 *
 		 * @since 1.1.0
 		 *
-		 * @param bool Whether AMP dev mode is enabled.
+		 * @param bool $dev_mode_enabled Whether AMP dev mode is enabled.
 		 */
 		return apply_filters( 'web_stories_amp_dev_mode_enabled', $dev_mode_enabled );
 	}
@@ -364,32 +412,70 @@ class Sanitization {
 	 * accessing options from the database, requiring AMP__VERSION,
 	 * and causing conflicts with our own amp_is_request() compat shim.
 	 *
+	 * @SuppressWarnings("PHPMD.ExcessiveMethodLength")
+	 *
 	 * @since 1.1.0
 	 *
+	 * @link https://github.com/ampproject/amp-wp/blob/2.1.3/includes/amp-helper-functions.php#L1332-L1521
+	 * @link https://github.com/ampproject/amp-wp/blob/2.1.3/includes/validation/class-amp-validation-manager.php#L1691-L1730
 	 * @see amp_get_content_sanitizers
 	 * @see AMP_Validation_Manager::filter_sanitizer_args
-	 * @link https://github.com/ampproject/amp-wp/blob/d96052ed76a92f43b70e0a52cf8e952cf46301af/includes/amp-helper-functions.php#L1465-L1653
-	 * @link https://github.com/ampproject/amp-wp/blob/244a1a4e2c118ad70fe352beb5a34cd0d4b18705/includes/validation/class-amp-validation-manager.php#L2033-L2071
 	 *
-	 * @return array Sanitizers.
+	 * @return array<string,array<string,bool|string[]|string>> Sanitizers.
 	 */
-	protected function get_sanitizers() {
+	protected function get_sanitizers(): array {
+		// This fallback to get_permalink() ensures that there's a canonical link
+		// even when previewing drafts.
+		$canonical_url = wp_get_canonical_url();
+		if ( ! $canonical_url ) {
+			$canonical_url = get_permalink();
+		}
+
 		$sanitizers = [
-			AMP_Script_Sanitizer::class            => [],
-			AMP_Style_Sanitizer::class             => [
+			AMP_Script_Sanitizer::class        => [
+				'sanitize_js_scripts' => true,
+			],
+			AMP_Style_Sanitizer::class         => [
 
 				/*
 				 * @todo Enable by default and allow filtering once AMP_Style_Sanitizer does not call AMP_Options_Manager
 				 *       which in turn requires AMP__VERSION to be defined.
 				 */
-				'allow_transient_caching' => false,
-				'use_document_element'    => true,
+				'allow_transient_caching'   => false,
+				'use_document_element'      => true,
+				'dynamic_element_selectors' => [
+					'amp-story-captions',
+				],
 			],
-			Meta_Sanitizer::class                  => [],
-			AMP_Layout_Sanitizer::class            => [],
-			Canonical_Sanitizer::class             => [],
-			AMP_Tag_And_Attribute_Sanitizer::class => [],
+			Meta_Sanitizer::class              => [],
+			AMP_Layout_Sanitizer::class        => [],
+			Canonical_Sanitizer::class         => [
+				'canonical_url' => $canonical_url,
+			],
+			Tag_And_Attribute_Sanitizer::class => [],
 		];
+
+		$post = get_queried_object();
+
+		if ( $post instanceof \WP_Post && Story_Post_Type::POST_TYPE_SLUG === get_post_type( $post ) ) {
+			$video_cache_enabled = (bool) $this->settings->get_setting( $this->settings::SETTING_NAME_VIDEO_CACHE );
+
+			$story = new Story();
+			$story->load_from_post( $post );
+
+			$poster_images = [
+				'poster-portrait-src' => esc_url_raw( $story->get_poster_portrait() ),
+			];
+
+			$sanitizers[ Story_Sanitizer::class ] = [
+				'publisher_logo' => (string) $story->get_publisher_logo_url(),
+				'publisher'      => $story->get_publisher_name(),
+				'poster_images'  => array_filter( $poster_images ),
+				'video_cache'    => $video_cache_enabled,
+				'title_tag'      => wp_get_document_title(),
+				'description'    => wp_strip_all_tags( get_the_excerpt() ),
+			];
+		}
 
 		/**
 		 * Filters the content sanitizers.
@@ -409,9 +495,10 @@ class Sanitization {
 			 * elements prior to running any of the sanitizers.
 			 *
 			 * @since 1.3
+			 *
 			 * @param string[] $element_xpaths XPath element queries. Context is the root element.
 			 */
-			$dev_mode_xpaths = (array) apply_filters( 'web_stories_amp_dev_mode_element_xpaths', [] );
+			$dev_mode_xpaths = apply_filters( 'web_stories_amp_dev_mode_element_xpaths', [] );
 
 			if ( is_admin_bar_showing() ) {
 				$dev_mode_xpaths[] = '//*[ @id = "wpadminbar" ]';
@@ -421,7 +508,7 @@ class Sanitization {
 
 			$sanitizers = array_merge(
 				[
-					\AMP_Dev_Mode_Sanitizer::class => [
+					AMP_Dev_Mode_Sanitizer::class => [
 						'element_xpaths' => $dev_mode_xpaths,
 					],
 				],
@@ -431,12 +518,12 @@ class Sanitization {
 
 		// Force certain sanitizers to be at end.
 		// AMP_Style_Sanitizer needs to catch any CSS changes from previous sanitizers.
-		// AMP_Tag_And_Attribute_Sanitizer must come at the end to clean up any remaining issues the other sanitizers didn't catch.
+		// Tag_And_Attribute_Sanitizer must come at the end to clean up any remaining issues the other sanitizers didn't catch.
 		foreach ( [
 			AMP_Layout_Sanitizer::class,
 			AMP_Style_Sanitizer::class,
 			Meta_Sanitizer::class,
-			AMP_Tag_And_Attribute_Sanitizer::class,
+			Tag_And_Attribute_Sanitizer::class,
 		] as $class_name ) {
 			if ( isset( $sanitizers[ $class_name ] ) ) {
 				$sanitizer = $sanitizers[ $class_name ];
@@ -452,40 +539,5 @@ class Sanitization {
 		unset( $sanitizer );
 
 		return $sanitizers;
-	}
-
-	/**
-	 * Validation error callback.
-	 *
-	 * @since 1.1.0
-	 *
-	 * @see AMP_Validation_Error_Taxonomy::get_validation_error_sanitization
-	 *
-	 * @param array $error Error info, especially code.
-	 * @param array $data Additional data, including the node.
-	 *
-	 * @return bool Whether the validation error should be sanitized.
-	 */
-	public function validation_error_callback( array $error, array $data = [] ) {
-		/**
-		 * Filters whether the validation error should be sanitized.
-		 *
-		 * Returning true this indicates that the validation error is acceptable
-		 * and should not be considered a blocker to render AMP. Returning null
-		 * means that the default status should be used.
-		 *
-		 * Note that the $node is not passed here to ensure that the filter can be
-		 * applied on validation errors that have been stored. Likewise, the $sources
-		 * are also omitted because these are only available during an explicit
-		 * validation request and so they are not suitable for plugins to vary
-		 * sanitization by.
-		 *
-		 * @since 1.1.0
-		 * @see AMP_Validation_Manager::is_sanitization_auto_accepted() Which controls whether an error is initially accepted or rejected for sanitization.
-		 *
-		 * @param null|bool $sanitized Whether sanitized; this is initially null, and changing it to bool causes the validation error to be forced.
-		 * @param array $error Validation error being sanitized.
-		 */
-		return apply_filters( 'web_stories_amp_validation_error_sanitized', true, $error );
 	}
 }

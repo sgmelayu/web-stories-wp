@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 Google LLC
+ * Copyright 2022 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,33 +17,30 @@
 /**
  * External dependencies
  */
-import React from 'react';
 import { ThemeProvider } from 'styled-components';
-import { addDecorator, addParameters } from '@storybook/react';
-import { withKnobs } from '@storybook/addon-knobs';
-import { INITIAL_VIEWPORTS } from '@storybook/addon-viewport';
-import { useDirection } from 'storybook-rtl-addon';
-
-/**
- * Internal dependencies
- */
-import theme, { GlobalStyle } from '../assets/src/edit-story/theme';
-import { GlobalStyle as CropMoveableGlobalStyle } from '../assets/src/edit-story/components/moveable/cropStyle';
-import { GlobalStyle as ModalGlobalStyle } from '../assets/src/edit-story/components/modal';
-
-import dashboardTheme, {
-  GlobalStyle as DashboardGlobalStyle,
-} from '../assets/src/dashboard/theme';
-import DashboardKeyboardOnlyOutline from '../assets/src/dashboard/utils/keyboardOnlyOutline';
-import { ConfigProvider as DashboardConfigProvider } from '../assets/src/dashboard/app/config';
-import { ConfigProvider as EditorConfigProvider } from '../assets/src/edit-story/app/config';
-import ApiProvider from '../assets/src/dashboard/app/api/apiProvider';
-
+// eslint-disable-next-line import/no-unresolved
+import { INITIAL_VIEWPORTS } from 'storybook/viewport';
 import {
   theme as designSystemTheme,
   lightMode,
   ThemeGlobals,
-} from '../assets/src/design-system/theme';
+  ModalGlobalStyle,
+} from '@googleforcreators/design-system';
+import { CropMoveableGlobalStyle } from '@googleforcreators/moveable';
+
+/**
+ * Internal dependencies
+ */
+// Disable reason:
+// Importing from the dashboard and story editor roots break fast refresh in storybook.
+// Prevented by importing the necessary providers and configs directly.
+/* eslint-disable import/no-relative-packages */
+import { GlobalStyle as DashboardGlobalStyle } from '../packages/dashboard/src/theme';
+import DashboardKeyboardOnlyOutline from '../packages/dashboard/src/utils/keyboardOnlyOutline';
+import DashboardConfigProvider from '../packages/dashboard/src/app/config/configProvider';
+import ApiProvider from '../packages/dashboard/src/app/api/apiProvider';
+import EditorConfigProvider from '../packages/story-editor/src/app/config/configProvider';
+/* eslint-enable import/no-relative-packages */
 
 // @todo: Find better way to mock these.
 const wp = {};
@@ -60,85 +57,95 @@ window.wp.media = {
 
 const { ipad, ipad10p, ipad12p } = INITIAL_VIEWPORTS;
 
-addParameters({
-  a11y: {
-    element: '#root',
-    config: {},
-    options: {},
-    manual: true,
-  },
-  viewport: {
-    viewports: {
-      ipad,
-      ipad10p,
-      ipad12p,
+/** @type { import('@storybook/react-webpack5').Preview } */
+const preview = {
+  parameters: {
+    a11y: {
+      element: '#root',
+      config: {},
+      options: {},
+      manual: true,
+    },
+    viewport: {
+      viewports: {
+        ipad,
+        ipad10p,
+        ipad12p,
+      },
+    },
+    backgrounds: {
+      default: 'Light',
+      values: [
+        { name: 'Light', value: '#fff', default: true },
+        { name: 'Dark', value: 'rgba(0, 0, 0, 0.9)', default: true },
+      ],
     },
   },
-  backgrounds: {
-    default: 'Light',
-    values: [
-      { name: 'Light', value: '#fff', default: true },
-      { name: 'Dark', value: 'rgba(0, 0, 0, 0.9)', default: true },
-    ],
-  },
-});
 
-addDecorator(withKnobs);
+  decorators: [
+    (Story, context) => {
+      const { id } = context;
+      // TODO(#10380): Replacement add-on for RTL feature
+      const isRTL = false;
 
-addDecorator((story, context) => {
-  const { id } = context;
+      const isDesignSystemStorybook = id.startsWith('designsystem');
+      const isDashboardStorybook = id.startsWith('dashboard');
 
-  const direction = useDirection(context);
-  const isRTL = 'rtl' === direction;
+      if (isDashboardStorybook) {
+        return (
+          <ThemeProvider
+            theme={{
+              ...designSystemTheme,
+              colors: lightMode,
+            }}
+          >
+            <DashboardConfigProvider
+              config={{
+                api: { stories: 'stories' },
+                apiCallbacks: {
+                  getUser: () => Promise.resolve({ id: 1 }),
+                },
+                editStoryURL: 'editStory',
+                isRTL,
+                styleConstants: {
+                  topOffset: 0,
+                },
+              }}
+            >
+              <ApiProvider>
+                <DashboardGlobalStyle />
+                <ModalGlobalStyle />
+                <DashboardKeyboardOnlyOutline />
+                {Story()}
+              </ApiProvider>
+            </DashboardConfigProvider>
+          </ThemeProvider>
+        );
+      }
 
-  const isDesignSystemStorybook = id.startsWith('designsystem');
-  const isDashboardStorybook = id.startsWith('dashboard');
+      if (isDesignSystemStorybook) {
+        // override darkMode colors
+        const dsTheme = { ...designSystemTheme, colors: lightMode };
+        return (
+          <ThemeProvider theme={dsTheme}>
+            <ThemeGlobals.Styles />
+            <ModalGlobalStyle />
+            {Story()}
+          </ThemeProvider>
+        );
+      }
 
-  if (isDashboardStorybook) {
-    return (
-      <ThemeProvider
-        theme={{
-          DEPRECATED_THEME: dashboardTheme,
-          ...designSystemTheme,
-          colors: lightMode,
-        }}
-      >
-        <DashboardConfigProvider
-          config={{
-            api: { stories: 'stories' },
-            editStoryURL: 'editStory',
-            isRTL,
-          }}
-        >
-          <ApiProvider>
-            <DashboardGlobalStyle />
-            <DashboardKeyboardOnlyOutline />
-            {story()}
-          </ApiProvider>
-        </DashboardConfigProvider>
-      </ThemeProvider>
-    );
-  }
+      return (
+        <ThemeProvider theme={designSystemTheme}>
+          <EditorConfigProvider config={{ isRTL }}>
+            <CropMoveableGlobalStyle />
+            <ModalGlobalStyle />
+            {Story()}
+          </EditorConfigProvider>
+        </ThemeProvider>
+      );
+    },
+  ],
+};
 
-  if (isDesignSystemStorybook) {
-    // override darkMode colors
-    const dsTheme = { ...designSystemTheme, colors: lightMode };
-    return (
-      <ThemeProvider theme={dsTheme}>
-        <ThemeGlobals.OverrideFocusOutline />
-        {story()}
-      </ThemeProvider>
-    );
-  }
-
-  return (
-    <ThemeProvider theme={theme}>
-      <EditorConfigProvider config={{ isRTL }}>
-        <GlobalStyle />
-        <CropMoveableGlobalStyle />
-        <ModalGlobalStyle />
-        {story()}
-      </EditorConfigProvider>
-    </ThemeProvider>
-  );
-});
+export default preview;

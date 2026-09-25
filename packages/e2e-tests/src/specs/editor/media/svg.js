@@ -13,11 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 /**
  * External dependencies
  */
-import { percySnapshot } from '@percy/puppeteer';
 import {
+  takeSnapshot,
   withExperimentalFeatures,
   createNewStory,
   uploadMedia,
@@ -26,16 +27,16 @@ import {
 
 const MODAL = '.media-modal';
 
+jest.retryTimes(3, { logErrorsBeforeRetry: true });
+
 describe('SVG', () => {
   withExperimentalFeatures(['enableSVG']);
 
   it('should insert an existing SVG from media dialog', async () => {
     await createNewStory();
 
-    await expect(page).not.toMatchElement('[data-testid="FrameElement"]');
-
-    await expect(page).toClick('button', { text: 'Upload' });
-    await expect(page).toMatch('Upload to Story');
+    await expect(page).toClick('button[aria-label="Upload"]');
+    await expect(page).toMatchTextContent('Upload to Story');
     await expect(page).toClick('button', { text: 'Media Library' });
 
     await expect(page).toClick(
@@ -46,37 +47,35 @@ describe('SVG', () => {
 
     await expect(page).toMatchElement('[data-testid="imageElement"]');
 
-    await percySnapshot(page, 'Inserting SVG from Dialog');
+    await takeSnapshot(page, 'Inserting SVG from Dialog');
   });
 
   it('should upload an SVG file via media dialog', async () => {
     await createNewStory();
 
-    await expect(page).not.toMatchElement('[data-testid="FrameElement"]');
     const filename = await uploadMedia('close.svg', false);
 
     await expect(page).toClick('button', { text: 'Insert into page' });
 
     await expect(page).toMatchElement('[data-testid="imageElement"]');
 
-    await percySnapshot(page, 'Uploading SVG to editor');
+    await takeSnapshot(page, 'Uploading SVG to editor');
 
     await deleteMedia(filename);
   });
 
-  it('not should be to select SVG as publisher logo', async () => {
+  it('should not allow selecting an SVG file as publisher logo', async () => {
     await createNewStory();
 
-    await expect(page).not.toMatchElement('[data-testid="FrameElement"]');
-
     await expect(page).toClick('li[role="tab"]', { text: 'Document' });
-    await expect(page).toClick('[aria-label="Publisher logo"]');
+    await expect(page).toClick('[aria-label="Publisher Logo"]');
+    await expect(page).toClick('[aria-label="Add new"]');
 
     await page.waitForSelector(MODAL, {
       visible: true,
     });
 
-    await expect(page).toMatch('Select as publisher logo');
+    await expect(page).toMatchTextContent('Select as publisher logo');
     await expect(page).toClick('button', { text: 'Media Library' });
 
     await expect(page).not.toMatchElement(

@@ -2,10 +2,10 @@
 /**
  * Class Analytics
  *
- * @package   Google\Web_Stories
+ * @link      https://github.com/googleforcreators/web-stories-wp
+ *
  * @copyright 2020 Google LLC
  * @license   https://www.apache.org/licenses/LICENSE-2.0 Apache License 2.0
- * @link      https://github.com/google/web-stories-wp
  */
 
 /**
@@ -24,20 +24,39 @@
  * limitations under the License.
  */
 
+declare(strict_types = 1);
+
 namespace Google\Web_Stories;
 
 /**
  * Class Analytics
  */
-class Analytics {
+class Analytics extends Service_Base {
+	/**
+	 * Settings instance.
+	 *
+	 * @var Settings Settings instance.
+	 */
+	private Settings $settings;
+
+	/**
+	 * Analytics constructor.
+	 *
+	 * @since 1.12.0
+	 *
+	 * @param Settings $settings Settings instance.
+	 * @return void
+	 */
+	public function __construct( Settings $settings ) {
+		$this->settings = $settings;
+	}
+
 	/**
 	 * Initializes all hooks.
 	 *
 	 * @since 1.0.0
-	 *
-	 * @return void
 	 */
-	public function init() {
+	public function register(): void {
 		add_action( 'web_stories_print_analytics', [ $this, 'print_analytics_tag' ] );
 	}
 
@@ -48,8 +67,21 @@ class Analytics {
 	 *
 	 * @return string Tracking ID.
 	 */
-	public function get_tracking_id() {
-		return (string) get_option( Settings::SETTING_NAME_TRACKING_ID );
+	public function get_tracking_id(): string {
+		/**
+		 * Tracking ID.
+		 *
+		 * @var string $tracking_id
+		 */
+		$tracking_id = $this->settings->get_setting( $this->settings::SETTING_NAME_TRACKING_ID );
+
+		// For some reasons, some sites use the plugin's own tracking ID (as used in the admin)
+		// for their stories. Prevent accidental erroneous tracking in such a case.
+		if ( Tracking::TRACKING_ID === $tracking_id ) {
+			return '';
+		}
+
+		return $tracking_id;
 	}
 
 	/**
@@ -57,14 +89,14 @@ class Analytics {
 	 *
 	 * Note: variables in single quotes will be substituted by <amp-analytics>.
 	 *
-	 * @SuppressWarnings(PHPMD.ExcessiveMethodLength)
+	 * @SuppressWarnings("PHPMD.ExcessiveMethodLength")
 	 *
-	 * @see https://github.com/ampproject/amphtml/blob/master/spec/amp-var-substitutions.md
+	 * @see https://github.com/ampproject/amphtml/blob/main/docs/spec/amp-var-substitutions.md
 	 *
 	 * @param string $tracking_id Tracking ID.
-	 * @return array <amp-analytics> configuration.
+	 * @return array<string, array<string, mixed>> <amp-analytics> configuration.
 	 */
-	public function get_default_configuration( $tracking_id ) {
+	public function get_default_configuration( string $tracking_id ): array {
 		$config = [
 			'vars'     => [
 				'gtag_id' => $tracking_id,
@@ -189,53 +221,65 @@ class Analytics {
 						'send_to'        => $tracking_id,
 					],
 				],
-				// Fired when the bookend is shown to the user, after the last page of the current story.
-				'storyBookendEnter'   => [
-					'on'      => 'story-bookend-enter',
-					'request' => 'event',
-					'vars'    => [
-						'event_name'     => 'custom',
-						'event_action'   => 'story_bookend_enter',
-						'event_category' => '${title}',
-						'send_to'        => $tracking_id,
-					],
-				],
-				// Fired when the bookend is dismissed by the user.
-				'storyBookendExit'    => [
-					'on'      => 'story-bookend-exit',
-					'request' => 'event',
-					'vars'    => [
-						'event_name'     => 'custom',
-						'event_action'   => 'story_bookend_exit',
-						'event_category' => '${title}',
-						'send_to'        => $tracking_id,
-					],
-				],
 			],
 		];
 
-		return (array) apply_filters( 'web_stories_analytics_configuration', $config );
+		/**
+		 * Filters the Web Stories Google Analytics configuration.
+		 *
+		 * Only used when not using <amp-story-auto-analytics>, which is the default.
+		 *
+		 * @param array $config Analytics configuration.
+		 */
+		return apply_filters( 'web_stories_analytics_configuration', $config );
 	}
 
 	/**
-	 * Prints the <amp-analytics> tag for single stories.
+	 * Prints the analytics tag for single stories.
 	 *
 	 * @since 1.0.0
-	 *
-	 * @return void
 	 */
-	public function print_analytics_tag() {
+	public function print_analytics_tag(): void {
 		$tracking_id = $this->get_tracking_id();
 
 		if ( ! $tracking_id ) {
 			return;
 		}
+
+		if ( $this->settings->get_setting( $this->settings::SETTING_NAME_USING_LEGACY_ANALYTICS ) ) {
+			$this->print_amp_analytics_tag( $tracking_id );
+		} else {
+			$this->print_amp_story_auto_analytics_tag( $tracking_id );
+		}
+	}
+
+	/**
+	 * Prints the legacy <amp-analytics> tag for single stories.
+	 *
+	 * @since 1.12.0
+	 *
+	 * @param string $tracking_id Tracking ID.
+	 */
+	private function print_amp_analytics_tag( string $tracking_id ): void {
 		?>
 		<amp-analytics type="gtag" data-credentials="include">
 			<script type="application/json">
 				<?php echo wp_json_encode( $this->get_default_configuration( $tracking_id ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 			</script>
 		</amp-analytics>
+		<?php
+	}
+
+	/**
+	 * Prints the <amp-story-auto-analytics> tag for single stories.
+	 *
+	 * @since 1.12.0
+	 *
+	 * @param string $tracking_id Tracking ID.
+	 */
+	private function print_amp_story_auto_analytics_tag( string $tracking_id ): void {
+		?>
+		<amp-story-auto-analytics gtag-id="<?php echo esc_attr( $tracking_id ); ?>"></amp-story-auto-analytics>
 		<?php
 	}
 }

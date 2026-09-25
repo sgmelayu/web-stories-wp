@@ -4,14 +4,14 @@ This package contains the code to migrate stories and templates to the latest ve
 
 ## Exports
 
-* `DATA_VERSION`: the latest version
-* `migrate`: the function to migrate a story, given a data object and the story's current version. 
+- `DATA_VERSION`: the latest version
+- `migrate`: the function to migrate a story, given a data object and the story's current version.
 
 ## Used by
 
-* Dashboard
-* Editor
-* Continuous Integration (automated migrations of templates and FTUE story)
+- Dashboard
+- Editor
+- Continuous Integration (automated migrations of templates and FTUE story)
 
 ## ES Module
 
@@ -22,7 +22,7 @@ To ensure the migrations can be run via Node.js on CI, [Rollup](https://rollupjs
 Usage:
 
 ```bash
-$ npx rollup --config rollup.config.migrate.js
+$ npx rollup --config rollup.config.js
 index.js → module.js...
 created module.js in 123ms
 ```

@@ -14,41 +14,40 @@
  * limitations under the License.
  */
 
-const MAX_WAIT_THRESHOLD = 5000;
-
 /** @typedef {import('puppeteer').Page} Page */
 
 /**
  * Attempts to open the story preview in a new tab.
  *
- * @param {Page} editorPage Editor page object.
+ * @param {boolean} waitForStoryDebugView Whether to wait for the expected dev view.
  * @return {Promise<Page>} Preview page object.
  */
-async function previewStory(editorPage) {
-  let openTabs = await browser.pages();
-  const expectedTabsCount = openTabs.length + 1;
-  await expect(editorPage).toClick(
-    'button:not([disabled])[aria-label="Preview"]'
+async function previewStory(waitForStoryDebugView = true) {
+  await page.waitForSelector('button:not([disabled])[aria-label="Preview"]');
+  await page.click('button:not([disabled])[aria-label="Preview"]');
+
+  const currentTarget = page.target();
+  const previewPageTarget = await browser.waitForTarget(
+    (target) => target.opener() === currentTarget
   );
-  await expect(editorPage).not.toMatch('The preview window failed to open.');
 
-  let waits = 0;
+  const previewPage = await previewPageTarget.page();
+  await previewPage.waitForSelector('body');
 
-  // Wait for the new tab to open.
-  while (openTabs.length < expectedTabsCount) {
-    waits++;
+  await previewPage.waitForFunction(
+    () =>
+      document.title.length > 0 &&
+      !document.title.includes('Generating the preview')
+  );
 
-    if (waits >= MAX_WAIT_THRESHOLD) {
-      throw new Error('There was an error previewing the story');
-    }
-    /* eslint-disable no-await-in-loop */
-    await editorPage.waitForTimeout(1);
-    openTabs = await browser.pages();
-    /* eslint-enable no-await-in-loop */
+  if (waitForStoryDebugView) {
+    await previewPage.waitForSelector('.i-amphtml-story-dev-tools-header');
+
+    await expect(previewPage).toMatchTextContent(/Preview/i);
+    await expect(previewPage).toMatchTextContent(/Debug/i);
+    await expect(previewPage).toMatchTextContent(/Add device/i);
   }
 
-  const previewPage = openTabs[openTabs.length - 1];
-  await previewPage.waitForSelector('amp-story');
   return previewPage;
 }
 

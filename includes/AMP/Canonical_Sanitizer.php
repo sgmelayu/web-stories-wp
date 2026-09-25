@@ -2,10 +2,10 @@
 /**
  * Class Canonical_Sanitizer.
  *
- * @package   Google\Web_Stories
+ * @link      https://github.com/googleforcreators/web-stories-wp
+ *
  * @copyright 2020 Google LLC
  * @license   https://www.apache.org/licenses/LICENSE-2.0 Apache License 2.0
- * @link      https://github.com/google/web-stories-wp
  */
 
 /**
@@ -24,56 +24,72 @@
  * limitations under the License.
  */
 
+declare(strict_types = 1);
+
 namespace Google\Web_Stories\AMP;
 
-use Google\Web_Stories_Dependencies\AMP_Base_Sanitizer;
-use Google\Web_Stories_Dependencies\AmpProject\Attribute;
-use Google\Web_Stories_Dependencies\AmpProject\Tag;
 use DOMElement;
+use DOMNode;
+use DOMNodeList;
+use Google\Web_Stories_Dependencies\AMP_Base_Sanitizer;
+use Google\Web_Stories_Dependencies\AmpProject\Html\Attribute;
+use Google\Web_Stories_Dependencies\AmpProject\Html\Tag;
 
 /**
  * Canonical sanitizer class.
  *
  * Ensures link[rel=canonical] exists on the page,
- * as some plugins might have removed it in the meantime.
+ * as some plugins might have removed it in the meantime
+ * or the user might be viewing a draft.
  *
  * Only needed when the AMP plugin is not active, as the plugin
  * handles that already.
  *
- * @see \AMP_Theme_Support::ensure_required_markup()
- * @see https://github.com/google/web-stories-wp/issues/4193
- *
  * @since 1.1.0
+ *
+ * @link https://github.com/googleforcreators/web-stories-wp/issues/4193
+ * @link https://github.com/googleforcreators/web-stories-wp/pull/8169
+ * @see \AMP_Theme_Support::ensure_required_markup()
  */
 class Canonical_Sanitizer extends AMP_Base_Sanitizer {
 	/**
 	 * Sanitize the HTML contained in the DOMDocument received by the constructor.
 	 *
 	 * @since 1.1.0
-	 *
-	 * @return void
 	 */
-	public function sanitize() {
-		$links         = [];
-		$link_elements = $this->dom->head->getElementsByTagName( Tag::LINK );
+	public function sanitize(): void {
+		$canonical_url = $this->args['canonical_url'];
 
-		/**
-		 * Link element.
-		 *
-		 * @var DOMElement $link
-		 */
-		foreach ( $link_elements as $link ) {
-			if ( $link->hasAttribute( Attribute::REL ) ) {
-				$links[ $link->getAttribute( Attribute::REL ) ][] = $link;
+		$query = $this->dom->xpath->query( '//link[@rel="canonical"]', $this->dom->head );
+
+		// Remove any duplicate items first.
+		if ( $query instanceof DOMNodeList && $query->length > 1 ) {
+			for ( $i = 1; $i < $query->length; $i++ ) {
+				$node = $query->item( $i );
+				if ( $node ) {
+					// @phpstan-ignore argument.type
+					$this->dom->head->removeChild( $node );
+				}
 			}
 		}
 
-		// Ensure rel=canonical link.
-		if ( empty( $links['canonical'] ) ) {
+		/**
+		 * DOMElement
+		 *
+		 * @var DOMElement|DOMNode $rel_canonical
+		 */
+		$rel_canonical = $query instanceof DOMNodeList ? $query->item( 0 ) : null;
+
+		if ( ! $rel_canonical instanceof DOMElement ) {
 			$rel_canonical = $this->dom->createElement( Tag::LINK );
+
 			$rel_canonical->setAttribute( Attribute::REL, Attribute::REL_CANONICAL );
-			$rel_canonical->setAttribute( Attribute::HREF, (string) wp_get_canonical_url() );
 			$this->dom->head->appendChild( $rel_canonical );
+		}
+
+		// Ensure link[rel=canonical] has a non-empty href attribute.
+		if ( empty( $rel_canonical->getAttribute( Attribute::HREF ) ) ) {
+			$rel_canonical->setAttribute( Attribute::HREF, (string) $canonical_url );
 		}
 	}
 }

@@ -2,10 +2,10 @@
 /**
  * Class Compatibility
  *
- * @package   Google\Web_Stories
+ * @link      https://github.com/googleforcreators/web-stories-wp
+ *
  * @copyright 2020 Google LLC
  * @license   https://www.apache.org/licenses/LICENSE-2.0 Apache License 2.0
- * @link      https://github.com/google/web-stories-wp
  */
 
 /**
@@ -28,8 +28,6 @@
  * Class Compatibility
  *
  * @since 1.2.0
- *
- * @package Google\Web_Stories
  */
 class Web_Stories_Compatibility {
 
@@ -65,7 +63,7 @@ class Web_Stories_Compatibility {
 	 *
 	 * @since 1.2.0
 	 *
-	 * @var array
+	 * @var array<string, array{functions?: string[], classes?: string[]}>
 	 */
 	protected $extensions = array();
 
@@ -74,7 +72,7 @@ class Web_Stories_Compatibility {
 	 *
 	 * @since 1.2.0
 	 *
-	 * @var array
+	 * @var string[]
 	 */
 	protected $required_files = array();
 
@@ -85,7 +83,7 @@ class Web_Stories_Compatibility {
 	 *
 	 * @param WP_Error $error       WP_Error object passed back.
 	 */
-	public function __construct( WP_Error $error ) {
+	public function __construct( WP_Error $error ) { // phpcs:ignore SlevomatCodingStandard.Namespaces.FullyQualifiedExceptions.NonFullyQualifiedException
 		$this->error = $error;
 	}
 
@@ -291,9 +289,10 @@ class Web_Stories_Compatibility {
 	/**
 	 * Run checks in admin.
 	 *
+	 * @codeCoverageIgnore
+	 *
 	 * @since 1.2.0
 	 *
-	 * @codeCoverageIgnore
 	 * @return void
 	 */
 	public function run_checks() {
@@ -306,24 +305,10 @@ class Web_Stories_Compatibility {
 	}
 
 	/**
-	 * Helper to add error code to WP_Error object.
-	 *
-	 * @param string|int $code    Error code.
-	 * @param string     $message Error message.
-	 * @param mixed      $data    Optional. Error data.
-	 *
-	 * @return void
-	 */
-	protected function add_to_error( $code, $message, $data = '' ) {
-		if ( ! in_array( $code, $this->error->get_error_codes(), true ) ) {
-			$this->error->add( $code, $message, $data );
-		}
-	}
-
-	/**
 	 * Get min WP version.
 	 *
 	 * @codeCoverageIgnore
+	 *
 	 * @return string
 	 */
 	public function get_wp_version() {
@@ -333,9 +318,10 @@ class Web_Stories_Compatibility {
 	/**
 	 * Get min PHP version.
 	 *
+	 * @codeCoverageIgnore
+	 *
 	 * @since 1.2.0
 	 *
-	 * @codeCoverageIgnore
 	 * @return string
 	 */
 	public function get_php_version() {
@@ -345,33 +331,36 @@ class Web_Stories_Compatibility {
 	/**
 	 * Array of extensions.
 	 *
+	 * @codeCoverageIgnore
+	 *
 	 * @since 1.2.0
 	 *
-	 * @codeCoverageIgnore
-	 * @return array
+	 * @return array<string, array{functions?: string[], classes?: string[]}>
 	 */
 	public function get_extensions() {
-		return (array) $this->extensions;
+		return $this->extensions;
 	}
 
 	/**
 	 * Get JavaScript path.
 	 *
+	 * @codeCoverageIgnore
+	 *
 	 * @since 1.2.0
 	 *
-	 * @codeCoverageIgnore
-	 * @return array
+	 * @return string[]
 	 */
 	public function get_required_files() {
-		return (array) $this->required_files;
+		return $this->required_files;
 	}
 
 	/**
 	 * Getter to get the error object.
 	 *
+	 * @codeCoverageIgnore
+	 *
 	 * @since 1.2.0
 	 *
-	 * @codeCoverageIgnore
 	 * @return WP_Error
 	 */
 	public function get_error() {
@@ -381,9 +370,10 @@ class Web_Stories_Compatibility {
 	/**
 	 * Set WordPress version.
 	 *
+	 * @codeCoverageIgnore
+	 *
 	 * @since 1.2.0
 	 *
-	 * @codeCoverageIgnore
 	 * @param string $wp_version WordPress version.
 	 * @return void
 	 */
@@ -394,9 +384,10 @@ class Web_Stories_Compatibility {
 	/**
 	 * Set PHP version.
 	 *
+	 * @codeCoverageIgnore
+	 *
 	 * @since 1.2.0
 	 *
-	 * @codeCoverageIgnore
 	 * @param string $php_version PHP version.
 	 * @return void
 	 */
@@ -407,10 +398,11 @@ class Web_Stories_Compatibility {
 	/**
 	 * Set extensions.
 	 *
+	 * @codeCoverageIgnore
+	 *
 	 * @since 1.2.0
 	 *
-	 * @codeCoverageIgnore
-	 * @param array $extensions Array of extensions.
+	 * @param array<string, array{functions?: string[], classes?: string[]}> $extensions Array of extensions.
 	 * @return void
 	 */
 	public function set_extensions( array $extensions ) {
@@ -420,15 +412,28 @@ class Web_Stories_Compatibility {
 	/**
 	 * Array of require files.
 	 *
-	 * @since 1.2.0
-	 *
 	 * @codeCoverageIgnore
 	 *
-	 * @param array $required_files Array of require files.
+	 * @since 1.2.0
 	 *
+	 * @param string[] $required_files Array of require files.
 	 * @return void
 	 */
 	public function set_required_files( array $required_files ) {
 		$this->required_files = $required_files;
+	}
+
+	/**
+	 * Helper to add error code to WP_Error object.
+	 *
+	 * @param string|int $code    Error code.
+	 * @param string     $message Error message.
+	 * @param mixed      $data    Optional. Error data.
+	 * @return void
+	 */
+	protected function add_to_error( $code, $message, $data = '' ) {
+		if ( ! in_array( $code, $this->error->get_error_codes(), true ) ) {
+			$this->error->add( $code, $message, $data );
+		}
 	}
 }

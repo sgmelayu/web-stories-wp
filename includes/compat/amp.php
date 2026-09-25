@@ -2,10 +2,10 @@
 /**
  * AMP plugin compatibility functionality.
  *
- * @package   Google\Web_Stories
+ * @link      https://github.com/googleforcreators/web-stories-wp
+ *
  * @copyright 2020 Google LLC
  * @license   https://www.apache.org/licenses/LICENSE-2.0 Apache License 2.0
- * @link      https://github.com/google/web-stories-wp
  */
 
 /**
@@ -37,8 +37,9 @@ if ( ! function_exists( '\is_amp_endpoint' ) ) {
 	 *
 	 * @return bool Whether it is singular story post (and thus an AMP endpoint).
 	 */
-	function is_amp_endpoint() {
-		return is_singular( Story_Post_Type::POST_TYPE_SLUG );
+	function is_amp_endpoint(): bool {
+		// Not using Context class because it's not available yet at this point.
+		return is_singular( Story_Post_Type::POST_TYPE_SLUG ) && ! is_embed() && ! post_password_required();
 	}
 }
 
@@ -53,7 +54,7 @@ if ( ! function_exists( '\amp_is_request' ) ) {
 	 *
 	 * @return bool Whether it is singular story post (and thus an AMP endpoint).
 	 */
-	function amp_is_request() {
+	function amp_is_request(): bool {
 		return is_amp_endpoint();
 	}
 }

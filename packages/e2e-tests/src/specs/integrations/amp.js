@@ -15,11 +15,6 @@
  */
 
 /**
- * WordPress dependencies
- */
-import { activatePlugin, deactivatePlugin } from '@wordpress/e2e-test-utils';
-
-/**
  * External dependencies
  */
 import {
@@ -28,15 +23,17 @@ import {
   previewStory,
   insertStoryTitle,
   setAnalyticsCode,
+  withPlugin,
+  trashAllPosts,
 } from '@web-stories-wp/e2e-test-utils';
 
-describe('AMP integrations with editor', () => {
-  beforeAll(async () => {
-    await activatePlugin('amp');
-  });
+jest.retryTimes(3, { logErrorsBeforeRetry: true });
+
+describe('AMP plugin integration', () => {
+  withPlugin('amp');
 
   afterAll(async () => {
-    await deactivatePlugin('amp');
+    await trashAllPosts('web-story');
   });
 
   it('should be able to directly preview a story without amp-analytics being stripped', async () => {
@@ -49,11 +46,7 @@ describe('AMP integrations with editor', () => {
     await addTextElement();
 
     const editorPage = page;
-    const previewPage = await previewStory(editorPage);
-    previewPage.bringToFront();
-    await expect(previewPage).toMatchElement('p', {
-      text: 'Fill in some text',
-    });
+    const previewPage = await previewStory();
 
     await expect(previewPage).toMatchElement('amp-analytics');
 

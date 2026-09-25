@@ -1,25 +1,100 @@
 version: 2
 updates:
-- package-ecosystem: github-actions
-  directory: "/"
-  schedule:
-    interval: weekly
-  open-pull-requests-limit: 10
-  labels:
-  - Dependencies
-- package-ecosystem: npm
-  directory: "/"
-  schedule:
-    interval: weekly
-  open-pull-requests-limit: 10
-  labels:
-  - Dependencies
-  - JavaScript
-- package-ecosystem: composer
-  directory: "/"
-  schedule:
-    interval: weekly
-  open-pull-requests-limit: 10
-  labels:
-  - Dependencies
-  - PHP
+  - package-ecosystem: github-actions
+    directory: '/'
+    schedule:
+      interval: quarterly
+    open-pull-requests-limit: 10
+    labels:
+      - Dependencies
+    groups:
+      github-actions:
+        patterns:
+          - '*'
+
+  - package-ecosystem: npm
+    directory: '/'
+    schedule:
+      interval: quarterly
+    open-pull-requests-limit: 15
+    labels:
+      - Dependencies
+      - JavaScript
+    groups:
+      wp-packages:
+        patterns:
+          - '@wordpress/*'
+        exclude-patterns:
+          - '@wordpress/element'
+      storybook:
+        patterns:
+          - 'storybook'
+          - '@storybook/*'
+      typescript-eslint:
+        patterns:
+          - '@typescript-eslint/*'
+      babel:
+        patterns:
+          - 'babel-*'
+          - '@babel/*'
+        exclude-patterns:
+          - 'babel-plugin-react-compiler'
+      oxlint:
+        patterns:
+          - 'oxlint'
+          - 'eslint-plugin-oxlint'
+      react-compiler:
+        patterns:
+          - '*-react-compiler'
+          - 'react-compiler-*'
+    ignore:
+      # styled-components is not yet compatible.
+      - dependency-name: 'stylis-plugin-rtl'
+        versions:
+          - '>= 2'
+
+      # Not all plugins are compatible yet
+      - dependency-name: 'rollup'
+        versions:
+          - '>= 3'
+
+      # We have not yet upgraded to React 18.
+      - dependency-name: 'react'
+        versions:
+          - '>= 18'
+      - dependency-name: 'react-dom'
+        versions:
+          - '>= 18'
+      - dependency-name: '@testing-library/react'
+        versions:
+          - '>= 13'
+
+      # ESM only
+      - dependency-name: 'use-context-selector'
+        versions:
+          - '>= 2'
+      - dependency-name: 'flagged'
+        versions:
+          - '>= 3'
+      - dependency-name: 'mime'
+        versions:
+          - '>= 4'
+
+      # Needs manual update
+      - dependency-name: 'styled-components'
+        versions:
+          - '>= 6'
+
+      # Needs manual update
+      - dependency-name: 'eslint'
+        versions:
+          - '>= 9'
+
+  - package-ecosystem: composer
+    directory: '/'
+    schedule:
+      interval: quarterly
+    open-pull-requests-limit: 10
+    labels:
+      - Dependencies
+      - PHP

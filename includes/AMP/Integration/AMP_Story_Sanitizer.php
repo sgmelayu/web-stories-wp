@@ -2,10 +2,10 @@
 /**
  * Class AMP_Story_Sanitizer.
  *
- * @package   Google\Web_Stories
+ * @link      https://github.com/googleforcreators/web-stories-wp
+ *
  * @copyright 2020 Google LLC
  * @license   https://www.apache.org/licenses/LICENSE-2.0 Apache License 2.0
- * @link      https://github.com/google/web-stories-wp
  */
 
 /**
@@ -24,34 +24,45 @@
  * limitations under the License.
  */
 
+declare(strict_types = 1);
+
 namespace Google\Web_Stories\AMP\Integration;
 
+use AMP_Base_Sanitizer;
 use Google\Web_Stories\AMP\Traits\Sanitization_Utils;
-use Google\Web_Stories_Dependencies\AmpProject\Dom\Document;
 
 /**
  * AMP Story sanitizer.
  *
  * Like Story_Sanitizer, but for use with the AMP WordPress plugin.
  *
- * @see Story_Sanitizer
- *
  * @since 1.1.0
+ *
+ * @see Story_Sanitizer
  */
-class AMP_Story_Sanitizer extends \AMP_Base_Sanitizer {
+class AMP_Story_Sanitizer extends AMP_Base_Sanitizer {
 	use Sanitization_Utils;
 
 	/**
 	 * Sanitize the HTML contained in the DOMDocument received by the constructor.
 	 *
 	 * @since 1.1.0
-	 *
-	 * @return void
 	 */
-	public function sanitize() {
+	public function sanitize(): void {
 		$this->transform_html_start_tag( $this->dom );
 		$this->transform_a_tags( $this->dom );
-		$this->add_publisher_logo( $this->dom, $this->args['publisher_logo'], $this->args['publisher_logo_placeholder'] );
+		$this->use_semantic_heading_tags( $this->dom );
+		$this->add_publisher_logo( $this->dom, $this->args['publisher_logo'] );
+		$this->add_publisher( $this->dom, $this->args['publisher'] );
 		$this->add_poster_images( $this->dom, $this->args['poster_images'] );
+		// This needs to be called before use_semantic_heading_tags() because it relies on the style attribute.
+		$this->deduplicate_inline_styles( $this->dom );
+		$this->disable_first_page_animations( $this->dom );
+		$this->add_video_cache( $this->dom, $this->args['video_cache'] );
+		$this->remove_blob_urls( $this->dom );
+		$this->sanitize_srcset( $this->dom );
+		$this->sanitize_amp_story_page_outlink( $this->dom );
+		$this->remove_page_template_placeholder_images( $this->dom );
+		$this->sanitize_title_and_meta_description( $this->dom, $this->args['title_tag'], $this->args['description'] );
 	}
 }

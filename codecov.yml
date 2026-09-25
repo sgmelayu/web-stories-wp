@@ -1,11 +1,6 @@
 # Overall settings for PR integration via codecov.io
 # See https://docs.codecov.io/docs/codecovyml-reference
 
-codecov:
-  notify:
-    # Wait for: Karma (Editopr & Dashboard), Jest, PHPUnit
-    after_n_builds: 4
-
 # Separate PR statuses for project-level and patch-level coverage
 # See https://docs.codecov.io/docs/commit-status
 coverage:
@@ -26,33 +21,33 @@ coverage:
 
       dashboard:
         paths:
-          - assets/src/dashboard
+          - packages/dashboard/src
 
       dashboard.unit:
         paths:
-          - assets/src/dashboard
+          - packages/dashboard/src
         flags:
           - unittests
 
       dashboard.karma:
         paths:
-          - assets/src/dashboard
+          - packages/dashboard/src
         flags:
           - karmatests
 
       editor:
         paths:
-          - assets/src/edit-story
+          - packages/story-editor/src
 
       editor.unit:
         paths:
-          - assets/src/edit-story
+          - packages/story-editor/src
         flags:
           - unittests
 
       editor.karma:
         paths:
-          - assets/src/edit-story
+          - packages/story-editor/src
         flags:
           - karmatests
 
@@ -68,16 +63,13 @@ coverage:
 
 # Pull request comments
 # See https://docs.codecov.io/docs/pull-request-comments
-comment:
-  layout: 'reach, diff, flags, files'
-  behavior: default
-  require_changes: true
-  branches:
-    - 'main'
+comment: false
 
 # See https://docs.codecov.io/docs/ignoring-paths
 ignore:
-  - bin/commander.js
+  - bin
+  - tests
+  - .phpstorm.meta.php
   - scoper.inc.php
   - web-stories.php
   - uninstall.php
@@ -85,9 +77,22 @@ ignore:
   - includes/compat
   - includes/polyfills
   - includes/templates
-  - packages/migration/src/cli.js
-  - assets/src/karma-fixture
-  - packages/fonts/src/cli.js
   - includes/AMP/Integration/AMP_Story_Sanitizer.php
   - includes/REST_API/Stories_Settings_Controller.php
   - includes/REST_API/Stories_Users_Controller.php
+  - packages/e2e-tests
+  - packages/e2e-test-utils
+  - packages/eslint-import-resolver
+  - packages/fonts/scripts
+  - packages/jest-amp
+  - packages/jest-puppeteer-amp
+  - packages/jest-resolver
+  - packages/karma-failed-tests-reporter
+  - packages/karma-fixture
+  - packages/karma-puppeteer-client
+  - packages/karma-puppeteer-launcher
+  - packages/migration/scripts
+  - packages/templates/scripts
+  - packages/test-utils
+  - '**/storybookUtils'
+  - '**/testUtils'

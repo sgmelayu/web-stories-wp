@@ -15,9 +15,10 @@
  */
 
 /**
- * WordPress dependencies
+ * Internal dependencies
  */
-import { visitAdminPage } from '@wordpress/e2e-test-utils';
+import visitAdminPage from './visitAdminPage';
+import { getCurrentUser, setCurrentUser } from './user';
 
 /**
  * Toggle experiments state.
@@ -26,28 +27,36 @@ import { visitAdminPage } from '@wordpress/e2e-test-utils';
  * @param {boolean} enable Whether the features should be enabled or not.
  * @return {Promise<void>}
  */
-async function toggleExperiments(features, enable) {
+export async function toggleExperiments(features, enable) {
+  const currentUser = getCurrentUser();
+  await setCurrentUser('admin', 'password');
+
   await visitAdminPage(
     'edit.php',
     'post_type=web-story&page=web-stories-experiments'
   );
 
-  await Promise.all(
-    features.map(async (feature) => {
-      const selector = `#${feature}`;
-      await page.waitForSelector(selector);
-      const checkedSelector = `${selector}[checked=checked]`;
-      const isChecked = Boolean(await page.$(checkedSelector));
-      if ((!isChecked && enable) || (isChecked && !enable)) {
-        await page.click(selector);
-      }
-    })
-  );
+  /* eslint-disable no-await-in-loop */
+  for (let i = 0; i < features.length; i++) {
+    const selector = `#${features[i]}`;
+    await page.waitForSelector(selector);
+    const checkedSelector = `${selector}:checked`;
+    const isChecked = Boolean(await page.$(checkedSelector));
 
-  await Promise.all([
-    page.waitForNavigation({ waitUntil: 'networkidle0' }),
-    page.click('#submit'),
-  ]);
+    if ((!isChecked && enable) || (isChecked && !enable)) {
+      await page.click(selector);
+    }
+  }
+  /* eslint-enable no-await-in-loop */
+
+  // Ensures the button is visible and can be clicked on in Firefox.
+  await page.evaluate(() => {
+    document.getElementById('submit').scrollIntoView();
+  });
+
+  await Promise.all([page.waitForNavigation(), page.click('#submit')]);
+  await expect(page).toMatchTextContent('Settings saved.');
+  await setCurrentUser(currentUser.username, currentUser.password);
 }
 
 /**
@@ -57,8 +66,8 @@ async function toggleExperiments(features, enable) {
  * @param {Array<string>} features Array of experiments to enable.
  */
 export default function withExperimentalFeatures(features) {
-  /* eslint-disable jest/require-top-level-describe */
-  beforeAll(() => toggleExperiments(features, true));
-  afterAll(() => toggleExperiments(features, false));
-  /* eslint-enable jest/require-top-level-describe */
+  /* eslint-disable require-await */
+  beforeAll(async () => toggleExperiments(features, true));
+  afterAll(async () => toggleExperiments(features, false));
+  /* eslint-enable require-await */
 }

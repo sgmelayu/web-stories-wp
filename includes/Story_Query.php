@@ -2,10 +2,10 @@
 /**
  * Stories class.
  *
- * @package   Google\Web_Stories
+ * @link      https://github.com/googleforcreators/web-stories-wp
+ *
  * @copyright 2020 Google LLC
  * @license   https://www.apache.org/licenses/LICENSE-2.0 Apache License 2.0
- * @link      https://github.com/google/web-stories-wp
  */
 
 /**
@@ -24,16 +24,53 @@
  * limitations under the License.
  */
 
+declare(strict_types = 1);
+
 namespace Google\Web_Stories;
 
-use Google\Web_Stories\Stories_Renderer\Carousel_Renderer;
-use Google\Web_Stories\Stories_Renderer\Generic_Renderer;
-use Google\Web_Stories\Stories_Renderer\Renderer;
+use Google\Web_Stories\Renderer\Stories\Carousel_Renderer;
+use Google\Web_Stories\Renderer\Stories\Generic_Renderer;
+use Google\Web_Stories\Renderer\Stories\Renderer;
 use WP_Post;
 use WP_Query;
 
 /**
  * Stories class.
+ *
+ * @phpstan-type StoryAttributes array{
+ *   view_type?: string,
+ *   number_of_columns?: int,
+ *   show_title?: bool,
+ *   show_author?: bool,
+ *   show_date?: bool,
+ *   show_archive_link?: bool|string,
+ *   show_excerpt?: bool,
+ *   image_alignment?: string,
+ *   class?: string,
+ *   archive_link_label?: string,
+ *   circle_size?: int,
+ *   sharp_corners?: bool,
+ *   order?: string,
+ *   orderby?: string,
+ *   align?: string
+ * }
+ * @phpstan-type StoryAttributesWithDefaults array{
+ *   view_type: string,
+ *   number_of_columns: int,
+ *   show_title: bool,
+ *   show_author: bool,
+ *   show_date: bool,
+ *   show_archive_link: bool|string,
+ *   show_excerpt: bool,
+ *   image_alignment: string,
+ *   class: string,
+ *   archive_link_label: string,
+ *   circle_size: int,
+ *   sharp_corners: bool,
+ *   order?: string,
+ *   orderby?: string,
+ *   align?: string
+ * }
  */
 class Story_Query {
 	/**
@@ -41,48 +78,48 @@ class Story_Query {
 	 *
 	 * @since 1.5.0
 	 *
-	 * @var array An array of story attributes.
+	 * @var array<string, mixed> An array of story attributes.
 	 */
-	protected $story_attributes = [];
+	protected array $story_attributes = [];
 
 	/**
 	 * Story query arguments.
 	 *
 	 * @since 1.5.0
 	 *
-	 * @var array An array of query arguments.
+	 * @var array<string, mixed> An array of query arguments.
 	 */
-	protected $query_args = [];
+	protected array $query_args = [];
 
 	/**
 	 * Renderer object.
 	 *
 	 * @since 1.5.0
-	 *
-	 * @var Renderer
 	 */
-	public $renderer;
+	public Renderer $renderer;
 
 	/**
 	 * Class constructor
 	 *
 	 * @since 1.5.0
 	 *
-	 * @param array $story_attributes          {
-	 *                                         An array of story attributes.
+	 * @param array                $story_attributes {
+	 *                   An array of story attributes.
 	 *
-	 *     @type string $view_type                 Stories View type. Default circles.
-	 *     @type int    $number_of_columns         Number of columns to show in grid view. Default 2.
-	 *     @type bool   $show_title                Whether to show story title or not. Default false.
-	 *     @type bool   $show_author               Whether to show story author or not. Default false.
-	 *     @type bool   $show_date                 Whether to show story date or not. Default false.
-	 *     @type bool   $show_archive_link Whether to show view all link or not. Default false.
-	 *     @type string $archive_link_label     The label for view all link. Default 'View all stories'.
-	 *     @type string $image_alignment The list mode image alignment. Default 'left'.
-	 *     @type string $class                     Additional CSS classes for the container. Default empty string.
+	 *     @type string $view_type          Stories View type. Default circles.
+	 *     @type int    $number_of_columns  Number of columns to show in grid view. Default 2.
+	 *     @type bool   $show_title         Whether to show story title or not. Default false.
+	 *     @type bool   $show_author        Whether to show story author or not. Default false.
+	 *     @type bool   $show_date          Whether to show story date or not. Default false.
+	 *     @type bool   $show_archive_link  Whether to show view all link or not. Default false.
+	 *     @type string $archive_link_label The label for view all link. Default 'View all stories'.
+	 *     @type string $image_alignment    The list mode image alignment. Default 'left'.
+	 *     @type string $class              Additional CSS classes for the container. Default empty string.
 	 * }
-	 * @param array $query_args           An array of query arguments for story. @see WP_Query::parse_query() for
-	 *                                         all available arguments.
+	 * @param array<string, mixed> $query_args An array of query arguments for story. {@see WP_Query::parse_query()} for
+	 *                          all available arguments.
+	 *
+	 * @phpstan-param StoryAttributes $story_attributes
 	 */
 	public function __construct( array $story_attributes = [], array $query_args = [] ) {
 		$this->story_attributes = $story_attributes;
@@ -105,7 +142,7 @@ class Story_Query {
 	 *
 	 * @return WP_Post[] List of Story posts.
 	 */
-	public function get_stories() {
+	public function get_stories(): array {
 		$stories_query = new WP_Query();
 
 		/**
@@ -114,6 +151,8 @@ class Story_Query {
 		 * @var WP_Post[] $result
 		 */
 		$result = $stories_query->query( $this->query_args );
+
+		update_post_thumbnail_cache( $stories_query );
 
 		return $result;
 	}
@@ -125,9 +164,9 @@ class Story_Query {
 	 *
 	 * @return Renderer Renderer Instance.
 	 */
-	public function get_renderer() {
+	public function get_renderer(): Renderer {
 		$story_attributes = $this->get_story_attributes();
-		$view_type        = ( ! empty( $story_attributes['view_type'] ) ) ? $story_attributes['view_type'] : '';
+		$view_type        = ! empty( $story_attributes['view_type'] ) ? $story_attributes['view_type'] : '';
 
 		switch ( $view_type ) {
 			case 'carousel':
@@ -149,10 +188,8 @@ class Story_Query {
 	 * Renders the stories output.
 	 *
 	 * @since 1.5.0
-	 *
-	 * @return string
 	 */
-	public function render() {
+	public function render(): string {
 		$this->renderer = $this->get_renderer();
 
 		return $this->renderer->render();
@@ -163,9 +200,11 @@ class Story_Query {
 	 *
 	 * @since 1.5.0
 	 *
-	 * @return array An array of story attributes.
+	 * @return array<string, string|int|bool> An array of story attributes.
+	 *
+	 * @phpstan-return StoryAttributesWithDefaults
 	 */
-	public function get_story_attributes() {
+	public function get_story_attributes(): array {
 		$default_attributes = [
 			'view_type'          => 'circles',
 			'number_of_columns'  => 2,
@@ -181,6 +220,13 @@ class Story_Query {
 			'circle_size'        => 150,
 		];
 
-		return wp_parse_args( $this->story_attributes, $default_attributes );
+		/**
+		 * Attributes with defaults applied.
+		 *
+		 * @phpstan-var StoryAttributesWithDefaults $attributes
+		 */
+		$attributes = wp_parse_args( $this->story_attributes, $default_attributes );
+
+		return $attributes;
 	}
 }

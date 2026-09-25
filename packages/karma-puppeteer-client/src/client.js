@@ -14,14 +14,14 @@
  * limitations under the License.
  */
 
-(function (global) {
+(function () {
   'use strict';
 
   function noCleanup() {}
 
   /**
    * Runs a function exposed by Puppeteer browser.
-   * See `karma-puppeteer-launcher`.
+   * See `@web-stories-wp/karma-puppeteer-launcher`.
    *
    * @param {string} methodName The name of the karmaPuppeteer method.
    * @return {*} Function result.
@@ -30,10 +30,10 @@
     return function () {
       var args = Array.prototype.slice.call(arguments, 0);
       var name = '__karma_puppeteer_' + methodName;
-      if (!global[name]) {
+      if (!window[name]) {
         throw new Error('unknown method: ' + name);
       }
-      return global[name].apply(null, args);
+      return window[name].apply(null, args);
     };
   }
 
@@ -62,11 +62,11 @@
         };
       }
       return func.apply(null, args).then(
-        function (value) {
+        (value) => {
           cleanup();
           return value;
         },
-        function (reason) {
+        (reason) => {
           cleanup();
           throw reason;
         }

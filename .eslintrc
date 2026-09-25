@@ -5,12 +5,14 @@
     "plugin:@wordpress/eslint-plugin/i18n",
     "eslint:recommended",
     "plugin:import/recommended",
-    "plugin:eslint-comments/recommended",
+    "plugin:@eslint-community/eslint-comments/recommended",
     "plugin:react/recommended",
+    "plugin:react-hooks/recommended-latest",
     "plugin:prettier/recommended",
-    "prettier/react",
     "plugin:jsx-a11y/recommended",
-    "plugin:jsdoc/recommended"
+    "plugin:jsdoc/recommended",
+    "plugin:styled-components-a11y/recommended",
+    "plugin:oxlint/recommended"
   ],
   "plugins": [
     "@babel",
@@ -20,21 +22,27 @@
     "jsx-a11y",
     "markdown",
     "react",
-    "react-hooks"
+    "react-hooks",
+    "styled-components-a11y"
   ],
   "parserOptions": {
+    "ecmaVersion": "latest",
     "ecmaFeatures": {
       "jsx": true
     }
   },
   "rules": {
+    "array-callback-return": "error",
     "block-scoped-var": "error",
     "complexity": ["error", {"max": 20}],
     "consistent-return": "error",
     "curly": ["error", "all"],
     "default-case": "error",
+    "eol-last": "error",
+    "eqeqeq": "error",
     "guard-for-in": "error",
     "no-await-in-loop": "error",
+    "no-constant-binary-expression": "error",
     "no-extra-bind": "error",
     "no-extra-label": "error",
     "no-floating-decimal": "error",
@@ -45,11 +53,13 @@
     "no-new": "error",
     "no-new-func": "error",
     "no-new-wrappers": "error",
+    "no-multiple-empty-lines": "error",
+    "no-trailing-spaces": "error",
     "header/header": [ "error", "block", [
       "",
       {
         "pattern": " \\* Copyright \\d{4} Google LLC",
-        "template": " * Copyright 2021 Google LLC"
+        "template": " * Copyright 2025 Google LLC"
       },
       " *",
       " * Licensed under the Apache License, Version 2.0 (the \"License\");",
@@ -65,24 +75,42 @@
       " * limitations under the License.",
       " "
     ] ],
+    "import/no-cycle": "error",
     "import/no-restricted-paths": [ "error", {
       "zones": [ {
         "target": "./packages/migration/src/migrations",
-        "from": "./assets/src/edit-story",
+        "from": "./packages/story-editor/src",
         "except": [ "./migration/migrations" ]
       }, {
-        "target": "./assets/src/edit-story",
-        "from": "./assets/src/edit-story/utils/useWhyDidYouUpdate.js"
+        "target": "./packages/story-editor/src",
+        "from": "./packages/story-editor/src/utils/useWhyDidYouUpdate.js"
       } ]
     } ],
     "import/dynamic-import-chunkname": [ "error", {
       "webpackChunknameFormat": "[0-9a-zA-Z-_/.[\\]]+"
     } ],
+    "import/no-useless-path-segments": ["error", {
+      "noUselessIndex": true
+    }],
+    "import/no-relative-packages": "error",
+    "import/no-internal-modules": [ "error", {
+      "forbid": [ "@googleforcreators/**/*" ]
+    } ],
+    "jsx-a11y/label-has-for": "off",
+    "jsx-a11y/media-has-caption": [ "error", {
+      "audio": [ "Audio" ],
+      "video": [ "Video", "FadedVideo", "CropVideo", "StyledVideo" ],
+      "track": [ "Track" ]
+    }],
     "no-restricted-properties": "error",
     "no-return-assign": "error",
     "no-return-await": "error",
     "no-sequences": "error",
-    "no-shadow": "error",
+    "no-shadow": ["error",
+      {
+        "ignoreOnInitialization": true
+      }
+    ],
     "no-template-curly-in-string": "error",
     "no-throw-literal": "error",
     "no-unmodified-loop-condition": "error",
@@ -93,10 +121,17 @@
       }
     ],
     "no-useless-call": "error",
+    "jsx-a11y/anchor-has-content": "off",
     "no-useless-concat": "error",
     "no-console": "error",
     "no-duplicate-imports": "error",
     "no-var": "error",
+    "prefer-arrow-callback": [
+      "error",
+      {
+        "allowNamedFunctions": true
+      }
+    ],
     "prefer-const": "error",
     "prefer-object-spread": "error",
     "prefer-promise-reject-errors": "error",
@@ -108,7 +143,22 @@
     "react/forbid-component-props": ["error", {
       "forbid": ["for"]
     }],
-    "react/no-array-index-key": "warn",
+    "react/jsx-key": "error",
+    "react/no-array-index-key": "error",
+    "react/no-unknown-property": [
+      "error",
+      {
+        "ignore": [
+          "amp",
+          "amp-boilerplate",
+          "amp-custom",
+          "animate-in",
+          "animate-in-delay",
+          "animate-in-duration",
+          "custom-element"
+        ]
+      }
+    ],
     "react/prop-types": "error",
     "react-hooks/rules-of-hooks": "error",
     "react-hooks/exhaustive-deps": [
@@ -166,6 +216,21 @@
     "react/no-unused-prop-types": "error",
     "react/react-in-jsx-scope": "off",
     "react/self-closing-comp": "error",
+    "react-hooks/config": "error",
+    "react-hooks/error-boundaries": "error",
+    "react-hooks/component-hook-factories": "error",
+    "react-hooks/gating": "error",
+    "react-hooks/globals": "error",
+    "react-hooks/immutability": "error",
+    "react-hooks/preserve-manual-memoization": "error",
+    "react-hooks/purity": "error",
+    "react-hooks/refs": "error",
+    "react-hooks/set-state-in-effect": "error",
+    "react-hooks/set-state-in-render": "error",
+    "react-hooks/static-components": "error",
+    "react-hooks/unsupported-syntax": "warn",
+    "react-hooks/use-memo": "error",
+    "react-hooks/incompatible-library": "warn",
     "import/no-extraneous-dependencies": "error",
     "import/no-unresolved": "error",
     "import/order": [
@@ -182,14 +247,27 @@
       }
     ],
     "jsdoc/check-indentation": "error",
-    "jsdoc/check-syntax": "warn",
+    "jsdoc/check-syntax": "error",
+    "jsdoc/check-tag-names": ["error", {
+      "definedTags": [ "jest-environment" ]
+    }],
+    "jsdoc/reject-any-type": "off",
+    "jsdoc/reject-function-type": "off",
     "jsdoc/require-jsdoc": ["off", {
       "publicOnly": true
     }],
-    "jsdoc/require-returns": "warn",
-    "jsdoc/require-param-description": "warn",
-    "eslint-comments/no-unused-disable": "error",
+    "jsdoc/require-returns": "error",
+    "jsdoc/require-param-description": "error",
+    "jsdoc/tag-lines": [
+      "error",
+      "any",
+      { "startLines": 1 }
+    ],
+    "jsdoc/valid-types": "error",
+    "@eslint-community/eslint-comments/no-unused-disable": "error",
+    "@eslint-community/eslint-comments/require-description": "error",
     "@wordpress/dependency-group": "error",
+    "@wordpress/i18n-no-flanking-whitespace": "error",
     "@wordpress/no-unused-vars-before-return": ["error", {
       "excludePattern": "^use"
     }],
@@ -207,17 +285,28 @@
   },
   "env": {
     "browser": true,
-    "es6": true
+    "es2020": true
   },
   "globals": {
-    "global": true,
-    "window": true,
-    "document": true,
-    "wp": "readonly",
-    "process": "readonly",
-    "__webpack_public_path__": true
+    "__webpack_public_path__": "writable",
+    "WEB_STORIES_CI": "readonly",
+    "WEB_STORIES_DISABLE_ERROR_BOUNDARIES": "readonly",
+    "WEB_STORIES_DISABLE_OPTIMIZED_RENDERING": "readonly",
+    "WEB_STORIES_DISABLE_PREVENT": "readonly",
+    "WEB_STORIES_DISABLE_QUICK_TIPS": "readonly",
+    "WEB_STORIES_ENV": "readonly"
   },
   "settings": {
+    "import/resolver": {
+      "@web-stories-wp/eslint-import-resolver": {
+        "mapping": {
+          "^@googleforcreators\\/(.*)\\/(.*)": "./packages/$1/src/$2",
+          "^@googleforcreators\\/(.*)": "./packages/$1/src/",
+          "^@web-stories-wp\\/(.*)": "./packages/$1/src/"
+        },
+        "extensions": [ ".js", ".jsx", ".ts", ".tsx" ]
+      }
+    },
     "jsdoc": {
       "mode": "typescript",
       "preferredTypes": {
@@ -237,16 +326,100 @@
       {"name": "Primary", "linkAttribute": "href"},
       "PrimaryLink",
       "SecondaryLink",
-      "ExternalLink"
+      "ExternalLink",
+      "ScrimAnchor"
+    ],
+    "testing-library/custom-renders": [
+      "arrange",
+      "renderWithTheme",
+      "renderWithProviders",
+      "renderPanel",
+      "setup"
     ]
   },
   "overrides": [
     {
       "files": [
+        "**/*.ts",
+        "**/*.tsx"
+      ],
+      "plugins": [
+        "@typescript-eslint"
+      ],
+      "extends": [
+        "plugin:@typescript-eslint/recommended",
+        "plugin:@typescript-eslint/recommended-type-checked"
+      ],
+      "parser": "@typescript-eslint/parser",
+      "parserOptions": {
+        "projectService": true,
+        "warnOnUnsupportedTypeScriptVersion": false
+      },
+      "rules": {
+        "@typescript-eslint/no-shadow": ["error",
+          {
+            "ignoreOnInitialization": true
+          }
+        ],
+        "@typescript-eslint/unbound-method": [
+          "error",
+          {
+            "ignoreStatic": true
+          }
+        ],
+        "@typescript-eslint/no-unused-vars": [
+          "error",
+          {
+            "ignoreRestSiblings": true
+          }
+        ],
+        "react/prop-types": "off",
+        "getter-return": "off",
+        "jsdoc/check-param-names": "off",
+        "jsdoc/require-param": "off",
+        "jsdoc/require-param-type": "off",
+        "jsdoc/require-returns": "off",
+        "jsdoc/require-returns-check": "off",
+        "jsdoc/require-returns-type": "off",
+        "jsdoc/no-types": "error",
+        "no-duplicate-imports": "off",
+        "no-unused-vars": "off",
+        "no-shadow": "off",
+        "no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              {
+                "name": "prop-types",
+                "message": "Use TypeScript instead."
+              }
+            ]
+          }
+        ],
+        "import/no-unresolved": "off",
+        "import/default": "off",
+        "import/named": "off"
+      }
+    },
+    {
+      "files": [
+        "typings/**/*.ts",
+        "**/*.d.ts"
+      ],
+      "rules": {
+        "no-undef": "off",
+        "no-unused-vars": "off",
+        "no-var": "off",
+        "@wordpress/dependency-group": "off"
+      }
+    },
+    {
+      "files": [
         "__mocks__/**/*.js",
-        "**/__tests__/**/*.js",
         "**/test/**/*.js",
-        "**/?(*.)test.js",
+        "**/test/**/*.ts",
+        "**/testUtils/**/*.js",
+        "**/testUtils/**/*.ts",
         "tests/js/**/*.js"
       ],
       "excludedFiles": [
@@ -255,8 +428,9 @@
       ],
       "extends": [
         "plugin:jest/all",
-        "plugin:testing-library/recommended",
-        "plugin:jest-dom/recommended"
+        "plugin:testing-library/react",
+        "plugin:jest-dom/recommended",
+        "plugin:jest-extended/all"
       ],
       "plugins": [
         "jsx-a11y",
@@ -264,26 +438,66 @@
         "testing-library",
         "jest-dom"
       ],
+      "env": {
+        "node": true
+      },
       "rules": {
-        "jest/lowercase-name": [
+        "@eslint-community/eslint-comments/require-description": "off",
+        "react/prop-types": "off",
+        "react-hooks/globals": "off",
+        "react-hooks/immutability": "off",
+        "jest/no-hooks": "off",
+        "jest/no-untyped-mock-factory": "off",
+        "jest/max-expects": "off",
+        "jest/prefer-expect-assertions": "off",
+        "jest/prefer-importing-jest-globals": "off",
+        "jest/prefer-inline-snapshots": "off",
+        "jest/prefer-lowercase-title": [
           "error",
           {
             "ignore": ["describe"]
           }
         ],
-        "jest/no-hooks": "off",
-        "jest/prefer-expect-assertions": "off",
-        "jest/prefer-inline-snapshots": "off",
+        "jest/prefer-mock-promise-shorthand": "off",
+        "jest/prefer-snapshot-hint": "off",
+        "jest/unbound-method": "off",
+        "jest/padding-around-all": "off",
+        "jest/padding-around-after-each-blocks": "off",
+        "jest/padding-around-after-all-blocks": "off",
+        "jest/padding-around-before-all-blocks": "off",
+        "jest/padding-around-before-each-blocks": "off",
+        "jest/padding-around-describe-blocks": "off",
+        "jest/padding-around-expect-groups": "off",
+        "jest/padding-around-test-blocks": "off",
+        "jest/prefer-ending-with-an-expect": "off",
         "jsdoc/require-jsdoc": "off",
         "testing-library/no-await-sync-events": "error",
-        "testing-library/no-debug": "error",
+        "testing-library/no-debugging-utils": "error",
         "testing-library/no-dom-import": "error"
       }
     },
     {
       "files": [
+        "**/test/**/*.ts",
+        "**/testUtils/**/*.ts"
+      ],
+      "rules": {
+        "@typescript-eslint/unbound-method": "off",
+        "jest/unbound-method": "error",
+        "jest/no-untyped-mock-factory": "error"
+      }
+    },
+    {
+      "files": [
+        "__mocks__/**/*.js"
+      ],
+      "rules": {
+        "jest/require-hook":  "off"
+      }
+    },
+    {
+      "files": [
         "**/karma/**/*.js",
-        "assets/src/karma-*/**/*.js",
         "packages/karma-*/**/*.js"
       ],
       "extends": [
@@ -296,10 +510,14 @@
         "jasmine"
       ],
       "env": {
-        "jasmine": true
+        "jasmine": true,
+        "node": true
       },
       "rules": {
-        "testing-library/no-debug": "error",
+        "@eslint-community/eslint-comments/require-description": "off",
+        "testing-library/no-await-sync-events": "error",
+        "testing-library/no-await-sync-queries": "error",
+        "testing-library/no-debugging-utils": "error",
         "testing-library/no-dom-import": "error",
         "jasmine/new-line-before-expect": "off",
         "jasmine/no-disabled-tests": "error",
@@ -334,27 +552,87 @@
     },
     {
       "files": [
+        "packages/jest-amp/src/**/*.js",
+        "packages/jest-puppeteer-amp/src/**/*.js"
+      ],
+      "env": {
+        "node": true
+      }
+    },
+    {
+      "files": [
+        "packages/jest-puppeteer-amp/src/**/*.js"
+      ],
+      "globals": {
+        "browser": "readonly",
+        "page": "readonly"
+      }
+    },
+    {
+      "files": [
         "packages/e2e-test-utils/**/*.js",
         "packages/e2e-tests/src/**/*.js"
       ],
       "extends": [
         "plugin:jest/all"
       ],
+      "env": {
+        "node": true
+      },
       "rules": {
-        "jest/lowercase-name": [
+        "@eslint-community/eslint-comments/require-description": "off",
+        "jest/max-expects": "off",
+        "jest/no-hooks": "off",
+        "jest/prefer-ending-with-an-expect": "off",
+        "jest/prefer-expect-assertions": "off",
+        "jest/prefer-importing-jest-globals": "off",
+        "jest/prefer-inline-snapshots": "off",
+        "jest/prefer-lowercase-title": [
           "error",
           {
             "ignore": ["describe"]
           }
         ],
-        "jest/no-hooks": "off",
-        "jest/prefer-expect-assertions": "off",
-        "jest/prefer-inline-snapshots": "off"
+        "jest/require-hook": [
+          "error",
+          {
+            "allowedFunctionCalls": [
+              "minWPVersionRequired",
+              "withDisabledToolbarOnFrontend",
+              "withExperimentalFeatures",
+              "withPlugin",
+              "withRTL",
+              "withUser"
+            ]
+          }
+        ],
+        "jest/prefer-snapshot-hint": "off",
+        "jest/unbound-method": "off",
+        "jest/padding-around-all": "off",
+        "jest/padding-around-after-each-blocks": "off",
+        "jest/padding-around-after-all-blocks": "off",
+        "jest/padding-around-before-all-blocks": "off",
+        "jest/padding-around-before-each-blocks": "off",
+        "jest/padding-around-describe-blocks": "off",
+        "jest/padding-around-expect-groups": "off",
+        "jest/padding-around-test-blocks": "off"
       },
       "globals": {
         "browser": "readonly",
         "page": "readonly",
         "wp": "readonly"
+      }
+    },
+    {
+      "files": [
+        "packages/e2e-test-utils/**/*.js"
+      ],
+      "rules": {
+        "@eslint-community/eslint-comments/require-description": "off",
+        "jest/expect-expect": "off",
+        "jest/max-expects": "off",
+        "jest/no-export": "off",
+        "jest/require-top-level-describe": "off"
       }
     },
     {
@@ -365,10 +643,34 @@
     },
     {
       "files": [
+        "packages/e2e-tests/src/config/**/*.js",
+        "**/testUtils/**/*.js"
+      ],
+      "rules": {
+        "@eslint-community/eslint-comments/require-description": "off",
+        "jest/require-hook": "off"
+      }
+    },
+    {
+      "files": [
+        "packages/commander/**/*.ts",
+        "packages/fonts/scripts/**/*.ts",
+        "packages/migration/scripts/**/*.js",
+        "packages/templates/scripts/**/*.js",
+        "packages/text-sets/scripts/**/*.js"
+      ],
+      "rules": {
+        "import/no-useless-path-segments": ["error", {
+          "noUselessIndex": false
+        }]
+      }
+    },
+    {
+      "files": [
         "__mocks__/**/*.js",
         "bin/**/*.js",
         "babel.config.cjs",
-        "rollup.config.migrate.cjs",
+        "rollup.config.js",
         "jest-puppeteer.config.cjs",
         "karma-*.config.cjs",
         "webpack.*.cjs",
@@ -377,15 +679,19 @@
         "tests/js/*.js",
         "packages/e2e-tests/src/*.js",
         "packages/e2e-tests/src/config/*.js",
-        "assets/src/dashboard/karma-tests.cjs",
-        "assets/src/edit-story/karma-tests.cjs",
-        "packages/migration/src/**/*.js",
-        "packages/fonts/**/*.js",
-        "packages/commander/**/*.js"
+        "packages/dashboard/src/karma-tests.cjs",
+        "packages/story-editor/src/karma-tests.cjs",
+        "packages/eslint-import-resolver/**/*.cjs",
+        "packages/jest-resolver/**/*.cjs",
+        "packages/fonts/**/*.ts",
+        "packages/commander/**/*.ts",
+        "packages/migration/scripts/**/*.js",
+        "packages/templates/scripts/**/*.js",
+        "packages/text-sets/scripts/**/*.js"
       ],
       "extends": [
-        "plugin:node/recommended",
-        "plugin:security/recommended"
+        "plugin:n/recommended",
+        "plugin:security/recommended-legacy"
       ],
       "plugins": [
         "security"
@@ -394,18 +700,29 @@
         "node": true
       },
       "rules": {
-        "node/no-extraneous-import": "off",
-        "node/no-missing-import": "off",
-        "node/no-unpublished-import": "off",
-        "node/no-unpublished-require": "off"
+        "@eslint-community/eslint-comments/require-description": "off",
+        "n/no-extraneous-import": "off",
+        "n/no-missing-import": "off",
+        "n/no-unpublished-import": "off",
+        "n/no-unpublished-require": "off",
+        "security/detect-non-literal-fs-filename": "off"
       }
     },
     {
       "files": [
-        "packages/migration/src/utils/updateTemplates.js"
+        "packages/commander/src/index.ts"
       ],
       "rules": {
-        "eslint-comments/no-unused-disable": "off"
+        "no-console": "off",
+        "n/hashbang": "off"
+      }
+    },
+    {
+      "files": [
+        "packages/migration/scripts/utils/updateTemplates.js"
+      ],
+      "rules": {
+        "@eslint-community/eslint-comments/no-unused-disable": "off"
       }
     },
     {
@@ -425,25 +742,28 @@
         }
       },
       "rules": {
+        "import/no-unresolved": "off",
+        "import/no-extraneous-dependencies": "off",
         "@wordpress/dependency-group": "off",
         "no-console": "off",
         "no-undef": "off",
         "no-unused-vars": "off",
         "header/header": "off",
-        "prettier/prettier": "off"
+        "prettier/prettier": "off",
+        "@eslint-community/eslint-comments/require-description": "off",
+        "react/prop-types" : "off"
       }
     },
     {
       "files": [
-        "assets/src/animation/**/*.js",
-        "assets/src/dashboard/**/*.js",
-        "assets/src/design-system/**/*.js",
-        "assets/src/edit-story/**/*.js",
+        "packages/dashboard/src/**/*.js",
+        "packages/story-editor/src/**/*.js",
         "packages/**/*.js"
       ],
       "excludedFiles": [
-        "packages/activation-notice/**/*.js",
+        "packages/activation-notice/**/*.tsx",
         "packages/i18n/**/*.js",
+        "packages/stories-block/**/*.js",
         "packages/tinymce-button/**/*.js"
       ],
       "rules":{
@@ -453,7 +773,94 @@
             "paths": [
               {
                 "name": "@wordpress/i18n",
-                "message": "Use @web-stories-wp/i18n instead."
+                "message": "Use @googleforcreators/i18n instead."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": [
+        "packages/activation-notice/**/*.tsx",
+        "packages/stories-block/**/*.js",
+        "packages/tinymce-button/**/*.js"
+      ],
+      "rules":{
+        "@wordpress/data-no-store-string-literals": "error",
+        "no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              {
+                "name": "@googleforcreators/i18n",
+                "message": "Use @wordpress/i18n instead."
+              },
+              {
+                "name": "react",
+                "message": "Please use React API through `@wordpress/element` instead."
+              },
+              {
+                "name": "react-dom",
+                "message": "Please use React API through `@wordpress/element` instead."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": [
+        "packages/**/*.js"
+      ],
+      "excludedFiles": [
+        ".storybook/preview.js",
+        "__mocks__/**/*.js",
+        "packages/activation-notice/**/*.tsx",
+        "packages/react/**/*.js",
+        "packages/dashboard/src/karma/fixture.js",
+        "packages/story-editor/src/karma/fixture/fixture.js",
+        "packages/story-block/**/*.js",
+        "packages/tinymce-button/**/*.js"
+      ],
+      "rules":{
+        "no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              {
+                "name": "react",
+                "message": "Use @googleforcreators/react instead."
+              },
+              {
+                "name": "react-dom",
+                "message": "Use @googleforcreators/react instead."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": [
+        "packages/activation-notice/**/*.tsx"
+      ],
+      "rules":{
+        "no-restricted-imports": "off",
+        "import/no-named-as-default": "off",
+        "@typescript-eslint/no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              {
+                "name": "react",
+                "message": "Use @wordpress/element instead.",
+                "allowTypeImports": true
+              },
+              {
+                "name": "react-dom",
+                "message": "Use @wordpress/element instead.",
+                "allowTypeImports": true
               }
             ]
           }
@@ -466,6 +873,103 @@
       ],
       "globals": {
         "tinymce": "readonly"
+      }
+    },
+    {
+      "files": [
+        "**/stories/*.js",
+        ".storybook/main.cjs"
+      ],
+      "rules": {
+        "react/no-array-index-key" : "off",
+        "react/prop-types": "off",
+        "@eslint-community/eslint-comments/no-unused-disable": "off",
+        "@eslint-community/eslint-comments/require-description": "off"
+      }
+    },
+    {
+      "files": [
+        "__mocks__/**/*",
+        ".storybook/stories/**/*"
+      ],
+      "rules": {
+        "import/no-extraneous-dependencies" : "off"
+      }
+    },
+    {
+      "files": [
+        "packages/story-editor/src/**/*.js",
+        "packages/dashboard/src/**/*.js"
+      ],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "**/*.css"
+                ],
+                "message": "css import is not allowed in story-editor and dashboard"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": [
+        "packages/date/src/third_party/**/*"
+      ],
+      "rules": {
+        "header/header": "off",
+        "@typescript-eslint/no-explicit-any": "off",
+        "@typescript-eslint/ban-ts-comment": "off",
+        "@typescript-eslint/no-unsafe-return": "off"
+      }
+    },
+    {
+      "files": [
+        "packages/story-editor/src/components/canvas/mediaCaptions/cue.js"
+      ],
+      "rules": {
+        "@eslint-community/eslint-comments/no-unused-disable": "off"
+      }
+    },
+    {
+      "files": [
+        "packages/design-system/src/components/keyboard/keyboard.tsx",
+        "packages/element-library/src/media/editCropMoveable.tsx",
+        "packages/element-library/src/media/editPanMoveable.tsx",
+        "packages/element-library/src/text/edit.tsx",
+        "packages/element-library/src/video/playPauseButton.tsx",
+        "packages/react/src/useBatchingCallback.ts",
+        "packages/react/src/useResizeEffect.ts",
+        "packages/story-editor/src/app/helpCenter/provider.tsx",
+        "packages/story-editor/src/app/media/media3p/useContextValueProvider.js",
+        "packages/story-editor/src/app/media/media3p/useFetchMediaEffect.js",
+        "packages/story-editor/src/app/quickActions/useQuickActions.js",
+        "packages/story-editor/src/components/canvas/mediaRecordingLayer.js",
+        "packages/story-editor/src/components/canvas/multiSelectionMoveable/useDrag.js",
+        "packages/story-editor/src/components/canvas/multiSelectionMoveable/useResize.js",
+        "packages/story-editor/src/components/canvas/multiSelectionMoveable/useRotate.js",
+        "packages/story-editor/src/components/canvas/singleSelectionMoveable/index.js",
+        "packages/story-editor/src/components/canvas/singleSelectionMoveable/useDrag.js",
+        "packages/story-editor/src/components/canvas/singleSelectionMoveable/useResize.js",
+        "packages/story-editor/src/components/canvas/singleSelectionMoveable/useRotate.js",
+        "packages/story-editor/src/components/canvas/utils/useUpdateSelectionRectangle.js",
+        "packages/story-editor/src/components/colorPicker/editablePreview.js",
+        "packages/story-editor/src/components/form/usePresubmitHandler.js",
+        "packages/story-editor/src/components/library/panes/shopping/shoppingPane.js",
+        "packages/story-editor/src/components/mediaRecording/audio.js",
+        "packages/story-editor/src/components/mediaRecording/footer.js",
+        "packages/story-editor/src/components/panels/shared/useCommonObjectValue.js",
+        "packages/story-editor/src/components/videoTrim/useVideoNode.js",
+        "packages/transform/src/useTransformHandler.ts",
+        "packages/wp-story-editor/src/components/fontCheck/index.js"
+      ],
+      "rules": {
+        "react-hooks/refs": "off"
       }
     }
   ]

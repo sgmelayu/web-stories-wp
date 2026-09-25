@@ -4,11 +4,13 @@
  *
  * Renderer fields will change state based on view types.
  *
- * @package   Google\Web_Stories
+ * @link      https://github.com/googleforcreators/web-stories-wp
+ *
  * @copyright 2020 Google LLC
  * @license   https://www.apache.org/licenses/LICENSE-2.0 Apache License 2.0
- * @link      https://github.com/google/web-stories-wp
  */
+
+declare(strict_types = 1);
 
 namespace Google\Web_Stories\Interfaces;
 
@@ -86,4 +88,24 @@ interface FieldState {
 	 * @return Field
 	 */
 	public function sharp_corners();
+
+	/**
+	 * Get circle size field along with its state for
+	 * current view type.
+	 *
+	 * @since 1.40.0
+	 *
+	 * @return Field
+	 */
+	public function circle_size();
+
+	/**
+	 * Get number of columns field along with its state for
+	 * current view type.
+	 *
+	 * @since 1.40.0
+	 *
+	 * @return Field
+	 */
+	public function number_of_columns();
 }

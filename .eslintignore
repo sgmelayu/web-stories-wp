@@ -1,7 +1,10 @@
 **/node_modules/**
 **/vendor/**
+**/dist/**
+**/dist-module/**
+**/dist-types/**
 **/assets/js/*.js
-**/packages/migration/src/module.js
+**/packages/migration/scripts/module.js
 bin/build/*
 build/*
 !.storybook

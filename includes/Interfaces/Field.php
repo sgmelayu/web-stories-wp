@@ -2,18 +2,18 @@
 /**
  * Field Interface.
  *
- * @package   Google\Web_Stories
+ * @link      https://github.com/googleforcreators/web-stories-wp
+ *
  * @copyright 2020 Google LLC
  * @license   https://www.apache.org/licenses/LICENSE-2.0 Apache License 2.0
- * @link      https://github.com/google/web-stories-wp
  */
+
+declare(strict_types = 1);
 
 namespace Google\Web_Stories\Interfaces;
 
 /**
  * Interface Field.
- *
- * @package Google\Web_Stories\Interfaces
  */
 interface Field {
 
@@ -21,26 +21,20 @@ interface Field {
 	 * Whether to display the field.
 	 *
 	 * @since 1.5.0
-	 *
-	 * @return bool
 	 */
-	public function show();
+	public function show(): bool;
 
 	/**
 	 * Label for current field.
 	 *
 	 * @since 1.5.0
-	 *
-	 * @return string
 	 */
-	public function label();
+	public function label(): string;
 
 	/**
 	 * Whether the field is hidden.
 	 *
 	 * @since 1.5.0
-	 *
-	 * @return bool
 	 */
-	public function hidden();
+	public function hidden(): bool;
 }

@@ -4,10 +4,10 @@
  *
  * Stories renderers should conform to this interface,
  *
- * @package   Google\Web_Stories
+ * @link      https://github.com/googleforcreators/web-stories-wp
+ *
  * @copyright 2020 Google LLC
  * @license   https://www.apache.org/licenses/LICENSE-2.0 Apache License 2.0
- * @link      https://github.com/google/web-stories-wp
  */
 
 /**
@@ -26,14 +26,12 @@
  * limitations under the License.
  */
 
-namespace Google\Web_Stories\Interfaces;
+declare(strict_types = 1);
 
-use Google\Web_Stories\Interfaces\FieldState;
+namespace Google\Web_Stories\Interfaces;
 
 /**
  * Interface Renderer.
- *
- * @package Google\Web_Stories\Interfaces
  */
 interface Renderer {
 
@@ -42,21 +40,18 @@ interface Renderer {
 	 * adding hooks and setting up states.
 	 *
 	 * @since 1.5.0
-	 *
-	 * @return void
 	 */
-	public function init();
+	public function init(): void;
 
 	/**
 	 * Render the markup for story.
 	 *
 	 * @since 1.5.0
 	 *
-	 * @param array $args Array of rendering related arguments.
-	 *
+	 * @param array<string,mixed> $args Array of rendering related arguments.
 	 * @return string Rendering markup.
 	 */
-	public function render( array $args = [] );
+	public function render( array $args = [] ): string;
 
 	/**
 	 * Render a single story markup.
@@ -66,5 +61,4 @@ interface Renderer {
 	 * @return mixed
 	 */
 	public function render_single_story_content();
-
 }

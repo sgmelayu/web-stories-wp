@@ -2,10 +2,10 @@
 /**
  * Plugin uninstall handler.
  *
- * @package   Google\Web_Stories
+ * @link      https://github.com/googleforcreators/web-stories-wp
+ *
  * @copyright 2020 Google LLC
  * @license   https://www.apache.org/licenses/LICENSE-2.0 Apache License 2.0
- * @link      https://github.com/google/web-stories-wp
  */
 
 /**
@@ -24,9 +24,48 @@
  * limitations under the License.
  */
 
+declare(strict_types = 1);
+
+use Google\Web_Stories\PluginFactory;
+use Google\Web_Stories\Settings;
+
 if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
 	return;
 }
+
+if ( ! defined( 'WEBSTORIES_VERSION' ) ) {
+	define( 'WEBSTORIES_VERSION', '1' );
+}
+
+if ( ! defined( 'WEBSTORIES_DEV_MODE' ) ) {
+	define( 'WEBSTORIES_DEV_MODE', false );
+}
+
+if ( ! defined( 'WEBSTORIES_PLUGIN_DIR_FILE' ) ) {
+	define( 'WEBSTORIES_PLUGIN_FILE', __DIR__ . '/web-stories.php' );
+}
+
+if ( ! defined( 'WEBSTORIES_PLUGIN_DIR_PATH' ) ) {
+	define( 'WEBSTORIES_PLUGIN_DIR_PATH', __DIR__ );
+}
+
+if ( ! defined( 'WEBSTORIES_PLUGIN_DIR_URL' ) ) {
+	define( 'WEBSTORIES_PLUGIN_DIR_URL', plugin_dir_url( WEBSTORIES_PLUGIN_FILE ) );
+}
+
+// Autoloader for dependencies.
+if ( file_exists( WEBSTORIES_PLUGIN_DIR_PATH . '/third-party/vendor/scoper-autoload.php' ) ) {
+	require WEBSTORIES_PLUGIN_DIR_PATH . '/third-party/vendor/scoper-autoload.php';
+}
+
+// Autoloader for plugin itself.
+if ( file_exists( WEBSTORIES_PLUGIN_DIR_PATH . '/includes/vendor/autoload.php' ) ) {
+	require WEBSTORIES_PLUGIN_DIR_PATH . '/includes/vendor/autoload.php';
+}
+
+PluginFactory::create()->register();
+
+$erase = (bool) get_option( Settings::SETTING_NAME_DATA_REMOVAL );
 
 /**
  * Filters whether data should be erased when uninstalling the plugin.
@@ -35,30 +74,20 @@ if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
  *
  * @param bool $erase Whether to erase data. Default false.
  */
-$erase = (bool) apply_filters( 'web_stories_erase_data_on_uninstall', false );
+$erase = (bool) apply_filters( 'web_stories_erase_data_on_uninstall', $erase );
 
 if ( false === $erase ) {
 	return;
 }
 
-require_once WEBSTORIES_PLUGIN_DIR_PATH . '/includes/uninstall.php';
-
-if ( is_multisite() ) {
-	\Google\Web_Stories\delete_site_options();
-	$site_ids = get_sites(
-		[
-			'fields'                 => 'ids',
-			'number'                 => '',
-			'update_site_cache'      => false,
-			'update_site_meta_cache' => false,
-		]
-	);
-	foreach ( $site_ids as $site_id ) {
-		switch_to_blog( $site_id );
-		\Google\Web_Stories\delete_site();
-	}
-	restore_current_blog();
-} else {
-	\Google\Web_Stories\delete_site();
+/**
+ * Defer running uninstall until every service is registered.
+ *
+ * @since 1.26.0
+ */
+function web_stories_uninstall(): void {
+	$ws_plugin = PluginFactory::create();
+	$ws_plugin->register();
+	$ws_plugin->on_site_uninstall();
 }
-\Google\Web_Stories\delete_stories_user_meta();
+add_action( 'shutdown', 'web_stories_uninstall' );

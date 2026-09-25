@@ -17,14 +17,14 @@
 /**
  * External dependencies
  */
-import { __setMockFiles, readFileSync } from 'fs';
+import { __setMockFiles, readFileSync } from 'node:fs';
 
 /**
  * Internal dependencies
  */
 import updateVersionNumbers from '../updateVersionNumbers';
 
-jest.mock('fs');
+jest.mock('node:fs');
 jest.mock('../appendRevisionToVersion', () =>
   jest.fn(() => '1.0.0-alpha+1234567')
 );
@@ -36,7 +36,7 @@ const PLUGIN_FILE_CONTENT = `
 
  * Plugin Name: Web Stories
  * Description: Visual storytelling for WordPress.
- * Plugin URI: https://github.com/google/web-stories-wp
+ * Plugin URI: https://github.com/googleforcreators/web-stories-wp
  * Author: Google
  * Author URI: https://opensource.google.com/
  * Version: 1.0.0-alpha

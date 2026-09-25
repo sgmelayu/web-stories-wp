@@ -1,0 +1,16 @@
+{
+  "extends": "../../tsconfig.shared.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "declarationDir": "dist-types"
+  },
+  "references": [
+    { "path": "../animation" },
+    { "path": "../i18n" },
+    { "path": "../media" },
+    { "path": "../patterns" },
+    { "path": "../stickers" },
+    { "path": "../units" }
+  ],
+  "include": ["src/**/*"]
+}

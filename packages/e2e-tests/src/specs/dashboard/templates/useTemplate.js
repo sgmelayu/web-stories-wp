@@ -17,40 +17,105 @@
 /**
  * External dependencies
  */
-import { percySnapshot } from '@percy/puppeteer';
-import { visitDashboard } from '@web-stories-wp/e2e-test-utils';
+import {
+  takeSnapshot,
+  visitDashboard,
+  withPlugin,
+} from '@web-stories-wp/e2e-test-utils';
 
-describe('Template', () => {
-  it('should be able use existing template for new story', async () => {
+jest.retryTimes(3, { logErrorsBeforeRetry: true });
+
+describe('Explore Templates', () => {
+  it('should be able to use existing template for new story', async () => {
     await visitDashboard();
 
-    const dashboardNavigation = await expect(page).toMatchElement(
+    await expect(page).toMatchElement(
       '[aria-label="Main dashboard navigation"]'
     );
 
-    await expect(dashboardNavigation).toClick('a', {
+    await expect(page).toClick('[aria-label="Main dashboard navigation"] a', {
       text: 'Explore Templates',
     });
-    await page.waitForTimeout(100);
+    // TODO: Remove and replace with waitForSelector or locator API.
+    await new Promise((r) => setTimeout(r, 100));
 
-    await expect(page).toMatch('Viewing all');
-    await expect(page).toMatch('templates');
+    await expect(page).toMatchTextContent(/Viewing all (\d+) templates/);
 
-    const firstTemplate = await expect(page).toMatchElement(
-      '[data-testid="template-grid-item-1"]'
+    await expect(page).toClick('[data-testid="template-grid-item-1"] button', {
+      text: 'See details',
+    });
+    // Get count of template colors to compare to 'saved colors' in the editor.
+    const templateDetailsColors = await page.evaluate(() => {
+      const elements = document.querySelectorAll(
+        'li[data-testid="detail-template-color"]'
+      );
+      const count = elements.length;
+      const colors = [];
+      for (let i = 0; i < count; i++) {
+        colors.push(window.getComputedStyle(elements[i]).backgroundColor);
+      }
+      return colors;
+    });
+
+    await Promise.all([
+      expect(page).toClick(
+        'button[aria-label="Use Fresh & Bright template to create new story"]'
+      ),
+      page.waitForNavigation(),
+    ]);
+
+    // Wait for title input to load before continuing.
+    await page.waitForSelector('input[placeholder="Add title"]');
+
+    // Wait for skeleton thumbnails in the carousel to render which gives footer time to also render
+    await page.waitForFunction(
+      () =>
+        !document.querySelector(
+          'li[data-testid^="carousel-page-preview-skeleton"]'
+        ),
+      { timeout: 5000 } // requestIdleCallback in the carousel kicks in after 5s the latest.
     );
 
-    await percySnapshot(page, 'Explore Templates');
+    // Click on text element so the 'Saved Colors' panel is present.
+    // Pressing Option/Alt key because it's part of a layer group.
+    await page.keyboard.down('Alt');
+    await expect(page).toClick(
+      '[data-testid="frameElement"][aria-label^="Element: Fresh"]'
+    );
+    await page.keyboard.up('Alt');
 
-    await expect(firstTemplate).toClick('button', { text: 'Use template' });
-    await page.waitForNavigation();
+    await takeSnapshot(page, 'Story From Template');
 
-    // Wait for media elements to load before continuing.
-    await page.waitForSelector('[data-testid="mediaElement-image"]');
+    // Open the color picker from the floating menu
+    await expect(page).toClick('button[aria-label="Text color"]');
 
-    await expect(page).toMatchElement('input[placeholder="Add title"]');
-    await expect(page).toMatchElement('[data-element-id]');
+    // Get all saved story colors and subtract 1 button for adding other colors
+    const editorSavedColors = await page.evaluate(() => {
+      const elements = document.querySelectorAll(
+        'div[data-testid="saved-story-colors"] button > div'
+      );
+      const count = elements.length;
+      const colors = [];
+      for (let i = 0; i < count; i++) {
+        colors.push(window.getComputedStyle(elements[i]).backgroundColor);
+      }
+      return colors;
+    });
 
-    await percySnapshot(page, 'Story From Template');
+    expect(editorSavedColors).toStrictEqual(templateDetailsColors);
+  });
+
+  describe('Disabled', () => {
+    withPlugin('e2e-tests-disable-default-templates');
+
+    it('should not display Explore Templates screen', async () => {
+      await visitDashboard();
+
+      await expect(page).toMatchElement('h2', { text: 'Dashboard' });
+
+      await expect(page).not.toMatchElement('a', {
+        text: 'Explore Templates',
+      });
+    });
   });
 });

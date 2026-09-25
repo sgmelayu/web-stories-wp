@@ -1,0 +1,66 @@
+{
+  "name": "@googleforcreators/dashboard",
+  "description": "The core Web Stories dashboard web application, which is platform-agnostic.",
+  "private": false,
+  "version": "0.1.202410011217",
+  "author": {
+    "name": "Google",
+    "url": "https://creators.google/"
+  },
+  "license": "Apache-2.0",
+  "keywords": [
+    "web stories"
+  ],
+  "homepage": "https://github.com/GoogleForCreators/web-stories-wp/blob/main/packages/dashboard/README.md",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/GoogleForCreators/web-stories-wp.git",
+    "directory": "packages/dashboard"
+  },
+  "bugs": {
+    "url": "https://github.com/googleforcreators/web-stories-wp/issues"
+  },
+  "engines": {
+    "node": ">= 20 || >= 22 || >= 24",
+    "npm": ">= 7.3"
+  },
+  "customExports": {
+    ".": {
+      "default": "./src/index.js"
+    }
+  },
+  "main": "dist/index.js",
+  "module": "dist-module/index.js",
+  "types": "dist-types/index.d.ts",
+  "source": "src/index.js",
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@googleforcreators/animation": "*",
+    "@googleforcreators/date": "*",
+    "@googleforcreators/design-system": "*",
+    "@googleforcreators/element-library": "*",
+    "@googleforcreators/i18n": "*",
+    "@googleforcreators/media": "*",
+    "@googleforcreators/migration": "*",
+    "@googleforcreators/patterns": "*",
+    "@googleforcreators/react": "*",
+    "@googleforcreators/templates": "*",
+    "@googleforcreators/tracking": "*",
+    "@googleforcreators/units": "*",
+    "flagged": "^2.0.10",
+    "history": "^5.3.0",
+    "prop-types": "^15.8.1",
+    "styled-components": "^5.3.11",
+    "stylis-plugin-rtl": "^1.0.0"
+  },
+  "devDependencies": {
+    "@googleforcreators/karma-fixture": "*",
+    "@testing-library/react": "^12.1.5",
+    "@testing-library/react-hooks": "^8.0.1",
+    "@testing-library/user-event": "^14.6.1",
+    "jest": "^29.6.1",
+    "react": "^17.0.2"
+  }
+}

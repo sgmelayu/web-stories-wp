@@ -2,7 +2,7 @@
 
 Helper library for interacting with Google Events to track page/screen views and events.
 
-Supports both Universal Analytics (`gtag.js`) as well as Google Analytics 4
+Supports only Google Analytics 4
 
 ## Usage
 
@@ -50,47 +50,30 @@ trackClick(event, 'contact_support');
 
 You can use `trackError` to send [exception events](https://developers.google.com/analytics/devguides/collection/ga4/exceptions) to measure the number and type of crashes or errors that occur on a web page.
 
-The first parameter is the error description, the second one indicates whether the error was fatal or not.
+The first parameter is the prefix, the second one the error description, and the third one indicates whether the error was fatal or not.
 
 ```js
-trackError('Division by zero', false);
+trackError('demo', 'Division by zero', false);
 ```
 
 ### Tracking Events
 
 At the core of this package is the `trackEvent` function.
 
-All you need to provide is the event name (aka event action in Universal Analyticcs), and as many optional event parameters as you want:
+All you need to provide is the event name and as many optional event parameters as you want:
 
 ```js
 trackEvent('insert_template', {
-template_name: 'Awesome Template',
+  template_name: 'Awesome Template',
 });
 ```
 
 ### User Timings
 
-`gtag.js` supports sending [user timing information](https://developers.google.com/analytics/devguides/collection/gtagjs/user-timings) to Google Analytics.
-You can do so using the following helper function which will start a timer and return a callback to stop it:
+Use the following helper function to start a timer and return a callback to stop it:
 
 ```js
-const trackTiming = getTimeTracker('video_transcoding');
+const trackTiming = getTimeTracker('video_transcoding'); // Start timer.
 // Perform some long task...
-trackTiming();
+trackTiming(); // Stop timer and send event.
 ```
-
-## Custom Dimensions
-
-While Google Analytics 4 supports any arbitrary custom event parameters, the Universal Analytics (`gtag.js`) configuration currently only supports the following custom dimensions:
-
-* `order`
-* `orderby`
-* `file_size`
-* `file_type`
-* `status`
-* `name`
-* `duration`
-* `duration`
-* `title_length`
-* `unread_count`
-* `template_id`

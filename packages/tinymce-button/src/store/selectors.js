@@ -15,19 +15,9 @@
  */
 
 /**
- * WordPress dependencies
- */
-import { select } from '@wordpress/data';
-/**
- * Internal dependencies
- */
-import name from './name';
-
-/**
  * Retrieve settings.
  *
  * @param {Object} state State of store.
- *
  * @return {Object} Settings object.
  */
 export function getSettings(state) {
@@ -48,7 +38,6 @@ export function getModal(state) {
  * Get editor instance.
  *
  * @param {Object} state State for the store.
- *
  * @return {string} Editor ID.
  */
 export function getEditor(state) {
@@ -59,7 +48,6 @@ export function getEditor(state) {
  * Get current view for the store.
  *
  * @param {Object} state State object.
- *
  * @return {string} Current view name.
  */
 export function getCurrentView(state) {
@@ -70,11 +58,10 @@ export function getCurrentView(state) {
  *Get settings for current view.
  *
  * @param {Object} state State object.
- *
  * @return {Object} Settings object for current view.
  */
 export function getCurrentViewSettings(state) {
-  const currentView = select(name).getCurrentView();
+  const currentView = getCurrentView(state);
 
   return state.settings[currentView];
 }

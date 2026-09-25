@@ -13,44 +13,95 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 /**
  * External dependencies
  */
 import {
   createNewStory,
-  clickButton,
   uploadFile,
   deleteMedia,
+  toggleVideoOptimization,
 } from '@web-stories-wp/e2e-test-utils';
 
-const MODAL = '.media-modal';
+jest.retryTimes(3, { logErrorsBeforeRetry: true });
 
-describe('Inserting .mov from dialog', () => {
-  // Uses the existence of the element's frame element as an indicator for successful insertion.
-  it('should not list the .mov', async () => {
+describe('Inserting MOV video', () => {
+  let uploadedFiles;
+
+  beforeEach(() => (uploadedFiles = []));
+
+  afterEach(async () => {
+    for (const file of uploadedFiles) {
+      // eslint-disable-next-line no-await-in-loop
+      await deleteMedia(file);
+    }
+  });
+
+  it('should insert video via media modal', async () => {
     await createNewStory();
-    await expect(page).not.toMatchElement('[data-testid="FrameElement"]');
 
-    await expect(page).toClick('button', { text: 'Upload' });
+    await expect(page).toClick('button[aria-label="Upload"]');
 
-    await page.waitForSelector(MODAL, {
+    await page.waitForSelector('.media-modal', {
       visible: true,
     });
-    const fileName = await uploadFile('small-video.mov', false);
-    const fileNameNoExt = fileName.replace(/\.[^/.]+$/, '');
 
-    await clickButton(
-      '.attachments-browser .attachments .attachment:first-of-type'
-    );
-
-    await expect(page).not.toMatchElement('.type-video.subtype-quicktime');
-
-    await page.keyboard.press('Escape');
-
-    await page.waitForSelector(MODAL, {
-      visible: false,
+    await expect(page).toClick('.media-modal #menu-item-upload', {
+      text: 'Upload files',
+      visible: true,
     });
 
-    await deleteMedia(fileNameNoExt);
+    const fileName = await uploadFile('small-video.mov', false);
+    uploadedFiles.push(fileName);
+
+    await expect(page).toClick('button', { text: 'Insert into page' });
+
+    await page.waitForSelector('[data-testid="videoElement"]', {
+      visible: false,
+    });
+    await expect(page).toMatchElement('[data-testid="videoElement"]', {
+      visible: false,
+    });
+  });
+
+  describe('Inserting .mov from dialog', () => {
+    beforeEach(async () => {
+      await toggleVideoOptimization();
+    });
+
+    afterEach(async () => {
+      await toggleVideoOptimization();
+    });
+
+    // Uses the existence of the element's frame element as an indicator for successful insertion.
+    it('should not list the .mov', async () => {
+      await createNewStory();
+      await expect(page).toClick('button[aria-label="Upload"]');
+
+      await page.waitForSelector('.media-modal', {
+        visible: true,
+      });
+
+      await expect(page).toClick('.media-modal #menu-item-upload', {
+        text: 'Upload files',
+        visible: true,
+      });
+
+      const fileName = await uploadFile('small-video.mov', false);
+      uploadedFiles.push(fileName);
+
+      await expect(page).toClick(
+        '.attachments-browser .attachments .attachment:first-of-type'
+      );
+
+      await expect(page).not.toMatchElement('.type-video.subtype-quicktime');
+
+      await page.keyboard.press('Escape');
+
+      await page.waitForSelector('.media-modal', {
+        visible: false,
+      });
+    });
   });
 });

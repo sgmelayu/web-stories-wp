@@ -23,11 +23,11 @@ const puppeteer = require('puppeteer');
  * Internal dependencies
  */
 const MouseWithDnd = require('./mouseWithDnd.cjs');
-const extractAndSaveSnapshot = require('./snapshot.cjs');
+const takePercySnapshot = require('./snapshot.cjs');
 
 function puppeteerBrowser(baseBrowserDecorator, config) {
   baseBrowserDecorator(this);
-  this.name = 'puppeteer';
+  this.name = 'karma-puppeteer-launcher';
 
   let browser = null;
 
@@ -35,7 +35,8 @@ function puppeteerBrowser(baseBrowserDecorator, config) {
     const defaultPuppeteerOptions = {
       product: 'chrome',
       slowMo: 0,
-      dumpio: true,
+      // Only enable for debugging
+      // dumpio: true,
       headless: false,
       devtools: false,
       defaultViewport: null,
@@ -58,14 +59,7 @@ function puppeteerBrowser(baseBrowserDecorator, config) {
     };
 
     // See https://github.com/puppeteer/puppeteer/blob/v3.0.4/docs/api.md#puppeteerlaunchoptions.
-    browser = await puppeteer.launch({
-      product: puppeteerOptions.product,
-      slowMo: puppeteerOptions.slowMo,
-      dumpio: puppeteerOptions.dumpio,
-      headless: puppeteerOptions.headless,
-      devtools: puppeteerOptions.devtools,
-      defaultViewport: puppeteerOptions.defaultViewport,
-    });
+    browser = await puppeteer.launch(puppeteerOptions);
 
     const page = await (async () => {
       const pages = await browser.pages();
@@ -95,7 +89,7 @@ function puppeteerBrowser(baseBrowserDecorator, config) {
   };
 
   this.on('kill', async (done) => {
-    if (browser != null) {
+    if (browser !== null) {
       await browser.close();
     }
     done();
@@ -107,17 +101,13 @@ async function exposeFunctions(page, config) {
   await exposeFunction(
     page,
     'saveSnapshot',
-    async (frame, testName, snapshotName) => {
-      if (!config.snapshots) {
+    async (frame, testName, snapshotName, options) => {
+      if (!process.env?.PERCY_TOKEN) {
         // Do nothing unless snapshots are enabled.
         return;
       }
-      await extractAndSaveSnapshot(
-        frame,
-        testName,
-        snapshotName,
-        config.snapshotsDir
-      );
+
+      await takePercySnapshot(frame, testName, snapshotName, options);
     }
   );
 
@@ -290,5 +280,5 @@ function getContextFrame(page) {
 puppeteerBrowser.$inject = ['baseBrowserDecorator', 'config.puppeteerLauncher'];
 
 module.exports = {
-  'launcher:puppeteer': ['type', puppeteerBrowser],
+  'launcher:karma-puppeteer-launcher': ['type', puppeteerBrowser], // Could not use @web-stories-wp/ because it does not accept symbols in name.
 };

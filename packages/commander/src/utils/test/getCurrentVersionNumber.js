@@ -17,14 +17,14 @@
 /**
  * External dependencies
  */
-import { __setMockFiles } from 'fs';
+import { __setMockFiles } from 'node:fs';
 
 /**
  * Internal dependencies
  */
 import getCurrentVersionNumber from '../getCurrentVersionNumber';
 
-jest.mock('fs');
+jest.mock('node:fs');
 
 const PLUGIN_FILE_CONTENT = `
 <?php
@@ -33,7 +33,7 @@ const PLUGIN_FILE_CONTENT = `
 
  * Plugin Name: Web Stories
  * Description: Visual storytelling for WordPress.
- * Plugin URI: https://github.com/google/web-stories-wp
+ * Plugin URI: https://github.com/googleforcreators/web-stories-wp
  * Author: Google
  * Author URI: https://opensource.google.com/
  * Version: 1.0.0-alpha
@@ -44,7 +44,7 @@ const PLUGIN_FILE_CONTENT = `
  * License: Apache License 2.0
  * License URI: https://www.apache.org/licenses/LICENSE-2.0
  */
- 
+
  define( 'WEBSTORIES_VERSION', '1.0.0-alpha+1234567' );
 `;
 
@@ -58,13 +58,11 @@ describe('getCurrentVersionNumber', () => {
   });
 
   it('should read the plugin version from the file header', () => {
-    expect(getCurrentVersionNumber('/foo/plugin.php')).toStrictEqual(
-      '1.0.0-alpha'
-    );
+    expect(getCurrentVersionNumber('/foo/plugin.php')).toBe('1.0.0-alpha');
   });
 
   it('should read the plugin version from the WEBSTORIES_VERSION constant', () => {
-    expect(getCurrentVersionNumber('/foo/plugin.php', true)).toStrictEqual(
+    expect(getCurrentVersionNumber('/foo/plugin.php', true)).toBe(
       '1.0.0-alpha+1234567'
     );
   });

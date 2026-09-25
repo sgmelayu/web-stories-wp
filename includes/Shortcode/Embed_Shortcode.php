@@ -2,10 +2,10 @@
 /**
  * Class Embed_Shortcode.
  *
- * @package   Google\Web_Stories
+ * @link      https://github.com/googleforcreators/web-stories-wp
+ *
  * @copyright 2020 Google LLC
  * @license   https://www.apache.org/licenses/LICENSE-2.0 Apache License 2.0
- * @link      https://github.com/google/web-stories-wp
  */
 
 /**
@@ -24,6 +24,8 @@
  * limitations under the License.
  */
 
+declare(strict_types = 1);
+
 namespace Google\Web_Stories\Shortcode;
 
 use Google\Web_Stories\Embed_Base;
@@ -34,19 +36,15 @@ use Google\Web_Stories\Embed_Base;
 class Embed_Shortcode extends Embed_Base {
 	/**
 	 * Shortcode name.
-	 *
-	 * @var string
 	 */
-	const SHORTCODE_NAME = 'web_stories_embed';
+	public const SHORTCODE_NAME = 'web_stories_embed';
 
 	/**
 	 * Initializes the Web Stories embed shortcode.
 	 *
 	 * @since 1.1.0
-	 *
-	 * @return void
 	 */
-	public function init() {
+	public function register(): void {
 		add_shortcode( self::SHORTCODE_NAME, [ $this, 'render_shortcode' ] );
 	}
 
@@ -55,12 +53,16 @@ class Embed_Shortcode extends Embed_Base {
 	 *
 	 * @since 1.1.0
 	 *
-	 * @param array  $attributes Shortcode attributes.
-	 * @param string $content Shortcode content.
-	 *
+	 * @param array<string, string|int>|string $attributes Shortcode attributes.
+	 * @param string|null                      $content    Shortcode content.
 	 * @return string Rendered Shortcode
 	 */
-	public function render_shortcode( array $attributes, $content ) { // phpcs:ignore VariableAnalysis.CodeAnalysis.VariableAnalysis.UnusedVariable
+	public function render_shortcode( $attributes, ?string $content ): string { // phpcs:ignore VariableAnalysis.CodeAnalysis.VariableAnalysis.UnusedVariable
+		// Initialize '$attrs' when not an array OR is an empty string.
+		if ( empty( $attributes ) || ! \is_array( $attributes ) ) {
+			$attributes = [];
+		}
+
 		$attributes = shortcode_atts( $this->default_attrs(), $attributes, self::SHORTCODE_NAME );
 
 		$attributes['class'] = 'wp-shortcode-web-stories-embed';

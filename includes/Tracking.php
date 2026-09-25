@@ -4,10 +4,10 @@
  *
  * Used for setting up telemetry.
  *
- * @package   Google\Web_Stories
+ * @link      https://github.com/googleforcreators/web-stories-wp
+ *
  * @copyright 2020 Google LLC
  * @license   https://www.apache.org/licenses/LICENSE-2.0 Apache License 2.0
- * @link      https://github.com/google/web-stories-wp
  */
 
 /**
@@ -26,48 +26,82 @@
  * limitations under the License.
  */
 
+declare(strict_types = 1);
+
 namespace Google\Web_Stories;
 
 use Google\Web_Stories\Integrations\Site_Kit;
+use Google\Web_Stories\Integrations\WooCommerce;
+use Google\Web_Stories\User\Preferences;
+use WP_User;
 
 /**
  * Tracking class.
  */
-class Tracking {
+class Tracking extends Service_Base {
 	/**
 	 * Web Stories tracking script handle.
-	 *
-	 * @var string
 	 */
-	const SCRIPT_HANDLE = 'web-stories-tracking';
+	public const SCRIPT_HANDLE = 'web-stories-tracking';
 
 	/**
 	 * Google Analytics property ID.
-	 *
-	 * @var string
 	 */
-	const TRACKING_ID = 'UA-168571240-1';
+	public const TRACKING_ID = 'UA-168571240-1';
 
 	/**
 	 * Google Analytics 4 measurement ID.
-	 *
-	 * @var string
 	 */
-	const TRACKING_ID_GA4 = 'G-T88C9951CM';
+	public const TRACKING_ID_GA4 = 'G-T88C9951CM';
 
 	/**
 	 * Experiments instance.
 	 *
 	 * @var Experiments Experiments instance.
 	 */
-	private $experiments;
+	private Experiments $experiments;
 
 	/**
 	 * Site_Kit instance.
 	 *
 	 * @var Site_Kit Site_Kit instance.
 	 */
-	private $site_kit;
+	private Site_Kit $site_kit;
+
+	/**
+	 * Assets instance.
+	 *
+	 * @var Assets Assets instance.
+	 */
+	private Assets $assets;
+
+	/**
+	 * Settings instance.
+	 *
+	 * @var Settings Settings instance.
+	 */
+	private Settings $settings;
+
+	/**
+	 * Preferences instance.
+	 *
+	 * @var Preferences Preferences instance.
+	 */
+	private Preferences $preferences;
+
+	/**
+	 * WooCommerce instance.
+	 *
+	 * @var WooCommerce WooCommerce instance.
+	 */
+	private WooCommerce $woocommerce;
+
+	/**
+	 * Context instance.
+	 *
+	 * @var Context Context instance.
+	 */
+	private Context $context;
 
 	/**
 	 * Tracking constructor.
@@ -75,31 +109,84 @@ class Tracking {
 	 * @since 1.4.0
 	 *
 	 * @param Experiments $experiments Experiments instance.
-	 * @param Site_Kit    $site_kit Site_Kit instance.
+	 * @param Site_Kit    $site_kit    Site_Kit instance.
+	 * @param Assets      $assets      Assets instance.
+	 * @param Settings    $settings    Settings instance.
+	 * @param Preferences $preferences Preferences instance.
+	 * @param WooCommerce $woocommerce WooCommerce instance.
+	 * @param Context     $context     Context instance.
 	 */
-	public function __construct( Experiments $experiments, Site_Kit $site_kit ) {
+	public function __construct(
+		Experiments $experiments,
+		Site_Kit $site_kit,
+		Assets $assets,
+		Settings $settings,
+		Preferences $preferences,
+		WooCommerce $woocommerce,
+		Context $context
+	) {
+		$this->assets      = $assets;
 		$this->experiments = $experiments;
 		$this->site_kit    = $site_kit;
+		$this->settings    = $settings;
+		$this->preferences = $preferences;
+		$this->woocommerce = $woocommerce;
+		$this->context     = $context;
 	}
 
 	/**
 	 * Initializes tracking.
 	 *
-	 * Registers the setting in WordPress.
+	 * Registers the script in WordPress.
 	 *
 	 * @since 1.0.0
-	 *
-	 * @return void
 	 */
-	public function init() {
+	public function register(): void {
 		// By not passing an actual script src we can print only the inline script.
-		wp_register_script(
+		$this->assets->register_script(
 			self::SCRIPT_HANDLE,
 			false,
 			[],
 			WEBSTORIES_VERSION,
 			false
 		);
+
+		add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_assets' ] );
+	}
+
+	/**
+	 * Get the action to use for registering the service.
+	 *
+	 * @since 1.6.0
+	 *
+	 * @return string Registration action to use.
+	 */
+	public static function get_registration_action(): string {
+		return 'init';
+	}
+
+	/**
+	 * Get the action priority to use for registering the service.
+	 *
+	 * @since 1.43.0
+	 *
+	 * @return int Registration action priority to use.
+	 */
+	public static function get_registration_action_priority(): int {
+		return 1;
+	}
+
+	/**
+	 * Enqueues tracking scripts
+	 *
+	 * @since 1.43.0
+	 *
+	 * @param string $hook_suffix The current admin page.
+	 */
+	public function enqueue_assets( string $hook_suffix ): void {
+		if ( ! $this->context->is_story_editor() && 'web-story' !== $this->context->get_screen_post_type() ) {
+			return;
+		}
 
 		wp_add_inline_script(
 			self::SCRIPT_HANDLE,
@@ -112,9 +199,9 @@ class Tracking {
 	 *
 	 * @since 1.0.0
 	 *
-	 * @return array Tracking settings.
+	 * @return array<string, array<string, bool|int|string>|bool|string> Tracking settings.
 	 */
-	public function get_settings() {
+	public function get_settings(): array {
 		return [
 			'trackingAllowed' => $this->is_active(),
 			'trackingId'      => self::TRACKING_ID,
@@ -128,40 +215,68 @@ class Tracking {
 	}
 
 	/**
+	 * Is tracking active for the current user?
+	 *
+	 * @return bool True if tracking enabled, and False if not.
+	 */
+	public function is_active(): bool {
+		return (bool) $this->preferences->get_preference( get_current_user_id(), Preferences::OPTIN_META_KEY );
+	}
+
+	/**
 	 * Returns a list of user properties.
 	 *
 	 * @since 1.4.0
 	 *
-	 * @return array User properties.
+	 * @return array<string, string|int|bool> User properties.
 	 */
-	private function get_user_properties() {
-		$role        = ! empty( wp_get_current_user()->roles ) ? wp_get_current_user()->roles[0] : '';
-		$experiments = implode( ',', $this->experiments->get_enabled_experiments() );
+	private function get_user_properties(): array {
+		/**
+		 * Current user.
+		 *
+		 * @var null|WP_User $current_user
+		 */
+		$current_user = wp_get_current_user();
+		$roles        = $current_user instanceof WP_User ? array_values( $current_user->roles ) : [];
+		$role         = ! empty( $roles ) ? array_shift( $roles ) : '';
+		$experiments  = implode( ',', $this->experiments->get_enabled_experiments() );
+
+		$active_plugins = [];
+
+		$woocommerce_status = $this->woocommerce->get_plugin_status();
+		if ( $woocommerce_status['active'] ) {
+			$active_plugins[] = 'woocommerce';
+		}
 
 		$site_kit_status = $this->site_kit->get_plugin_status();
-		$active_plugins  = $site_kit_status['active'] ? 'google-site-kit' : '';
-		$analytics       = $site_kit_status['analyticsActive'] ? 'google-site-kit' : ! empty( get_option( Settings::SETTING_NAME_TRACKING_ID ) );
+		$analytics       = $site_kit_status['analyticsActive'] ? 'google-site-kit' : ! empty( $this->settings->get_setting( $this->settings::SETTING_NAME_TRACKING_ID ) );
+		if ( $site_kit_status['active'] ) {
+			$active_plugins[] = 'google-site-kit';
+		}
+
+		/**
+		 * Ad network type.
+		 *
+		 * @var string $ad_network
+		 */
+		$ad_network = $this->settings->get_setting( $this->settings::SETTING_NAME_AD_NETWORK, 'none' );
 
 		return [
 			'siteLocale'         => get_locale(),
 			'userLocale'         => get_user_locale(),
 			'userRole'           => $role,
 			'enabledExperiments' => $experiments,
-			'wpVersion'          => get_bloginfo( 'version' ),
-			'phpVersion'         => PHP_VERSION,
+			'wpVersion'          => (string) get_bloginfo( 'version' ),
+			'phpVersion'         => (string) PHP_VERSION,
 			'isMultisite'        => (int) is_multisite(),
-			'adNetwork'          => (string) get_option( Settings::SETTING_NAME_AD_NETWORK, 'none' ),
+			'serverEnvironment'  => wp_get_environment_type(),
+			'adNetwork'          => $ad_network,
 			'analytics'          => $analytics,
-			'activePlugins'      => $active_plugins,
+			'activePlugins'      => implode( ',', $active_plugins ),
+			// This doesn't seem to be fully working for web properties.
+			// So we send it as both app_version and a user property.
+			// See https://support.google.com/analytics/answer/9268042.
+			'pluginVersion'      => WEBSTORIES_VERSION,
 		];
-	}
-
-	/**
-	 * Is tracking active for the current user?
-	 *
-	 * @return bool True if tracking enabled, and False if not.
-	 */
-	public function is_active() {
-		return (bool) get_user_meta( get_current_user_id(), User_Preferences::OPTIN_META_KEY, true );
 	}
 }
